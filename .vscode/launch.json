@@ -1,0 +1,15 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug API",
+            "type": "node",
+            "request": "launch",
+            "program": "${workspaceFolder}/api/src/index.ts",
+            "preLaunchTask": "tsc: build - api/tsconfig.json",
+            "outFiles": ["${workspaceFolder}/api/dist/**/*.js"],
+            "cwd": "${workspaceRoot}",
+            "internalConsoleOptions": "openOnSessionStart"
+        }
+    ]
+}

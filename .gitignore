@@ -1,0 +1,11 @@
+dist/
+node_modules/
+**/.DS_Store
+**/tsconfig.tsbuildinfo
+coverage
+contents
+.env
+yarn-error.log
+.env.local
+*.log
+api/src/migrations
