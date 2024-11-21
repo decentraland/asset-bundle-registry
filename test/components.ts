@@ -1,6 +1,5 @@
 // This file is the "test-environment" analogous for src/components.ts
 // Here we define the test components to be used in the testing environment
-import path from 'path'
 
 import { createRunner, createLocalFetchCompoment } from '@well-known-components/test-helpers'
 import { createDotEnvConfigComponent } from '@well-known-components/env-config-provider'

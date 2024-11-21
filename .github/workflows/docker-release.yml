@@ -1,0 +1,15 @@
+name: Publish 'latest' image
+
+on:
+  release:
+    types:
+      - "created"
+
+jobs:
+  asset-bundle-registry-deployment:
+    uses: decentraland/platform-actions/.github/workflows/apps-docker-release.yml@main
+    with:
+      service-name: asset-bundle-registry
+      image-name: asset-bundle-registry
+      deployment-environment: prd
+    secrets: inherit
