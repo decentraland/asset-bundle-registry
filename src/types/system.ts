@@ -7,8 +7,8 @@ import type {
   IMetricsComponent
 } from '@well-known-components/interfaces'
 import { IPgComponent } from '@well-known-components/pg-component'
-import { metricDeclarations } from './metrics'
-import { DbComponent } from './adapters/db'
+import { DbComponent, MessageProcessorComponent, QueueComponent } from './service'
+import { metricDeclarations } from '../metrics'
 
 export type GlobalContext = {
   components: BaseComponents
@@ -28,6 +28,8 @@ export type BaseComponents = {
 export type AppComponents = BaseComponents & {
   pg: IPgComponent
   statusChecks: IBaseComponent
+  queue: QueueComponent
+  messageProcessor: MessageProcessorComponent
 }
 
 // components used in tests
@@ -46,7 +48,3 @@ export type HandlerContextWithPath<
   }>,
   Path
 >
-
-export type DbComponent = {
-  getVoid(): Promise<void>
-}

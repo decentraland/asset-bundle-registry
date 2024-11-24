@@ -1,4 +1,3 @@
-import path from 'path'
 import { createDotEnvConfigComponent } from '@well-known-components/env-config-provider'
 import {
   createServerComponent,
@@ -12,6 +11,9 @@ import { metricDeclarations } from './metrics'
 import { AppComponents, GlobalContext } from './types'
 import { createPgComponent } from '@well-known-components/pg-component'
 import { createDbComponent } from './adapters/db'
+import { createSqsAdapter } from './adapters/sqs'
+import { createMemoryQueueAdapter } from './adapters/memory-queue'
+import { createMessageProcessorComponent } from './logic/message-processor'
 
 // Initialize all the components of the app
 export async function initComponents(): Promise<AppComponents> {
@@ -31,6 +33,7 @@ export async function initComponents(): Promise<AppComponents> {
       }
     }
   )
+
   const statusChecks = await createStatusCheckComponent({ server, config })
   const fetch = createFetchComponent()
   const metrics = await createMetricsComponent(metricDeclarations, { config })
@@ -59,7 +62,12 @@ export async function initComponents(): Promise<AppComponents> {
     //   }
     // }
   )
+
   const db = createDbComponent({ pg })
+
+  const sqsEndpoint = await config.getString('AWS_SQS_ENDPOINT')
+  const queue = sqsEndpoint ? await createSqsAdapter(sqsEndpoint) : createMemoryQueueAdapter()
+  const messageProcessor = await createMessageProcessorComponent({ logs, config, metrics })
 
   return {
     config,
@@ -69,6 +77,8 @@ export async function initComponents(): Promise<AppComponents> {
     server,
     statusChecks,
     pg,
-    db
+    db,
+    queue,
+    messageProcessor
   }
 }
