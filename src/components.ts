@@ -10,10 +10,12 @@ import { createMetricsComponent } from '@well-known-components/metrics'
 import { metricDeclarations } from './metrics'
 import { AppComponents, GlobalContext } from './types'
 import { createPgComponent } from '@well-known-components/pg-component'
-import { createDbComponent } from './adapters/db'
+import { createDbAdapter } from './adapters/db'
 import { createSqsAdapter } from './adapters/sqs'
 import { createMemoryQueueAdapter } from './adapters/memory-queue'
 import { createMessageProcessorComponent } from './logic/message-processor'
+import { createCatalystAdapter } from './adapters/catalyst'
+import { createEntityGetterComponent } from './logic/entity-getter'
 
 // Initialize all the components of the app
 export async function initComponents(): Promise<AppComponents> {
@@ -63,11 +65,13 @@ export async function initComponents(): Promise<AppComponents> {
     // }
   )
 
-  const db = createDbComponent({ pg })
+  const db = createDbAdapter({ pg })
 
   const sqsEndpoint = await config.getString('AWS_SQS_ENDPOINT')
   const queue = sqsEndpoint ? await createSqsAdapter(sqsEndpoint) : createMemoryQueueAdapter()
-  const messageProcessor = await createMessageProcessorComponent({ logs, config, metrics })
+  const catalyst = await createCatalystAdapter({ logs, fetch, config })
+  const entityGetter = await createEntityGetterComponent({ logs, catalyst })
+  const messageProcessor = await createMessageProcessorComponent({ logs, config, entityGetter, metrics })
 
   return {
     config,
@@ -79,6 +83,8 @@ export async function initComponents(): Promise<AppComponents> {
     pg,
     db,
     queue,
-    messageProcessor
+    messageProcessor,
+    catalyst,
+    entityGetter
   }
 }

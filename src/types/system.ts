@@ -7,7 +7,13 @@ import type {
   IMetricsComponent
 } from '@well-known-components/interfaces'
 import { IPgComponent } from '@well-known-components/pg-component'
-import { DbComponent, MessageProcessorComponent, QueueComponent } from './service'
+import {
+  CatalystComponent,
+  DbComponent,
+  EntityGetterComponent,
+  MessageProcessorComponent,
+  QueueComponent
+} from './service'
 import { metricDeclarations } from '../metrics'
 
 export type GlobalContext = {
@@ -30,6 +36,8 @@ export type AppComponents = BaseComponents & {
   statusChecks: IBaseComponent
   queue: QueueComponent
   messageProcessor: MessageProcessorComponent
+  catalyst: CatalystComponent
+  entityGetter: EntityGetterComponent
 }
 
 // components used in tests
