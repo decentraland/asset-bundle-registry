@@ -1,6 +1,7 @@
 import { Message } from '@aws-sdk/client-sqs'
 import { IBaseComponent } from '@well-known-components/interfaces'
 import { Registry } from './types'
+import { Entity } from '@dcl/schemas'
 
 export type DbComponent = {
   getRegistry(pointer: string): Promise<Registry>
@@ -22,4 +23,12 @@ export type MessageConsumerComponent = IBaseComponent
 
 export type MessageProcessorComponent = {
   process(message: any): Promise<void>
+}
+
+export type CatalystComponent = {
+  getEntityById(id: string): Promise<Entity>
+}
+
+export type EntityGetterComponent = {
+  getEntityFrom(message: any): Promise<Entity>
 }

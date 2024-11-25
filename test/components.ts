@@ -11,7 +11,7 @@ import { initComponents as originalInitComponents } from '../src/components'
 import { metricDeclarations } from '../src/metrics'
 import { TestComponents } from '../src/types'
 import { main } from '../src/service'
-import { createDbComponent } from '../src/adapters/db'
+import { createDbAdapter } from '../src/adapters/db'
 
 /**
  * Behaves like Jest "describe" function, used to describe a test for a
@@ -51,7 +51,7 @@ async function initComponents(): Promise<TestComponents> {
     // }
   })
 
-  const db = createDbComponent({ pg })
+  const db = createDbAdapter({ pg })
 
   return {
     ...components,

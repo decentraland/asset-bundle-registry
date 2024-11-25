@@ -2,7 +2,7 @@ import SQL, { SQLStatement } from 'sql-template-strings'
 import { AppComponents, DbComponent } from '../types'
 import { Registry } from '../types/types'
 
-export function createDbComponent({ pg }: Pick<AppComponents, 'pg'>): DbComponent {
+export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent {
   async function getRegistry(pointer: string): Promise<Registry> {
     const query: SQLStatement = SQL`
       SELECT entity_id as entityId, timestamp, pointer, asset_bundles as assetBundles FROM registries

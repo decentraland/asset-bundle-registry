@@ -1,0 +1,34 @@
+import { Entity } from '@dcl/schemas'
+// import { ContractNetwork, Entity } from '@dcl/schemas'
+// import { getCatalystServersFromCache } from 'dcl-catalyst-client/dist/contracts-snapshots'
+
+import { AppComponents, CatalystComponent } from '../types'
+import { ContentClient, createContentClient } from 'dcl-catalyst-client'
+
+export async function createCatalystAdapter({
+  //config,
+  logs,
+  fetch
+}: Pick<AppComponents, 'config' | 'logs' | 'fetch'>): Promise<CatalystComponent> {
+  const log = logs.getLogger('catalyst-client')
+
+  // TODO: implement rotation
+  //const loadBalancer = await config.requireString('CATALYST_LOADBALANCER_HOST')
+  //const contractNetwork = (await config.getString('ENV')) === 'prod' ? ContractNetwork.MAINNET : ContractNetwork.SEPOLIA
+
+  //const catalystServers: string[] = getCatalystServersFromCache(contractNetwork).map((server) => server.address)
+  const defaultContentClient = getContentClientOrDefault()
+
+  function getContentClientOrDefault(contentServerUrl?: string): ContentClient {
+    return contentServerUrl ? createContentClient({ fetcher: fetch, url: contentServerUrl }) : defaultContentClient
+  }
+
+  async function getEntityById(id: string): Promise<Entity> {
+    const contentClient = getContentClientOrDefault()
+    log.debug('Fetching entity by id', { id })
+    const entity = await contentClient.fetchEntityById(id)
+    return entity
+  }
+
+  return { getEntityById }
+}
