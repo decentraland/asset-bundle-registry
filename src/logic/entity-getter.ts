@@ -25,7 +25,7 @@ export function createEntityGetterComponent({
       (await extractEntityOrUndefined(message)) ??
       (await catalyst.getEntityById(
         message.entity.entityId,
-        message.contentServerUrls ? message.contentServerUrl[0] : undefined
+        message.contentServerUrls.length ? message.contentServerUrls[0] : undefined
       ))
 
     return entity
