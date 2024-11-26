@@ -18,15 +18,21 @@ export async function createCatalystAdapter({
   //const contractNetwork = (await config.getString('ENV')) === 'prod' ? ContractNetwork.MAINNET : ContractNetwork.SEPOLIA
 
   //const catalystServers: string[] = getCatalystServersFromCache(contractNetwork).map((server) => server.address)
-  const defaultContentClient = createContentClient({ fetcher: fetch, url: catalystLoadBalancer })
+  const defaultContentClient = createContentClient({ fetcher: fetch, url: ensureContentUrl(catalystLoadBalancer) })
+
+  function ensureContentUrl(url: string): string {
+    return url.endsWith('/content') ? url : url + '/content'
+  }
 
   function getContentClientOrDefault(contentServerUrl?: string): ContentClient {
-    return contentServerUrl
+    const contentClientToReturn = contentServerUrl
       ? createContentClient({
           fetcher: fetch,
-          url: contentServerUrl.endsWith('/content') ? contentServerUrl : contentServerUrl + '/content'
+          url: ensureContentUrl(contentServerUrl)
         })
       : defaultContentClient
+
+    return contentClientToReturn
   }
 
   async function getEntityById(id: string, contentServerUrl?: string): Promise<Entity> {
