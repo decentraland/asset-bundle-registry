@@ -1,6 +1,7 @@
 import { Event } from '@dcl/schemas'
 import { AppComponents, MessageConsumerComponent } from '../types'
 import { sleep } from '../utils/timer'
+import { log } from 'console'
 
 export function createMessagesConsumerComponent({
   logs,
@@ -33,6 +34,7 @@ export function createMessagesConsumerComponent({
         let parsedMessage: Event | undefined
 
         try {
+          logger.debug('Parsing message from queue', { body: Body! })
           const parsedMessage = JSON.parse(JSON.parse(Body!).Message)
 
           if (!parsedMessage) {
