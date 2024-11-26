@@ -11,6 +11,7 @@ import {
   CatalystComponent,
   DbComponent,
   EntityGetterComponent,
+  MessageConsumerComponent,
   MessageProcessorComponent,
   QueueComponent
 } from './service'
@@ -38,6 +39,7 @@ export type AppComponents = BaseComponents & {
   messageProcessor: MessageProcessorComponent
   catalyst: CatalystComponent
   entityGetter: EntityGetterComponent
+  messageConsumer: MessageConsumerComponent
 }
 
 // components used in tests

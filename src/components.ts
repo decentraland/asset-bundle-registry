@@ -16,10 +16,11 @@ import { createMemoryQueueAdapter } from './adapters/memory-queue'
 import { createMessageProcessorComponent } from './logic/message-processor'
 import { createCatalystAdapter } from './adapters/catalyst'
 import { createEntityGetterComponent } from './logic/entity-getter'
+import { createMessagesConsumerComponent } from './logic/message-consumer'
 
 // Initialize all the components of the app
 export async function initComponents(): Promise<AppComponents> {
-  const config = await createDotEnvConfigComponent({ path: ['.env.test', '.env.default', '.env'] })
+  const config = await createDotEnvConfigComponent({ path: ['.env.test', '.env.local', '.env'] })
   const logs = await createLogComponent({ config })
 
   const logger = logs.getLogger('components')
@@ -72,6 +73,7 @@ export async function initComponents(): Promise<AppComponents> {
   const catalyst = await createCatalystAdapter({ logs, fetch, config })
   const entityGetter = await createEntityGetterComponent({ logs, catalyst })
   const messageProcessor = await createMessageProcessorComponent({ logs, config, entityGetter, metrics })
+  const messageConsumer = createMessagesConsumerComponent({ logs, queue, messageProcessor, metrics })
 
   return {
     config,
@@ -85,6 +87,7 @@ export async function initComponents(): Promise<AppComponents> {
     queue,
     messageProcessor,
     catalyst,
-    entityGetter
+    entityGetter,
+    messageConsumer
   }
 }
