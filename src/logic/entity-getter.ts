@@ -10,7 +10,7 @@ export function createEntityGetterComponent({
   async function extractEntityOrUndefined(message: any): Promise<Entity | undefined> {
     if (!Entity.validate(message.entity)) {
       log.debug('Entity received at event is not valid', {
-        validation: Entity.validate.errors?.join(', ') || 'N/A'
+        validation: Entity.validate.errors?.map((error) => JSON.stringify(error)).join(', ') || 'N/A'
       })
 
       return undefined
@@ -20,8 +20,13 @@ export function createEntityGetterComponent({
   }
 
   async function getEntityFrom(message: any): Promise<Entity> {
+    log.debug('Extracting entity from message', { message })
     const entity: Entity =
-      (await extractEntityOrUndefined(message)) ?? (await catalyst.getEntityById(message.entity.entityId))
+      (await extractEntityOrUndefined(message)) ??
+      (await catalyst.getEntityById(
+        message.entity.entityId,
+        message.contentServerUrls ? message.contentServerUrl[0] : undefined
+      ))
 
     return entity
   }

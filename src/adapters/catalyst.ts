@@ -24,8 +24,8 @@ export async function createCatalystAdapter({
     return contentServerUrl ? createContentClient({ fetcher: fetch, url: contentServerUrl }) : defaultContentClient
   }
 
-  async function getEntityById(id: string): Promise<Entity> {
-    const contentClient = getContentClientOrDefault()
+  async function getEntityById(id: string, contentServerUrl?: string): Promise<Entity> {
+    const contentClient = getContentClientOrDefault(contentServerUrl)
     log.debug('Fetching entity by id', { id })
     const entity = await contentClient.fetchEntityById(id)
     return entity

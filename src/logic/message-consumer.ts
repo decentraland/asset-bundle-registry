@@ -1,4 +1,3 @@
-import { Event } from '@dcl/schemas'
 import { AppComponents, MessageConsumerComponent } from '../types'
 import { sleep } from '../utils/timer'
 
@@ -30,11 +29,10 @@ export function createMessagesConsumerComponent({
 
       for (const message of messages) {
         const { Body, ReceiptHandle } = message
-        let parsedMessage: Event | undefined
+        let parsedMessage: any | undefined
 
         try {
-          const parsedMessage = JSON.parse(JSON.parse(Body!).Message)
-          logger.debug('Parsing message from queue', { body: JSON.stringify(parsedMessage) })
+          parsedMessage = JSON.parse(JSON.parse(Body!).Message)
 
           if (!parsedMessage) {
             logger.warn('Message is not a valid event or could not be parsed', { parsedMessage })

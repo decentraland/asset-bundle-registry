@@ -8,7 +8,7 @@ export async function createMessageProcessorComponent({
   const log = logs.getLogger('message-processor')
 
   async function process(message: any) {
-    log.debug('Processing', { message: JSON.stringify(message) })
+    log.debug('Processing', { message })
 
     const entity: Entity = await entityGetter.getEntityFrom(message)
 

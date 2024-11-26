@@ -26,7 +26,7 @@ export type MessageProcessorComponent = {
 }
 
 export type CatalystComponent = {
-  getEntityById(id: string): Promise<Entity>
+  getEntityById(id: string, contentServerUrl?: string): Promise<Entity>
 }
 
 export type EntityGetterComponent = {
