@@ -33,8 +33,8 @@ export function createMessagesConsumerComponent({
         let parsedMessage: Event | undefined
 
         try {
-          logger.debug('Parsing message from queue', { body: Body! })
           const parsedMessage = JSON.parse(JSON.parse(Body!).Message)
+          logger.debug('Parsing message from queue', { body: JSON.stringify(parsedMessage) })
 
           if (!parsedMessage) {
             logger.warn('Message is not a valid event or could not be parsed', { parsedMessage })
