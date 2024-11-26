@@ -21,7 +21,12 @@ export async function createCatalystAdapter({
   const defaultContentClient = createContentClient({ fetcher: fetch, url: catalystLoadBalancer })
 
   function getContentClientOrDefault(contentServerUrl?: string): ContentClient {
-    return contentServerUrl ? createContentClient({ fetcher: fetch, url: contentServerUrl }) : defaultContentClient
+    return contentServerUrl
+      ? createContentClient({
+          fetcher: fetch,
+          url: contentServerUrl.endsWith('/content') ? contentServerUrl : contentServerUrl + '/content'
+        })
+      : defaultContentClient
   }
 
   async function getEntityById(id: string, contentServerUrl?: string): Promise<Entity> {
