@@ -71,7 +71,7 @@ export async function initComponents(): Promise<AppComponents> {
   const sqsEndpoint = await config.getString('AWS_SQS_ENDPOINT')
   const queue = sqsEndpoint ? await createSqsAdapter(sqsEndpoint) : createMemoryQueueAdapter()
   const catalyst = await createCatalystAdapter({ logs, fetch, config })
-  const entityGetter = await createEntityGetterComponent({ logs, catalyst })
+  const entityGetter = await createEntityGetterComponent({ catalyst })
   const messageProcessor = await createMessageProcessorComponent({ logs, config, entityGetter, metrics })
   const messageConsumer = createMessagesConsumerComponent({ logs, queue, messageProcessor, metrics })
 
