@@ -12,9 +12,11 @@ export function createEntityGetterComponent({
       ...message.entity,
       entityId: undefined,
       entityType: undefined,
+      entityTimestamp: undefined,
       id: message.entity.entityId,
       type: message.entity.entityType,
-      content: []
+      timestamp: message.entity.entityTimestamp,
+      content: message.entity.content || []
     }
 
     if (!Entity.validate(parsedEntity)) {
