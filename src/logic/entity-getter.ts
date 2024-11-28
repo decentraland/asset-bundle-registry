@@ -8,7 +8,16 @@ export function createEntityGetterComponent({
   const log = logs.getLogger('event-parser')
 
   async function extractEntityOrUndefined(message: any): Promise<Entity | undefined> {
-    if (!Entity.validate(message.entity)) {
+    const parsedEntity: Entity = {
+      ...message.entity,
+      entityId: undefined,
+      entityType: undefined,
+      id: message.entity.entityId,
+      type: message.entity.entityType,
+      content: []
+    }
+
+    if (!Entity.validate(parsedEntity)) {
       log.debug('Entity received at event is not valid', {
         validation: Entity.validate.errors?.map((error) => JSON.stringify(error)).join(', ') || 'N/A'
       })
@@ -16,7 +25,7 @@ export function createEntityGetterComponent({
       return undefined
     }
 
-    return message.entity
+    return parsedEntity
   }
 
   async function getEntityFrom(message: any): Promise<Entity> {
