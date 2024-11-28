@@ -15,7 +15,6 @@ import { createSqsAdapter } from './adapters/sqs'
 import { createMemoryQueueAdapter } from './adapters/memory-queue'
 import { createMessageProcessorComponent } from './logic/message-processor'
 import { createCatalystAdapter } from './adapters/catalyst'
-import { createEntityGetterComponent } from './logic/entity-getter'
 import { createMessagesConsumerComponent } from './logic/message-consumer'
 
 // Initialize all the components of the app
@@ -71,8 +70,7 @@ export async function initComponents(): Promise<AppComponents> {
   const sqsEndpoint = await config.getString('AWS_SQS_ENDPOINT')
   const queue = sqsEndpoint ? await createSqsAdapter(sqsEndpoint) : createMemoryQueueAdapter()
   const catalyst = await createCatalystAdapter({ logs, fetch, config })
-  const entityGetter = await createEntityGetterComponent({ catalyst })
-  const messageProcessor = await createMessageProcessorComponent({ logs, config, entityGetter, metrics })
+  const messageProcessor = await createMessageProcessorComponent({ logs, config, catalyst, metrics })
   const messageConsumer = createMessagesConsumerComponent({ logs, queue, messageProcessor, metrics })
 
   return {
@@ -87,7 +85,6 @@ export async function initComponents(): Promise<AppComponents> {
     queue,
     messageProcessor,
     catalyst,
-    entityGetter,
     messageConsumer
   }
 }

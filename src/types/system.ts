@@ -10,7 +10,6 @@ import { IPgComponent } from '@well-known-components/pg-component'
 import {
   CatalystComponent,
   DbComponent,
-  EntityGetterComponent,
   MessageConsumerComponent,
   MessageProcessorComponent,
   QueueComponent
@@ -38,7 +37,6 @@ export type AppComponents = BaseComponents & {
   queue: QueueComponent
   messageProcessor: MessageProcessorComponent
   catalyst: CatalystComponent
-  entityGetter: EntityGetterComponent
   messageConsumer: MessageConsumerComponent
 }
 
