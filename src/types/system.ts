@@ -10,7 +10,7 @@ import { IPgComponent } from '@well-known-components/pg-component'
 import {
   CatalystComponent,
   DbComponent,
-  EntityGetterComponent,
+  MessageConsumerComponent,
   MessageProcessorComponent,
   QueueComponent
 } from './service'
@@ -37,7 +37,7 @@ export type AppComponents = BaseComponents & {
   queue: QueueComponent
   messageProcessor: MessageProcessorComponent
   catalyst: CatalystComponent
-  entityGetter: EntityGetterComponent
+  messageConsumer: MessageConsumerComponent
 }
 
 // components used in tests

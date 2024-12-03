@@ -7,5 +7,6 @@ contents
 .env
 yarn-error.log
 .env.local
+.env.test
 *.log
 api/src/migrations
