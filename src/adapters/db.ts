@@ -3,52 +3,58 @@ import { AppComponents, DbComponent } from '../types'
 import { Registry } from '../types/types'
 
 export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent {
-  async function getRegistry(pointer: string): Promise<Registry> {
+  async function getRegistry(pointers: string[]): Promise<Registry.DbEntity | null> {
     const query: SQLStatement = SQL`
-      SELECT entity_id as entityId, timestamp, pointer, asset_bundles as assetBundles FROM registries
-      WHERE pointer = ${pointer}
+      SELECT 
+        id, type, version, timestamp, pointers, content, metadata, status
+      FROM 
+        registries
+      WHERE 
+        pointers && ARRAY[${pointers}]::text[]
+      ORDER BY 
+        timestamp DESC
+      LIMIT 1
     `
 
-    const result = await pg.query<Registry>(query)
-    return result.rows[0]
+    const result = await pg.query<Registry.DbEntity>(query)
+    return result.rows[0] || null
   }
 
-  // async function upsertRegistry(pointer: string): Promise<Registry> {
-  //   const query: SQLStatement = SQL`
-  //     INSERT INTO registries (pointer, asset_bundles)
-  //     VALUES (${pointer}, ${[]})
-  //     ON CONFLICT (pointer) DO NOTHING
-  //     RETURNING entity_id as entityId, timestamp, pointer, asset_bundles as assetBundles
-  //   `
-
-  //   const result = await pg.query<Registry>(query)
-  //   return result.rows[0]
-  // }
-
-  async function upsertRegistry(
-    pointer: string,
-    newBundle: { version: string; mac: string[]; windows: string[]; timestamp: number }
-  ): Promise<Registry> {
+  async function insertRegistry(registry: Registry.DbEntity): Promise<Registry.DbEntity> {
     const query: SQLStatement = SQL`
-      INSERT INTO registries (pointer, asset_bundles)
-      VALUES (${pointer}, ARRAY[${JSON.stringify(newBundle)}]::jsonb[])
-      ON CONFLICT (pointer) DO UPDATE 
-      SET asset_bundles = (
-        SELECT array_slice(
-          array_append(registries.asset_bundles, ${JSON.stringify(newBundle)}::jsonb),
-          GREATEST(array_length(registries.asset_bundles, 1) - 2, 1),
-          array_length(registries.asset_bundles, 1) + 1
+        INSERT INTO registries (
+          id, type, timestamp, pointers, content, metadata, status
         )
-      )
-      RETURNING entity_id AS "entityId", timestamp, pointer, asset_bundles AS "assetBundles"
-    `
+        VALUES (
+          ${registry.id},
+          ${registry.type},
+          ${registry.timestamp},
+          ARRAY[${registry.pointers.map((p) => SQL`${p}`)}]::varchar[],
+          ${JSON.stringify(registry.content)}::jsonb,
+          ${JSON.stringify(registry.metadata)}::jsonb,
+          ${registry.status}
+        )
+        ON CONFLICT (id) DO UPDATE 
+        SET
+          type = EXCLUDED.type,
+          timestamp = EXCLUDED.timestamp,
+          pointers = EXCLUDED.pointers,
+          content = EXCLUDED.content,
+          metadata = EXCLUDED.metadata,
+          status = EXCLUDED.status
+        RETURNING 
+          id,
+          type,
+          timestamp,
+          pointers,
+          content,
+          metadata,
+          status
+      `
 
-    const result = await pg.query<Registry>(query)
+    const result = await pg.query<Registry.DbEntity>(query)
     return result.rows[0]
   }
 
-  return {
-    getRegistry,
-    upsertRegistry
-  }
+  return { insertRegistry, getRegistry }
 }

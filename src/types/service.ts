@@ -4,11 +4,8 @@ import { Registry } from './types'
 import { Entity } from '@dcl/schemas'
 
 export type DbComponent = {
-  getRegistry(pointer: string): Promise<Registry>
-  upsertRegistry(
-    pointer: string,
-    newBundle: { version: string; mac: string[]; windows: string[]; timestamp: number }
-  ): Promise<Registry>
+  getRegistry(pointers: string[]): Promise<Registry.DbEntity | null>
+  insertRegistry(registry: Registry.DbEntity): Promise<Registry.DbEntity>
 }
 
 export type QueueMessage = any

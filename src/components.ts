@@ -16,6 +16,7 @@ import { createMemoryQueueAdapter } from './adapters/memory-queue'
 import { createMessageProcessorComponent } from './logic/message-processor'
 import { createCatalystAdapter } from './adapters/catalyst'
 import { createMessagesConsumerComponent } from './logic/message-consumer'
+import path from 'path'
 
 // Initialize all the components of the app
 export async function initComponents(): Promise<AppComponents> {
@@ -52,17 +53,16 @@ export async function initComponents(): Promise<AppComponents> {
   }
 
   const pg = await createPgComponent(
-    { logs, config, metrics }
-    // TODO: migrations
-    // {
-    //   migration: {
-    //     databaseUrl,
-    //     dir: path.resolve(__dirname, 'migrations'),
-    //     migrationsTable: 'pgmigrations',
-    //     ignorePattern: '.*\\.map',
-    //     direction: 'up'
-    //   }
-    // }
+    { logs, config, metrics },
+    {
+      migration: {
+        databaseUrl,
+        dir: path.resolve(__dirname, 'migrations'),
+        migrationsTable: 'pgmigrations',
+        ignorePattern: '.*\\.map',
+        direction: 'up'
+      }
+    }
   )
 
   const db = createDbAdapter({ pg })
@@ -70,7 +70,7 @@ export async function initComponents(): Promise<AppComponents> {
   const sqsEndpoint = await config.getString('AWS_SQS_ENDPOINT')
   const queue = sqsEndpoint ? await createSqsAdapter(sqsEndpoint) : createMemoryQueueAdapter()
   const catalyst = await createCatalystAdapter({ logs, fetch, config })
-  const messageProcessor = await createMessageProcessorComponent({ logs, config, catalyst, metrics })
+  const messageProcessor = await createMessageProcessorComponent({ logs, config, metrics, catalyst, db })
   const messageConsumer = createMessagesConsumerComponent({ logs, queue, messageProcessor, metrics })
 
   return {

@@ -5,15 +5,16 @@ export const shorthands: ColumnDefinitions | undefined = undefined
 
 export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createTable('registries', {
-    entity_id: { type: 'varchar(255)', primaryKey: true },
-    pointer: { type: 'varchar(255)', notNull: true, unique: true },
-    asset_bundles: { type: 'jsonb[]', notNull: true, default: '{}' },
-    created_at: { type: 'bigint', notNull: true, default: pgm.func('EXTRACT(EPOCH FROM NOW()) * 1000') },
-    updated_at: { type: 'bigint', notNull: true, default: pgm.func('EXTRACT(EPOCH FROM NOW()) * 1000') }
+    id: { type: 'varchar(255)', notNull: true, primaryKey: true },
+    type: { type: 'varchar(255)', notNull: true },
+    timestamp: { type: 'bigint', notNull: true },
+    pointers: { type: 'varchar(255)[]', notNull: true },
+    content: { type: 'jsonb', notNull: true },
+    metadata: { type: 'jsonb' },
+    status: { type: 'varchar(255)', notNull: true }
   })
 
-  pgm.createIndex('registries', 'pointer')
-  pgm.createIndex('registries', 'entity_id')
+  pgm.createIndex('registries', 'pointers', { method: 'gin' })
 }
 
 export async function down(pgm: MigrationBuilder): Promise<void> {
