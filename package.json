@@ -31,7 +31,7 @@
     "@well-known-components/metrics": "^2.1.0",
     "@well-known-components/pg-component": "^1.1.0",
     "dcl-catalyst-client": "^21.7.0",
-    "lru-cache": "^11.0.2",
+    "lru-cache": "7.8.2",
     "sql-template-strings": "^2.2.2"
   }
 }
