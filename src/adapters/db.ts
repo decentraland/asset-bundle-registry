@@ -6,7 +6,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
   async function getRegistryByPointers(pointers: string[]): Promise<Registry.DbEntity[] | null> {
     const query = SQL`
       SELECT 
-        id, type, timestamp, pointers, content, metadata, status
+        id, type, timestamp, deployer, pointers, content, metadata, status
       FROM 
         registries
       WHERE 
@@ -22,7 +22,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
   async function getRegistryById(id: string): Promise<Registry.DbEntity | null> {
     const query: SQLStatement = SQL`
       SELECT 
-        id, type, timestamp, pointers, content, metadata, status
+        id, type, timestamp, deployer, pointers, content, metadata, status
       FROM 
         registries
       WHERE 
@@ -36,12 +36,13 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
   async function insertRegistry(registry: Registry.DbEntity): Promise<Registry.DbEntity> {
     const query: SQLStatement = SQL`
         INSERT INTO registries (
-          id, type, timestamp, pointers, content, metadata, status
+          id, type, timestamp, deployer, pointers, content, metadata, status
         )
         VALUES (
           ${registry.id},
           ${registry.type},
           ${registry.timestamp},
+          ${registry.deployer},
           ${registry.pointers}::varchar(255)[],
           ${JSON.stringify(registry.content)}::jsonb,
           ${JSON.stringify(registry.metadata)}::jsonb,
@@ -51,6 +52,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
         SET
           type = EXCLUDED.type,
           timestamp = EXCLUDED.timestamp,
+          deployer = EXCLUDED.deployer,
           pointers = EXCLUDED.pointers,
           content = EXCLUDED.content,
           metadata = EXCLUDED.metadata,
@@ -59,6 +61,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
           id,
           type,
           timestamp,
+          deployer,
           pointers,
           content,
           metadata,
@@ -79,6 +82,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
           type,
           timestamp,
           pointers,
+          deployer,
           content,
           metadata,
           status

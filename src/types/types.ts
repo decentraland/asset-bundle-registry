@@ -11,5 +11,5 @@ export namespace Registry {
     ERROR = 'error'
   }
 
-  export type DbEntity = Omit<Entity, 'version'> & Status
+  export type DbEntity = Omit<Entity, 'version'> & { deployer: string } & Status
 }

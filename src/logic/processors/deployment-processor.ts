@@ -1,6 +1,7 @@
 import { Entity } from '@dcl/schemas'
 import { AppComponents, ProcessorResult, Registry } from '../../types'
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
+import { Authenticator } from '@dcl/crypto'
 
 export const createDeploymentProcessor = ({ db, catalyst, logs }: Pick<AppComponents, 'db' | 'catalyst' | 'logs'>) => {
   const logger = logs.getLogger('deployment-processor')
@@ -17,7 +18,9 @@ export const createDeploymentProcessor = ({ db, catalyst, logs }: Pick<AppCompon
         return { ok: false, errors: [`Entity with id ${event.entity.entityId} was not found`] }
       }
 
-      await db.insertRegistry({ ...entity, status: Registry.StatusValues.PENDING })
+      const deployer = Authenticator.ownerAddress(event.entity.authChain)
+
+      await db.insertRegistry({ ...entity, deployer, status: Registry.StatusValues.PENDING })
 
       logger.debug('Deployment saved', { entityId: entity.id })
 
