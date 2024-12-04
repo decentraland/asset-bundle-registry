@@ -3,17 +3,30 @@ import { AppComponents, DbComponent } from '../types'
 import { Registry } from '../types/types'
 
 export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent {
-  async function getRegistry(pointers: string[]): Promise<Registry.DbEntity | null> {
-    const query: SQLStatement = SQL`
+  async function getRegistryByPointers(pointers: string[]): Promise<Registry.DbEntity[] | null> {
+    const query = SQL`
       SELECT 
-        id, type, version, timestamp, pointers, content, metadata, status
+        id, type, timestamp, pointers, content, metadata, status
       FROM 
         registries
       WHERE 
-        pointers && ARRAY[${pointers}]::text[]
+        pointers && ${pointers}::varchar(255)[]
       ORDER BY 
         timestamp DESC
-      LIMIT 1
+    `
+
+    const result = await pg.query<Registry.DbEntity>(query)
+    return result.rows
+  }
+
+  async function getRegistryById(id: string): Promise<Registry.DbEntity | null> {
+    const query: SQLStatement = SQL`
+      SELECT 
+        id, type, timestamp, pointers, content, metadata, status
+      FROM 
+        registries
+      WHERE 
+        id = ${id}
     `
 
     const result = await pg.query<Registry.DbEntity>(query)
@@ -29,7 +42,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
           ${registry.id},
           ${registry.type},
           ${registry.timestamp},
-          ARRAY[${registry.pointers.map((p) => SQL`${p}`)}]::varchar[],
+          ${registry.pointers}::varchar(255)[],
           ${JSON.stringify(registry.content)}::jsonb,
           ${JSON.stringify(registry.metadata)}::jsonb,
           ${registry.status}
@@ -56,5 +69,24 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
     return result.rows[0]
   }
 
-  return { insertRegistry, getRegistry }
+  async function updateRegistryStatus(id: string, status: Registry.StatusValues): Promise<Registry.DbEntity | null> {
+    const query: SQLStatement = SQL`
+        UPDATE registries
+        SET status = ${status}
+        WHERE id = ${id}
+        RETURNING 
+          id,
+          type,
+          timestamp,
+          pointers,
+          content,
+          metadata,
+          status
+      `
+
+    const result = await pg.query<Registry.DbEntity>(query)
+    return result.rows[0] || null
+  }
+
+  return { insertRegistry, updateRegistryStatus, getRegistryByPointers, getRegistryById }
 }

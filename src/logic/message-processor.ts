@@ -1,6 +1,8 @@
-import { Entity } from '@dcl/schemas'
+import { AssetBundleConvertedEvent } from '@dcl/schemas'
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
-import { AppComponents, MessageProcessorComponent, Registry } from '../types'
+import { AppComponents, MessageProcessorComponent } from '../types'
+import { createDeploymentProcessor } from './processors/deployment-processor'
+import { createTexturesProcessor } from './processors/textures-processor'
 
 export async function createMessageProcessorComponent({
   catalyst,
@@ -8,27 +10,13 @@ export async function createMessageProcessorComponent({
   logs
 }: Pick<AppComponents, 'catalyst' | 'db' | 'logs' | 'config' | 'metrics'>): Promise<MessageProcessorComponent> {
   const log = logs.getLogger('message-processor')
+  const deploymentProcessor = createDeploymentProcessor({ db, catalyst, logs })
+  const texturesProcessor = createTexturesProcessor({ db, logs })
 
   async function process(message: any) {
     log.debug('Processing', { message })
-
-    if (DeploymentToSqs.validate(message)) {
-      const entity: Entity = await catalyst.getEntityById(
-        message.entity.entityId,
-        message.contentServerUrls?.length ? message.contentServerUrls[0] : undefined
-      )
-
-      if (!entity) {
-        log.error('Entity not found', { message: JSON.stringify(message) })
-        return
-      }
-
-      await db.insertRegistry({ ...entity, status: Registry.StatusValues.PENDING })
-
-      log.debug('Deployment saved', { entityId: entity.id })
-    } else {
-      log.error('Invalid message received', { message: JSON.stringify(message) })
-    }
+    ;(DeploymentToSqs.validate(message) && (await deploymentProcessor.process(message))) ||
+      (AssetBundleConvertedEvent.validate(message) && (await texturesProcessor.process(message)))
   }
 
   return { process }
