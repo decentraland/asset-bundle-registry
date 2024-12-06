@@ -14,7 +14,7 @@ export async function createMessageProcessorComponent({
   const texturesProcessor = createTexturesProcessor({ db, logs })
 
   async function process(message: any) {
-    log.debug('Processing', { message })
+    log.info('Processing', { message })
     ;(DeploymentToSqs.validate(message) && (await deploymentProcessor.process(message))) ||
       (AssetBundleConvertedEvent.validate(message) && (await texturesProcessor.process(message)))
   }

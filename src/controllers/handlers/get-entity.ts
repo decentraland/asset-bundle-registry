@@ -1,4 +1,4 @@
-import { HandlerContextWithPath } from '../../types'
+import { HandlerContextWithPath, Registry } from '../../types'
 
 export async function getEntityHandler(context: HandlerContextWithPath<'db', '/entities/active'>) {
   const {
@@ -18,7 +18,7 @@ export async function getEntityHandler(context: HandlerContextWithPath<'db', '/e
     }
   }
 
-  const entities = await db.getRegistryByPointers(pointers)
+  const entities = await db.getRegistriesByPointers(pointers)
 
   if (!entities) {
     return {
@@ -26,6 +26,20 @@ export async function getEntityHandler(context: HandlerContextWithPath<'db', '/e
       body: {
         ok: false,
         message: 'Entities not found'
+      }
+    }
+  }
+
+  const entityToReturn: Registry.DbEntity | undefined = entities
+    .filter((entity) => entity.status === Registry.StatusValues.OPTMIZED)
+    ?.sort((a, b) => a.timestamp - b.timestamp)[0]
+
+  if (!entityToReturn) {
+    return {
+      status: 404,
+      body: {
+        ok: false,
+        message: 'No active entities found'
       }
     }
   }

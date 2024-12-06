@@ -3,7 +3,7 @@ import { AppComponents, DbComponent } from '../types'
 import { Registry } from '../types/types'
 
 export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent {
-  async function getRegistryByPointers(pointers: string[]): Promise<Registry.DbEntity[] | null> {
+  async function getRegistriesByPointers(pointers: string[]): Promise<Registry.DbEntity[] | null> {
     const query = SQL`
       SELECT 
         id, type, timestamp, deployer, pointers, content, metadata, status
@@ -11,8 +11,6 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
         registries
       WHERE 
         pointers && ${pointers}::varchar(255)[]
-      ORDER BY 
-        timestamp DESC
     `
 
     const result = await pg.query<Registry.DbEntity>(query)
@@ -92,5 +90,5 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
     return result.rows[0] || null
   }
 
-  return { insertRegistry, updateRegistryStatus, getRegistryByPointers, getRegistryById }
+  return { insertRegistry, updateRegistryStatus, getRegistriesByPointers, getRegistryById }
 }

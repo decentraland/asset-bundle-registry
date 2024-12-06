@@ -4,7 +4,7 @@ import { Registry } from './types'
 import { Entity } from '@dcl/schemas'
 
 export type DbComponent = {
-  getRegistryByPointers(pointers: string[]): Promise<Registry.DbEntity[] | null>
+  getRegistriesByPointers(pointers: string[]): Promise<Registry.DbEntity[] | null>
   getRegistryById(id: string): Promise<Registry.DbEntity | null>
   insertRegistry(registry: Registry.DbEntity): Promise<Registry.DbEntity>
   updateRegistryStatus(id: string, status: Registry.StatusValues): Promise<Registry.DbEntity | null>
