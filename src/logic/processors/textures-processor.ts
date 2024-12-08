@@ -1,7 +1,7 @@
 import { AssetBundleConvertedEvent } from '@dcl/schemas'
-import { AppComponents, ProcessorResult, Registry } from '../../types'
+import { AppComponents, EventHandlerComponent, ProcessorResult, Registry } from '../../types'
 
-export const createTexturesProcessor = ({ logs, db }: Pick<AppComponents, 'logs' | 'db'>) => {
+export const createTexturesProcessor = ({ logs, db }: Pick<AppComponents, 'logs' | 'db'>): EventHandlerComponent => {
   const logger = logs.getLogger('textures-processor')
 
   return {
@@ -17,6 +17,15 @@ export const createTexturesProcessor = ({ logs, db }: Pick<AppComponents, 'logs'
       logger.info("Entity marked as 'optimized'", { entityId: event.metadata.entityId })
 
       return { ok: true }
-    }
+    },
+    canProcess: (event: any): boolean => {
+      AssetBundleConvertedEvent.validate(event)
+      AssetBundleConvertedEvent.validate.errors?.forEach((error) => {
+        logger.error('Could not process', { reason: JSON.stringify(error) })
+      })
+
+      return !AssetBundleConvertedEvent.validate.errors?.length
+    },
+    name: 'Textures Processor'
   }
 }

@@ -1191,6 +1191,16 @@
     ajv-keywords "^5.1.0"
     mitt "^3.0.1"
 
+"@dcl/schemas@^15.2.0":
+  version "15.2.0"
+  resolved "https://registry.yarnpkg.com/@dcl/schemas/-/schemas-15.2.0.tgz#9463426cc939a45e4e8dd94dc9f99b95dfc27976"
+  integrity sha512-sF7PWZ6Cexf9qXssY7Kt4L5qI1l/87ei4jSEMcGE4AKyI6tCgtAMr2OwHslnKp5D4zT1UliDAt239gk/+/fk7A==
+  dependencies:
+    ajv "^8.11.0"
+    ajv-errors "^3.0.0"
+    ajv-keywords "^5.1.0"
+    mitt "^3.0.1"
+
 "@dcl/schemas@^9.2.0":
   version "9.15.0"
   resolved "https://registry.yarnpkg.com/@dcl/schemas/-/schemas-9.15.0.tgz#81337faa396d21a2d1e704e5ec3cfd7b7b14343e"
@@ -1199,15 +1209,6 @@
     ajv "^8.11.0"
     ajv-errors "^3.0.0"
     ajv-keywords "^5.1.0"
-
-"@dcl/schemas@https://sdk-team-cdn.decentraland.org/@dcl/schemas/branch/feat/asset-bundle-events/dcl-schemas-15.1.2-11920921023.commit-b42e8e5.tgz":
-  version "15.1.2-11920921023.commit-b42e8e5"
-  resolved "https://sdk-team-cdn.decentraland.org/@dcl/schemas/branch/feat/asset-bundle-events/dcl-schemas-15.1.2-11920921023.commit-b42e8e5.tgz#5d536bbee83ffd8bc4170d812958f541a5bbd24e"
-  dependencies:
-    ajv "^8.11.0"
-    ajv-errors "^3.0.0"
-    ajv-keywords "^5.1.0"
-    mitt "^3.0.1"
 
 "@eslint-community/eslint-utils@^4.2.0", "@eslint-community/eslint-utils@^4.4.0":
   version "4.4.1"

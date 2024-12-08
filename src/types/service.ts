@@ -28,6 +28,12 @@ export type CatalystComponent = {
   getEntityById(id: string, contentServerUrl?: string): Promise<Entity>
 }
 
+export type EventHandlerComponent = {
+  process(event: any): Promise<ProcessorResult>
+  canProcess(event: any): boolean
+  name: string
+}
+
 export type ProcessorResult = {
   ok: boolean
   errors?: string[]

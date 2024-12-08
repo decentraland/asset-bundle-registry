@@ -1,9 +1,13 @@
 import { Entity } from '@dcl/schemas'
-import { AppComponents, ProcessorResult, Registry } from '../../types'
+import { AppComponents, EventHandlerComponent, ProcessorResult, Registry } from '../../types'
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
 import { Authenticator } from '@dcl/crypto'
 
-export const createDeploymentProcessor = ({ db, catalyst, logs }: Pick<AppComponents, 'db' | 'catalyst' | 'logs'>) => {
+export const createDeploymentProcessor = ({
+  db,
+  catalyst,
+  logs
+}: Pick<AppComponents, 'db' | 'catalyst' | 'logs'>): EventHandlerComponent => {
   const logger = logs.getLogger('deployment-processor')
 
   return {
@@ -25,6 +29,15 @@ export const createDeploymentProcessor = ({ db, catalyst, logs }: Pick<AppCompon
       logger.debug('Deployment saved', { entityId: entity.id })
 
       return { ok: true }
-    }
+    },
+    canProcess: (event: any): boolean => {
+      DeploymentToSqs.validate(event)
+      DeploymentToSqs.validate.errors?.forEach((error) => {
+        logger.error('Could not process', { reason: JSON.stringify(error) })
+      })
+
+      return !DeploymentToSqs.validate.errors?.length
+    },
+    name: 'Deployment Processor'
   }
 }
