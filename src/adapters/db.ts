@@ -104,8 +104,8 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
       )
       UPDATE registries
       SET status = CASE
-        WHEN (bundles->>'windows' = 'optimized' AND bundles->>'mac' = 'optimized') THEN 'optimized'
-        ELSE status
+        WHEN (updated_bundles.bundles->>'windows' = 'optimized' AND updated_bundles.bundles->>'mac' = 'optimized') THEN 'optimized'
+        ELSE registries.status
       END
       FROM updated_bundles
       WHERE registries.id = updated_bundles.id
