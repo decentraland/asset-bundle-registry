@@ -96,29 +96,28 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
 
   async function upsertRegistryBundle(id: string, platform: string, status: string): Promise<Registry.DbEntity | null> {
     const query: SQLStatement = SQL`
-      WITH updated_bundles AS (
-        UPDATE registries
-        SET bundles = COALESCE(bundles, '{}'::jsonb) || jsonb_build_object(${platform}::text, ${status}::text)
-        WHERE id = ${id}
-        RETURNING *
-      )
       UPDATE registries
-      SET status = CASE
-        WHEN (updated_bundles.bundles->>'windows' = 'optimized' AND updated_bundles.bundles->>'mac' = 'optimized') THEN 'optimized'
-        ELSE registries.status
-      END
-      FROM updated_bundles
-      WHERE registries.id = updated_bundles.id
+      SET 
+        bundles = COALESCE(bundles, '{}'::jsonb) || jsonb_build_object(${platform}::text, ${status}::text),
+        status = CASE
+          WHEN (
+            (COALESCE(bundles, '{}'::jsonb) || jsonb_build_object(${platform}::text, ${status}::text))->>'windows' = 'optimized'
+            AND
+            (COALESCE(bundles, '{}'::jsonb) || jsonb_build_object(${platform}::text, ${status}::text))->>'mac' = 'optimized'
+          ) THEN 'optimized'
+          ELSE status
+        END
+      WHERE id = ${id}
       RETURNING 
-        registries.id,
-        registries.type,
-        registries.timestamp,
-        registries.deployer,
-        registries.pointers,
-        registries.content,
-        registries.metadata,
-        registries.status,
-        registries.bundles
+        id,
+        type,
+        timestamp,
+        deployer,
+        pointers,
+        content,
+        metadata,
+        status,
+        bundles
     `
 
     const result = await pg.query<Registry.DbEntity>(query)
