@@ -100,36 +100,37 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
     status: Registry.StatusValues
   ): Promise<Registry.DbEntity | null> {
     const query: SQLStatement = SQL`
-      UPDATE registries
-      SET 
-          bundles = jsonb_set(
-              COALESCE(bundles, '{}'), 
-              '{${platform}}', 
-              '"${status}"'::jsonb,
-              true
-          ),
-          status = CASE
-              WHEN COALESCE(bundles, '{}') @> '{"mac": "optimized", "windows": "optimized"}'::jsonb 
-              THEN 'optimized' -- Set the overall status to "optimized" if both mac and windows are optimized
-              ELSE status -- Retain the current status otherwise
-          END
-      WHERE id = '${id}'
-      RETURNING 
-          id,
-          type,
-          timestamp,
-          pointers,
-          deployer,
-          content,
-          metadata,
-          status,
-          bundles
-    `
+    UPDATE registries
+    SET 
+        bundles = jsonb_set(
+            COALESCE(bundles, '{}'::jsonb), 
+            ${`{${platform}}`}::text[], -- Use parameter for JSON path
+            ${JSON.stringify(status)}::jsonb, -- Pass status as JSON
+            true
+        ),
+        status = CASE
+            WHEN COALESCE(bundles, '{}'::jsonb) @> '{"mac": "optimized", "windows": "optimized"}'::jsonb 
+            THEN 'optimized' -- Set the overall status to "optimized" if both mac and windows are optimized
+            ELSE status -- Retain the current status otherwise
+        END
+    WHERE id = ${id} -- Use parameter for id
+    RETURNING 
+        id,
+        type,
+        timestamp,
+        pointers,
+        deployer,
+        content,
+        metadata,
+        status,
+        bundles;
+  `
 
-    console.log('INFO - WARN', {
+    console.log('INFO - Query Details:', {
       query: query.text,
-      wholeQuery: query
+      params: query.values // Ensure parameterized values are logged
     })
+
     const result = await pg.query<Registry.DbEntity>(query)
 
     return result.rows[0] || null
