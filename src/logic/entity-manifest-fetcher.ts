@@ -6,11 +6,14 @@ export async function createEntityManifestFetcherComponent({
   config
 }: Pick<AppComponents, 'fetch' | 'logs' | 'config'>): Promise<EntityManifestFetcherComponent> {
   const logger = logs.getLogger('entity-manifest-fetcher')
-  const entityManifestUrl = config.requireString('ASSET_BUNDLE_CDN_URL')
+  const entityManifestUrl = await config.requireString('ASSET_BUNDLE_CDN_URL')
 
   async function downloadManifest(entityId: string, platform: string): Promise<Manifest | null> {
     try {
-      const response = await fetch.fetch(`${entityManifestUrl}/manifest/${entityId}_${platform}.json`)
+      const url = `${entityManifestUrl}manifest/${entityId}_${platform}.json`
+      logger.debug('Attempting to download entity manifest', { entityId, platform, url })
+      const response = await fetch.fetch(url)
+      logger.debug('Response', { response: response.status })
       if (!response.ok) {
         logger.error('Failed to download entity manifest', { entityId, platform, status: response.status })
         return null

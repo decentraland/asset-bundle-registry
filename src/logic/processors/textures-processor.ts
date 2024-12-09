@@ -25,12 +25,18 @@ export const createTexturesProcessor = ({
       }
 
       const manifest: Manifest | null = await entityManifestFetcher.downloadManifest(
-        entity.metadata.entityId,
+        event.metadata.entityId,
         event.metadata.platform
       )
 
+      logger.debug('Metadata fetched', {
+        entityId: event.metadata.entityId,
+        platform: event.metadata.platform,
+        manifest: JSON.stringify(manifest)
+      })
+
       const status: Registry.StatusValues =
-        manifest && manifest.exitCode === ManifestStatusCode.SUCCESS
+        manifest && (manifest.exitCode as ManifestStatusCode) === ManifestStatusCode.SUCCESS
           ? Registry.StatusValues.OPTMIZED
           : Registry.StatusValues.ERROR
 

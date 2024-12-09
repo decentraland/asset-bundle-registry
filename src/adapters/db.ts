@@ -104,6 +104,8 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
             (COALESCE(bundles, '{}'::jsonb) || jsonb_build_object(${platform}::text, ${status}::text))->>'windows' = 'optimized'
             AND
             (COALESCE(bundles, '{}'::jsonb) || jsonb_build_object(${platform}::text, ${status}::text))->>'mac' = 'optimized'
+            AND
+            (COALESCE(bundles, '{}'::jsonb) || jsonb_build_object(${platform}::text, ${status}::text))->>'webglb' = 'optimized'
           ) THEN 'optimized'
           ELSE status
         END
