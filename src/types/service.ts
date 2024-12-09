@@ -8,6 +8,7 @@ export type DbComponent = {
   getRegistryById(id: string): Promise<Registry.DbEntity | null>
   insertRegistry(registry: Registry.DbEntity): Promise<Registry.DbEntity>
   updateRegistryStatus(id: string, status: Registry.StatusValues): Promise<Registry.DbEntity | null>
+  upsertRegistryBundle(id: string, platform: string, status: Registry.StatusValues): Promise<Registry.DbEntity | null>
 }
 
 export type QueueMessage = any

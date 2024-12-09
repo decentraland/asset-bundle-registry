@@ -22,9 +22,15 @@ export const createDeploymentProcessor = ({
         return { ok: false, errors: [`Entity with id ${event.entity.entityId} was not found`] }
       }
 
+      const defaultBundles: Registry.Bundles = {
+        windows: Registry.StatusValues.PENDING,
+        mac: Registry.StatusValues.PENDING,
+        webglb: Registry.StatusValues.PENDING
+      }
+
       const deployer = Authenticator.ownerAddress(event.entity.authChain)
 
-      await db.insertRegistry({ ...entity, deployer, status: Registry.StatusValues.PENDING })
+      await db.insertRegistry({ ...entity, deployer, status: Registry.StatusValues.PENDING, bundles: defaultBundles })
 
       logger.debug('Deployment saved', { entityId: entity.id })
 
@@ -32,9 +38,6 @@ export const createDeploymentProcessor = ({
     },
     canProcess: (event: any): boolean => {
       DeploymentToSqs.validate(event)
-      DeploymentToSqs.validate.errors?.forEach((error) => {
-        logger.error('Could not process', { reason: JSON.stringify(error) })
-      })
 
       return !DeploymentToSqs.validate.errors?.length
     },

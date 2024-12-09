@@ -11,5 +11,11 @@ export namespace Registry {
     ERROR = 'error'
   }
 
-  export type DbEntity = Omit<Entity, 'version'> & { deployer: string } & Status
+  export type Bundles = {
+    windows: StatusValues
+    mac: StatusValues
+    webglb: StatusValues
+  }
+
+  export type DbEntity = Omit<Entity, 'version'> & { deployer: string; bundles: Bundles } & Status
 }

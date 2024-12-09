@@ -13,16 +13,13 @@ export const createTexturesProcessor = ({ logs, db }: Pick<AppComponents, 'logs'
         return { ok: false, errors: ['Entity not found in the database'] }
       }
 
-      await db.updateRegistryStatus(event.metadata.entityId, Registry.StatusValues.OPTMIZED)
+      await db.upsertRegistryBundle(event.metadata.entityId, event.metadata.platform, Registry.StatusValues.OPTMIZED)
       logger.info("Entity marked as 'optimized'", { entityId: event.metadata.entityId })
 
       return { ok: true }
     },
     canProcess: (event: any): boolean => {
       AssetBundleConvertedEvent.validate(event)
-      AssetBundleConvertedEvent.validate.errors?.forEach((error) => {
-        logger.error('Could not process', { reason: JSON.stringify(error) })
-      })
 
       return !AssetBundleConvertedEvent.validate.errors?.length
     },
