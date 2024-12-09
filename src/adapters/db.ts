@@ -96,63 +96,33 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
 
   async function upsertRegistryBundle(id: string, platform: string, status: string): Promise<Registry.DbEntity | null> {
     const query: SQLStatement = SQL`
+      WITH updated_bundles AS (
+        UPDATE registries
+        SET bundles = COALESCE(bundles, '{}'::jsonb) || jsonb_build_object(${platform}::text, ${status}::text)
+        WHERE id = ${id}
+        RETURNING *
+      )
       UPDATE registries
-      SET bundles = COALESCE(bundles, '{}'::jsonb) || jsonb_build_object(${platform}::text, ${status}::text),
-        status = CASE
-          WHEN (bundles->>'windows' = 'optimized' AND bundles->>'mac' = 'optimized') THEN 'optimized'
-          ELSE status
-        END
-      WHERE id = ${id}
+      SET status = CASE
+        WHEN (bundles->>'windows' = 'optimized' AND bundles->>'mac' = 'optimized') THEN 'optimized'
+        ELSE status
+      END
+      FROM updated_bundles
+      WHERE registries.id = updated_bundles.id
       RETURNING 
-        id,
-        type,
-        timestamp,
-        deployer,
-        pointers,
-        content,
-        metadata,
-        status,
-        bundles
+        registries.id,
+        registries.type,
+        registries.timestamp,
+        registries.deployer,
+        registries.pointers,
+        registries.content,
+        registries.metadata,
+        registries.status,
+        registries.bundles
     `
 
     const result = await pg.query<Registry.DbEntity>(query)
     return result.rows[0] || null
-
-    //   const query: SQLStatement = SQL`
-    //   UPDATE registries
-    //   SET
-    //       bundles = jsonb_set(
-    //           COALESCE(bundles, '{}'::jsonb),
-    //           ${`{${platform}}`}::text[], -- Use parameter for JSON path
-    //           ${JSON.stringify(status)}::jsonb, -- Pass status as JSON
-    //           true
-    //       ),
-    //       status = CASE
-    //           WHEN COALESCE(bundles, '{}'::jsonb) @> '{"mac": "optimized", "windows": "optimized"}'::jsonb
-    //           THEN 'optimized'
-    //           ELSE status
-    //       END
-    //   WHERE id = ${id} -- Use parameter for id
-    //   RETURNING
-    //       id,
-    //       type,
-    //       timestamp,
-    //       pointers,
-    //       deployer,
-    //       content,
-    //       metadata,
-    //       status,
-    //       bundles;
-    // `
-
-    //   console.log('INFO - Query Details:', {
-    //     query: query.text,
-    //     params: query.values // Ensure parameterized values are logged
-    //   })
-
-    //   const result = await pg.query<Registry.DbEntity>(query)
-
-    //   return result.rows[0] || null
   }
 
   return { insertRegistry, updateRegistryStatus, upsertRegistryBundle, getRegistriesByPointers, getRegistryById }
