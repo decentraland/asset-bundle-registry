@@ -1,6 +1,6 @@
 import { Message } from '@aws-sdk/client-sqs'
 import { IBaseComponent } from '@well-known-components/interfaces'
-import { Registry } from './types'
+import { Manifest, Registry } from './types'
 import { Entity } from '@dcl/schemas'
 
 export type DbComponent = {
@@ -9,6 +9,8 @@ export type DbComponent = {
   insertRegistry(registry: Registry.DbEntity): Promise<Registry.DbEntity>
   updateRegistryStatus(id: string, status: Registry.StatusValues): Promise<Registry.DbEntity | null>
   upsertRegistryBundle(id: string, platform: string, status: Registry.StatusValues): Promise<Registry.DbEntity | null>
+  getRelatedRegistries(registry: Registry.DbEntity): Promise<Registry.PartialDbEntity[] | null>
+  remove(entityIds: string[]): Promise<void>
 }
 
 export type QueueMessage = any
@@ -38,4 +40,8 @@ export type EventHandlerComponent = {
 export type ProcessorResult = {
   ok: boolean
   errors?: string[]
+}
+
+export type EntityManifestFetcherComponent = {
+  downloadManifest(entityId: string, platform: string): Promise<Manifest | null>
 }

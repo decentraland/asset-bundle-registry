@@ -124,5 +124,36 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
     return result.rows[0] || null
   }
 
-  return { insertRegistry, updateRegistryStatus, upsertRegistryBundle, getRegistriesByPointers, getRegistryById }
+  async function getRelatedRegistries(registry: Registry.DbEntity): Promise<Registry.PartialDbEntity[] | null> {
+    const query: SQLStatement = SQL`
+      SELECT 
+        id, pointers, timestamp, status, bundles
+      FROM 
+        registries
+      WHERE 
+        pointers && ${registry.pointers}::varchar(255)[] AND id != ${registry.id}
+    `
+
+    const result = await pg.query<Registry.PartialDbEntity>(query)
+    return result.rows
+  }
+
+  async function remove(entityIds: string[]): Promise<void> {
+    const query: SQLStatement = SQL`
+      DELETE FROM registries
+      WHERE id = ANY(${entityIds}::varchar(255)[])
+    `
+
+    await pg.query(query)
+  }
+
+  return {
+    insertRegistry,
+    updateRegistryStatus,
+    upsertRegistryBundle,
+    getRegistriesByPointers,
+    getRegistryById,
+    getRelatedRegistries,
+    remove
+  }
 }
