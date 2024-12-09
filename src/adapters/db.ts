@@ -94,11 +94,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
     return result.rows[0] || null
   }
 
-  async function upsertRegistryBundle(
-    id: string,
-    platform: string,
-    status: Registry.StatusValues
-  ): Promise<Registry.DbEntity | null> {
+  async function upsertRegistryBundle(id: string, platform: string, status: string): Promise<Registry.DbEntity | null> {
     const query: SQLStatement = SQL`
       UPDATE registries
       SET bundles = COALESCE(bundles, '{}'::jsonb) || jsonb_build_object(${platform}, ${status})
