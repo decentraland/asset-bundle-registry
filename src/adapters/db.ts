@@ -100,40 +100,59 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
     status: Registry.StatusValues
   ): Promise<Registry.DbEntity | null> {
     const query: SQLStatement = SQL`
-    UPDATE registries
-    SET 
-        bundles = jsonb_set(
-            COALESCE(bundles, '{}'::jsonb), 
-            ${`{${platform}}`}::text[], -- Use parameter for JSON path
-            ${JSON.stringify(status)}::jsonb, -- Pass status as JSON
-            true
-        ),
-        status = CASE
-            WHEN COALESCE(bundles, '{}'::jsonb) @> '{"mac": "optimized", "windows": "optimized"}'::jsonb 
-            THEN 'optimized' -- Set the overall status to "optimized" if both mac and windows are optimized
-            ELSE status -- Retain the current status otherwise
-        END
-    WHERE id = ${id} -- Use parameter for id
-    RETURNING 
+      UPDATE registries
+      SET bundles = COALESCE(bundles, '{}'::jsonb) || jsonb_build_object(${platform}, ${status})
+      WHERE id = ${id}
+      RETURNING 
         id,
         type,
         timestamp,
-        pointers,
         deployer,
+        pointers,
         content,
         metadata,
         status,
-        bundles;
-  `
-
-    console.log('INFO - Query Details:', {
-      query: query.text,
-      params: query.values // Ensure parameterized values are logged
-    })
+        bundles
+    `
 
     const result = await pg.query<Registry.DbEntity>(query)
-
     return result.rows[0] || null
+
+    //   const query: SQLStatement = SQL`
+    //   UPDATE registries
+    //   SET
+    //       bundles = jsonb_set(
+    //           COALESCE(bundles, '{}'::jsonb),
+    //           ${`{${platform}}`}::text[], -- Use parameter for JSON path
+    //           ${JSON.stringify(status)}::jsonb, -- Pass status as JSON
+    //           true
+    //       ),
+    //       status = CASE
+    //           WHEN COALESCE(bundles, '{}'::jsonb) @> '{"mac": "optimized", "windows": "optimized"}'::jsonb
+    //           THEN 'optimized'
+    //           ELSE status
+    //       END
+    //   WHERE id = ${id} -- Use parameter for id
+    //   RETURNING
+    //       id,
+    //       type,
+    //       timestamp,
+    //       pointers,
+    //       deployer,
+    //       content,
+    //       metadata,
+    //       status,
+    //       bundles;
+    // `
+
+    //   console.log('INFO - Query Details:', {
+    //     query: query.text,
+    //     params: query.values // Ensure parameterized values are logged
+    //   })
+
+    //   const result = await pg.query<Registry.DbEntity>(query)
+
+    //   return result.rows[0] || null
   }
 
   return { insertRegistry, updateRegistryStatus, upsertRegistryBundle, getRegistriesByPointers, getRegistryById }
