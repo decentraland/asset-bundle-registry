@@ -63,33 +63,16 @@ export const createTexturesProcessor = ({
           })
         }
 
-        const entitySplitByTimestamp: any = relatedEntities?.reduce(
-          (accumulator: any, registry: Registry.PartialDbEntity) => {
-            if (registry.timestamp < entity.timestamp) {
-              accumulator.previousRegistries.push(registry)
-            } else {
-              accumulator.newerRegistries.push(registry)
-            }
-
-            return accumulator
-          },
-          { previousRegistries: [], newerRegistries: [] }
+        const olderDeployments: Registry.PartialDbEntity[] | undefined = relatedEntities?.filter(
+          (registry: Registry.PartialDbEntity) => registry.timestamp < entity.timestamp
         )
 
-        if (entitySplitByTimestamp.newerRegistries.length) {
-          logger.debug('Newer registries found, skipping purge', {
-            entityId: event.metadata.entityId,
-            pointers: entity.metadata.pointers,
-            newerIds: entitySplitByTimestamp.newerRegistries.map((registry: Registry.PartialDbEntity) => registry.id)
-          })
-        }
-
-        if (entitySplitByTimestamp.previousRegistries.length && registry.status === Registry.StatusValues.OPTMIZED) {
+        if (olderDeployments?.length && registry.status === Registry.StatusValues.OPTMIZED) {
           logger.info('Purging older related registries', {
             entityId: event.metadata.entityId,
             pointers: entity.metadata.pointers,
             entitiesToBeRemoved: JSON.stringify(
-              entitySplitByTimestamp.previousRegistries.map((registry: Registry.PartialDbEntity) => ({
+              olderDeployments.map((registry: Registry.PartialDbEntity) => ({
                 id: registry.id,
                 pointers: registry.pointers,
                 timestamp: registry.timestamp
@@ -97,9 +80,7 @@ export const createTexturesProcessor = ({
             )
           })
 
-          await db.remove(
-            entitySplitByTimestamp.previousRegistries.map((registry: Registry.PartialDbEntity) => registry.id)
-          )
+          await db.remove(olderDeployments.map((registry: Registry.PartialDbEntity) => registry.id))
         }
       })
 
