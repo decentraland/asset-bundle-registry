@@ -10,7 +10,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
       FROM 
         registries
       WHERE 
-        pointers && ${pointers}::varchar(255)[]
+        pointers && ${pointers}::varchar(255)[] AND status = 'optimized'
     `
 
     const result = await pg.query<Registry.DbEntity>(query)
