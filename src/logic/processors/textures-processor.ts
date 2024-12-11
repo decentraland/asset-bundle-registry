@@ -1,4 +1,4 @@
-import { AssetBundleConvertedEvent } from '@dcl/schemas'
+import { AssetBundleConversionFinishedEvent } from '@dcl/schemas'
 import {
   AppComponents,
   EventHandlerComponent,
@@ -16,7 +16,7 @@ export const createTexturesProcessor = ({
   const logger = logs.getLogger('textures-processor')
 
   return {
-    process: async (event: AssetBundleConvertedEvent): Promise<ProcessorResult> => {
+    process: async (event: AssetBundleConversionFinishedEvent): Promise<ProcessorResult> => {
       const entity: Registry.DbEntity | null = await db.getRegistryById(event.metadata.entityId)
 
       if (!entity) {
@@ -35,14 +35,17 @@ export const createTexturesProcessor = ({
         manifest: JSON.stringify(manifest)
       })
 
-      const status: Registry.StatusValues =
-        manifest && (manifest.exitCode as ManifestStatusCode) === ManifestStatusCode.SUCCESS
-          ? Registry.StatusValues.COMPLETE
-          : Registry.StatusValues.ERROR
+      const status: Registry.Status =
+        manifest &&
+        (manifest.exitCode === ManifestStatusCode.SUCCESS ||
+          manifest.exitCode === ManifestStatusCode.CONVERSION_ERRORS_TOLERATED)
+          ? Registry.Status.COMPLETE
+          : Registry.Status.ERROR
 
       const registry: Registry.DbEntity | null = await db.upsertRegistryBundle(
         event.metadata.entityId,
         event.metadata.platform,
+        event.metadata.isLods,
         status
       )
 
@@ -67,7 +70,7 @@ export const createTexturesProcessor = ({
           (registry: Registry.PartialDbEntity) => registry.timestamp < entity.timestamp
         )
 
-        if (olderDeployments?.length && registry.status === Registry.StatusValues.COMPLETE) {
+        if (olderDeployments?.length && registry.status === Registry.Status.COMPLETE) {
           logger.info('Purging older related registries', {
             entityId: event.metadata.entityId,
             pointers: entity.metadata.pointers,
@@ -87,9 +90,9 @@ export const createTexturesProcessor = ({
       return { ok: true }
     },
     canProcess: (event: any): boolean => {
-      AssetBundleConvertedEvent.validate(event)
+      AssetBundleConversionFinishedEvent.validate(event)
 
-      return !AssetBundleConvertedEvent.validate.errors?.length
+      return !AssetBundleConversionFinishedEvent.validate.errors?.length
     },
     name: 'Textures Processor'
   }

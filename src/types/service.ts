@@ -8,8 +8,13 @@ export type DbComponent = {
   getRegistriesByPointers(pointers: string[]): Promise<Registry.DbEntity[] | null>
   getRegistryById(id: string): Promise<Registry.DbEntity | null>
   insertRegistry(registry: Registry.DbEntity): Promise<Registry.DbEntity>
-  updateRegistryStatus(id: string, status: Registry.StatusValues): Promise<Registry.DbEntity | null>
-  upsertRegistryBundle(id: string, platform: string, status: Registry.StatusValues): Promise<Registry.DbEntity | null>
+  updateRegistryStatus(id: string, status: Registry.Status): Promise<Registry.DbEntity | null>
+  upsertRegistryBundle(
+    id: string,
+    platform: string,
+    lods: boolean,
+    status: Registry.Status
+  ): Promise<Registry.DbEntity | null>
   getRelatedRegistries(registry: Registry.DbEntity): Promise<Registry.PartialDbEntity[] | null>
   deleteRegistries(entityIds: string[]): Promise<void>
 }

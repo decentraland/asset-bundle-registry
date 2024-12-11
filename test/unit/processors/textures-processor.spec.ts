@@ -49,7 +49,7 @@ describe('textures-processor should', () => {
         entityManifestFetcherMock.downloadManifest.mockResolvedValue({
             exitCode: ManifestStatusCode.SUCCESS
         })
-        dbMock.upsertRegistryBundle = jest.fn().mockResolvedValue({ status: Registry.StatusValues.OPTMIZED })
+        dbMock.upsertRegistryBundle = jest.fn().mockResolvedValue({ status: Registry.Status.COMPLETE })
     
         const result = await sut.process(mockTexturesEvent)
     
@@ -58,7 +58,8 @@ describe('textures-processor should', () => {
         expect(dbMock.upsertRegistryBundle).toHaveBeenCalledWith(
             mockTexturesEvent.metadata.entityId,
             mockTexturesEvent.metadata.platform,
-            Registry.StatusValues.OPTMIZED
+            false,
+            Registry.Status.COMPLETE
         )
         expect(result).toEqual({ ok: true })
     })
@@ -69,13 +70,13 @@ describe('textures-processor should', () => {
             .downloadManifest
             .mockResolvedValue({ exitCode: ManifestStatusCode.EMBED_MATERIAL_FAILURE })
 
-        dbMock.upsertRegistryBundle = jest.fn().mockResolvedValue({ status: Registry.StatusValues.ERROR })
+        dbMock.upsertRegistryBundle = jest.fn().mockResolvedValue({ status: Registry.Status.ERROR })
         
         const result = await sut.process(mockTexturesEvent)
 
         expect(dbMock.getRegistryById).toHaveBeenCalledWith(mockTexturesEvent.metadata.entityId)
         expect(entityManifestFetcherMock.downloadManifest).toHaveBeenCalledWith(mockTexturesEvent.metadata.entityId, mockTexturesEvent.metadata.platform)
-        expect(dbMock.upsertRegistryBundle).toHaveBeenCalledWith(mockTexturesEvent.metadata.entityId, mockTexturesEvent.metadata.platform, Registry.StatusValues.ERROR)
+        expect(dbMock.upsertRegistryBundle).toHaveBeenCalledWith(mockTexturesEvent.metadata.entityId, mockTexturesEvent.metadata.platform, false, Registry.Status.ERROR)
         expect(result).toEqual({ ok: true })
     })
 })

@@ -2,33 +2,40 @@ import { Entity } from '@dcl/schemas'
 
 export namespace Registry {
   export type Bundles = {
-    windows: StatusValues
-    mac: StatusValues
-    webglb: StatusValues
+    assets: {
+      windows: Status
+      mac: Status
+      webglb: Status
+    }
+    lods: {
+      windows: Status
+      mac: Status
+      webglb: Status
+    }
   }
 
   export type DbEntity = Omit<Entity, 'version'> & { deployer: string; bundles: Bundles } & {
-    status: StatusValues
+    status: Status
   }
 
   export type PartialDbEntity = Pick<DbEntity, 'id' | 'pointers' | 'timestamp' | 'status' | 'bundles'>
 
-  export enum StatusValues {
+  export enum Status {
     COMPLETE = 'complete',
     PENDING = 'pending',
     ERROR = 'error'
   }
 
   type StatusByPlatform = {
-    mac: StatusValues
-    windows: StatusValues
+    mac: Status
+    windows: Status
   }
 
   export type EntityStatus = {
     complete: boolean
     lods: StatusByPlatform
     assetBundles: StatusByPlatform
-    catalyst: StatusValues
+    catalyst: Status
   }
 }
 

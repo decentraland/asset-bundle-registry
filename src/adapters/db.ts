@@ -88,7 +88,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
     return result.rows[0]
   }
 
-  async function updateRegistryStatus(id: string, status: Registry.StatusValues): Promise<Registry.DbEntity | null> {
+  async function updateRegistryStatus(id: string, status: Registry.Status): Promise<Registry.DbEntity | null> {
     const query: SQLStatement = SQL`
         UPDATE registries
         SET status = ${status}
@@ -109,18 +109,26 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
     return result.rows[0] || null
   }
 
-  async function upsertRegistryBundle(id: string, platform: string, status: string): Promise<Registry.DbEntity | null> {
+  async function upsertRegistryBundle(
+    id: string,
+    platform: string,
+    lods: boolean,
+    status: string
+  ): Promise<Registry.DbEntity | null> {
+    const bundleType = lods ? 'lods' : 'assets'
     const query: SQLStatement = SQL`
       UPDATE registries
       SET 
-        bundles = COALESCE(bundles, '{}'::jsonb) || jsonb_build_object(${platform}::text, ${status}::text),
+        bundles = jsonb_set(bundles, '{${bundleType},${platform}}', to_jsonb(${status}::text)),
         status = CASE
           WHEN (
-            (COALESCE(bundles, '{}'::jsonb) || jsonb_build_object(${platform}::text, ${status}::text))->>'windows' = 'complete'
+            bundles->'assets'->>'windows' = 'complete'
             AND
-            (COALESCE(bundles, '{}'::jsonb) || jsonb_build_object(${platform}::text, ${status}::text))->>'mac' = 'complete'
+            bundles->'assets'->>'mac' = 'complete'
             AND
-            (COALESCE(bundles, '{}'::jsonb) || jsonb_build_object(${platform}::text, ${status}::text))->>'webglb' = 'complete'
+            bundles->'lods'->>'windows' = 'complete'
+            AND
+            bundles->'lods'->>'mac' = 'complete'
           ) THEN 'complete'
           ELSE status
         END
