@@ -35,10 +35,10 @@ export const createTexturesProcessor = ({
         manifest: JSON.stringify(manifest)
       })
 
-      const status: Registry.StatusValues =
+      const status: Registry.BundleStatusValues =
         manifest && (manifest.exitCode as ManifestStatusCode) === ManifestStatusCode.SUCCESS
-          ? Registry.StatusValues.OPTMIZED
-          : Registry.StatusValues.ERROR
+          ? Registry.BundleStatusValues.OPTMIZED
+          : Registry.BundleStatusValues.ERROR
 
       const registry: Registry.DbEntity | null = await db.upsertRegistryBundle(
         event.metadata.entityId,
@@ -67,7 +67,7 @@ export const createTexturesProcessor = ({
           (registry: Registry.PartialDbEntity) => registry.timestamp < entity.timestamp
         )
 
-        if (olderDeployments?.length && registry.status === Registry.StatusValues.OPTMIZED) {
+        if (olderDeployments?.length && registry.status === Registry.BundleStatusValues.OPTMIZED) {
           logger.info('Purging older related registries', {
             entityId: event.metadata.entityId,
             pointers: entity.metadata.pointers,

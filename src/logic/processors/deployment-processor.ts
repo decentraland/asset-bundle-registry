@@ -23,14 +23,14 @@ export const createDeploymentProcessor = ({
       }
 
       const defaultBundles: Registry.Bundles = {
-        windows: Registry.StatusValues.PENDING,
-        mac: Registry.StatusValues.PENDING,
-        webglb: Registry.StatusValues.PENDING
+        windows: Registry.BundleStatusValues.PENDING,
+        mac: Registry.BundleStatusValues.PENDING,
+        webglb: Registry.BundleStatusValues.PENDING
       }
 
       const deployer = Authenticator.ownerAddress(event.entity.authChain)
 
-      await db.insertRegistry({ ...entity, deployer, status: Registry.StatusValues.PENDING, bundles: defaultBundles })
+      await db.insertRegistry({ ...entity, deployer, status: Registry.BundleStatusValues.PENDING, bundles: defaultBundles })
 
       logger.debug('Deployment saved', { entityId: entity.id })
 

@@ -11,6 +11,7 @@ import {
   CatalystComponent,
   DbComponent,
   EntityManifestFetcherComponent,
+  EntityStatusAnalyzerComponent,
   MessageConsumerComponent,
   MessageProcessorComponent,
   QueueComponent
@@ -40,6 +41,7 @@ export type AppComponents = BaseComponents & {
   catalyst: CatalystComponent
   messageConsumer: MessageConsumerComponent
   entityManifestFetcher: EntityManifestFetcherComponent
+  entityStatusAnalyzer: EntityStatusAnalyzerComponent
 }
 
 // components used in tests

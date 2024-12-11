@@ -88,7 +88,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
     return result.rows[0]
   }
 
-  async function updateRegistryStatus(id: string, status: Registry.StatusValues): Promise<Registry.DbEntity | null> {
+  async function updateRegistryStatus(id: string, status: Registry.BundleStatusValues): Promise<Registry.DbEntity | null> {
     const query: SQLStatement = SQL`
         UPDATE registries
         SET status = ${status}
