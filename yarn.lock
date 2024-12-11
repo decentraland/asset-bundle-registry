@@ -1150,7 +1150,7 @@
   resolved "https://registry.yarnpkg.com/@dcl/catalyst-contracts/-/catalyst-contracts-4.4.2.tgz#e7a329d7aee25c90d7ee07dbe82200a048f17ff9"
   integrity sha512-gJZo3IB8U+jhBJWR0DgoLS+zaUDIb/u79e7Rp+MEM78uH3bvC19S3Dd8lxWEbPXNKlCB0saUptfK/Buw0c1y2Q==
 
-"@dcl/crypto@^3.4.0":
+"@dcl/crypto@^3.4.0", "@dcl/crypto@^3.4.5":
   version "3.4.5"
   resolved "https://registry.yarnpkg.com/@dcl/crypto/-/crypto-3.4.5.tgz#95ca2beab46fa3494b4d38f009bf0d49c87ba235"
   integrity sha512-uneyjOAOx7pi5kabZsLmPm9kSLkCk4Cok8FUsvT+6k8RquqkjKqocvkGVOMaoWsfU6S3mkLOyaeqEKmOy4ErxA==
@@ -1191,6 +1191,16 @@
     ajv-keywords "^5.1.0"
     mitt "^3.0.1"
 
+"@dcl/schemas@^15.3.1":
+  version "15.3.1"
+  resolved "https://registry.yarnpkg.com/@dcl/schemas/-/schemas-15.3.1.tgz#6cc91aa431d1bc13188a2b591db35ba586aa5bb0"
+  integrity sha512-VVh4qBgow9OsvI+CvJO9jJfZ/VwM5nBytk5T+8aRpxY8txhCebuzmr8NGLkWgaYAAd5vs5C61MVAbKlK+Y1Zow==
+  dependencies:
+    ajv "^8.11.0"
+    ajv-errors "^3.0.0"
+    ajv-keywords "^5.1.0"
+    mitt "^3.0.1"
+
 "@dcl/schemas@^9.2.0":
   version "9.15.0"
   resolved "https://registry.yarnpkg.com/@dcl/schemas/-/schemas-9.15.0.tgz#81337faa396d21a2d1e704e5ec3cfd7b7b14343e"
@@ -1199,15 +1209,6 @@
     ajv "^8.11.0"
     ajv-errors "^3.0.0"
     ajv-keywords "^5.1.0"
-
-"@dcl/schemas@https://sdk-team-cdn.decentraland.org/@dcl/schemas/branch/feat/asset-bundle-events/dcl-schemas-15.1.2-11920921023.commit-b42e8e5.tgz":
-  version "15.1.2-11920921023.commit-b42e8e5"
-  resolved "https://sdk-team-cdn.decentraland.org/@dcl/schemas/branch/feat/asset-bundle-events/dcl-schemas-15.1.2-11920921023.commit-b42e8e5.tgz#5d536bbee83ffd8bc4170d812958f541a5bbd24e"
-  dependencies:
-    ajv "^8.11.0"
-    ajv-errors "^3.0.0"
-    ajv-keywords "^5.1.0"
-    mitt "^3.0.1"
 
 "@eslint-community/eslint-utils@^4.2.0", "@eslint-community/eslint-utils@^4.4.0":
   version "4.4.1"

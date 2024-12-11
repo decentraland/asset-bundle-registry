@@ -1,34 +1,30 @@
-import { Entity } from '@dcl/schemas'
-import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
-import { AppComponents, MessageProcessorComponent, Registry } from '../types'
+import { AppComponents, EventHandlerComponent, MessageProcessorComponent } from '../types'
+import { createDeploymentProcessor } from './processors/deployment-processor'
+import { createTexturesProcessor } from './processors/textures-processor'
 
 export async function createMessageProcessorComponent({
   catalyst,
+  entityManifestFetcher,
   db,
   logs
-}: Pick<AppComponents, 'catalyst' | 'db' | 'logs' | 'config' | 'metrics'>): Promise<MessageProcessorComponent> {
+}: Pick<AppComponents, 'catalyst' | 'entityManifestFetcher' | 'db' | 'logs'>): Promise<MessageProcessorComponent> {
   const log = logs.getLogger('message-processor')
+  const processors: EventHandlerComponent[] = [
+    createDeploymentProcessor({ db, catalyst, logs }),
+    createTexturesProcessor({ db, logs, entityManifestFetcher })
+  ]
 
   async function process(message: any) {
     log.debug('Processing', { message })
 
-    if (DeploymentToSqs.validate(message)) {
-      const entity: Entity = await catalyst.getEntityById(
-        message.entity.entityId,
-        message.contentServerUrls?.length ? message.contentServerUrls[0] : undefined
-      )
+    const handler: EventHandlerComponent | undefined = processors.find((p) => p.canProcess(message))
 
-      if (!entity) {
-        log.error('Entity not found', { message: JSON.stringify(message) })
-        return
-      }
-
-      await db.insertRegistry({ ...entity, status: Registry.StatusValues.PENDING })
-
-      log.debug('Deployment saved', { entityId: entity.id })
-    } else {
-      log.error('Invalid message received', { message: JSON.stringify(message) })
+    if (!handler) {
+      log.warn('No handler found for the message', { message })
+      return
     }
+
+    await handler.process(message)
   }
 
   return { process }

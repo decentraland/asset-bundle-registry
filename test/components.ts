@@ -40,16 +40,7 @@ async function initComponents(): Promise<TestComponents> {
     databaseUrl = `postgres://${dbUser}:${dbPassword}@${dbHost}:${dbPort}/${dbDatabaseName}`
   }
   // This worker writes to the database, so it runs the migrations
-  const pg = await createPgComponent(components, {
-    // TODO: migrations
-    // migration: {
-    //   databaseUrl,
-    //   dir: path.resolve(__dirname, '../../processor/src/migrations'),
-    //   migrationsTable: 'pgmigrations',
-    //   ignorePattern: '.*\\.map',
-    //   direction: 'up'
-    // }
-  })
+  const pg = await createPgComponent(components)
 
   const db = createDbAdapter({ pg })
 
