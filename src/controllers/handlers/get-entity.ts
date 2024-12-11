@@ -32,6 +32,9 @@ export async function getEntityHandler(context: HandlerContextWithPath<'db', '/e
   }
 
   return {
-    body: JSON.stringify(entities)
+    body: JSON.stringify(entities),
+    headers: {
+      'Content-Type': 'application/json'
+    }
   }
 }

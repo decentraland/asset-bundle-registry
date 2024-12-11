@@ -58,7 +58,10 @@ export async function getEntityStatusHandler(
         },
         // TODO: Catalyst status MOCKED
         catalyst: 'complete'
-      } as EntityStatusResponse)
+      } as EntityStatusResponse),
+      headers: {
+        'Content-Type': 'application/json'
+      }
     }
   }
 
