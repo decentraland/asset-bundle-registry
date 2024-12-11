@@ -24,7 +24,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
       FROM 
         registries
       WHERE 
-        id = ${id}
+        id = ${id.toLocaleLowerCase()}
     `
 
     const result = await pg.query<Registry.DbEntity>(query)
@@ -37,7 +37,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
           id, type, timestamp, deployer, pointers, content, metadata, status, bundles
         )
         VALUES (
-          ${registry.id},
+          ${registry.id.toLocaleLowerCase()},
           ${registry.type},
           ${registry.timestamp},
           ${registry.deployer},
@@ -109,7 +109,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
           ) THEN 'optimized'
           ELSE status
         END
-      WHERE id = ${id}
+      WHERE id = ${id.toLocaleLowerCase()}
       RETURNING 
         id,
         type,
