@@ -4,6 +4,7 @@ import { getStatusHandler } from './handlers/get-service-status'
 import { getEntityHandler } from './handlers/get-entity'
 import { wellKnownComponents } from '@dcl/platform-crypto-middleware'
 import { getEntityStatusHandler } from './handlers/get-entity-status'
+import { getEntitiesStatusHandler } from './handlers/get-entities-status'
 
 export async function setupRouter(globalContext: GlobalContext): Promise<Router<GlobalContext>> {
   const router = new Router<GlobalContext>()
@@ -20,7 +21,7 @@ export async function setupRouter(globalContext: GlobalContext): Promise<Router<
   router.get('/status', getStatusHandler)
   router.post('/entities/active', getEntityHandler)
   router.get('/entities/status/:id', signedFetchMiddleware, getEntityStatusHandler)
-  // router.get('/entities/status', signedFetchMiddleware, getEntitiesStatusHandler)
+  router.get('/entities/status', signedFetchMiddleware, getEntitiesStatusHandler)
 
   return router
 }

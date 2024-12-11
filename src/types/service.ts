@@ -1,9 +1,10 @@
 import { Message } from '@aws-sdk/client-sqs'
 import { IBaseComponent } from '@well-known-components/interfaces'
 import { Manifest, Registry } from './types'
-import { Entity } from '@dcl/schemas'
+import { Entity, EthAddress } from '@dcl/schemas'
 
 export type DbComponent = {
+  getRegistriesByOwner(owner: EthAddress): Promise<Registry.DbEntity[] | null>
   getRegistriesByPointers(pointers: string[]): Promise<Registry.DbEntity[] | null>
   getRegistryById(id: string): Promise<Registry.DbEntity | null>
   insertRegistry(registry: Registry.DbEntity): Promise<Registry.DbEntity>

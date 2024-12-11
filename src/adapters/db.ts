@@ -1,8 +1,23 @@
 import SQL, { SQLStatement } from 'sql-template-strings'
 import { AppComponents, DbComponent } from '../types'
 import { Registry } from '../types/types'
+import { EthAddress } from '@dcl/schemas'
 
 export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent {
+  async function getRegistriesByOwner(owner: EthAddress): Promise<Registry.DbEntity[] | null> {
+    const query: SQLStatement = SQL`
+      SELECT 
+        id, type, timestamp, deployer, pointers, content, metadata, status, bundles
+      FROM 
+        registries
+      WHERE 
+        deployer = ${owner.toLocaleLowerCase()}
+    `
+
+    const result = await pg.query<Registry.DbEntity>(query)
+    return result.rows
+  }
+
   async function getRegistriesByPointers(pointers: string[]): Promise<Registry.DbEntity[] | null> {
     const query = SQL`
       SELECT 
@@ -40,7 +55,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
           ${registry.id.toLocaleLowerCase()},
           ${registry.type},
           ${registry.timestamp},
-          ${registry.deployer},
+          ${registry.deployer.toLocaleLowerCase()},
           ${registry.pointers}::varchar(255)[],
           ${JSON.stringify(registry.content)}::jsonb,
           ${JSON.stringify(registry.metadata)}::jsonb,
@@ -153,6 +168,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
     insertRegistry,
     updateRegistryStatus,
     upsertRegistryBundle,
+    getRegistriesByOwner,
     getRegistriesByPointers,
     getRegistryById,
     getRelatedRegistries,
