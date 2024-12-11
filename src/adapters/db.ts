@@ -25,7 +25,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
       FROM 
         registries
       WHERE 
-        pointers && ${pointers}::varchar(255)[] AND status = 'optimized'
+        pointers && ${pointers}::varchar(255)[] AND status = 'complete'
     `
 
     const result = await pg.query<Registry.DbEntity>(query)
@@ -88,7 +88,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
     return result.rows[0]
   }
 
-  async function updateRegistryStatus(id: string, status: Registry.BundleStatusValues): Promise<Registry.DbEntity | null> {
+  async function updateRegistryStatus(id: string, status: Registry.StatusValues): Promise<Registry.DbEntity | null> {
     const query: SQLStatement = SQL`
         UPDATE registries
         SET status = ${status}
@@ -116,12 +116,12 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
         bundles = COALESCE(bundles, '{}'::jsonb) || jsonb_build_object(${platform}::text, ${status}::text),
         status = CASE
           WHEN (
-            (COALESCE(bundles, '{}'::jsonb) || jsonb_build_object(${platform}::text, ${status}::text))->>'windows' = 'optimized'
+            (COALESCE(bundles, '{}'::jsonb) || jsonb_build_object(${platform}::text, ${status}::text))->>'windows' = 'complete'
             AND
-            (COALESCE(bundles, '{}'::jsonb) || jsonb_build_object(${platform}::text, ${status}::text))->>'mac' = 'optimized'
+            (COALESCE(bundles, '{}'::jsonb) || jsonb_build_object(${platform}::text, ${status}::text))->>'mac' = 'complete'
             AND
-            (COALESCE(bundles, '{}'::jsonb) || jsonb_build_object(${platform}::text, ${status}::text))->>'webglb' = 'optimized'
-          ) THEN 'optimized'
+            (COALESCE(bundles, '{}'::jsonb) || jsonb_build_object(${platform}::text, ${status}::text))->>'webglb' = 'complete'
+          ) THEN 'complete'
           ELSE status
         END
       WHERE id = ${id.toLocaleLowerCase()}

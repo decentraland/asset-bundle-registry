@@ -9,21 +9,21 @@ export function createEntityStatusAnalyzerComponent({
   }
 
   async function getEntityStatus(registry: Registry.DbEntity): Promise<Registry.EntityStatus> {
-    const catalyst = Registry.EntityStatusValues.COMPLETE // if there is a registry, it was already uploaded to catalyst
+    const catalyst = Registry.StatusValues.COMPLETE // if there is a registry, it was already uploaded to catalyst
     const assetBundles = {
-      mac: registry.bundles.mac || Registry.BundleStatusValues.PENDING,
-      windows: registry.bundles.windows || Registry.BundleStatusValues.PENDING
+      mac: registry.bundles.mac || Registry.StatusValues.PENDING,
+      windows: registry.bundles.windows || Registry.StatusValues.PENDING
     }
     const lods = {
       // TODO: Unmock
-      mac: Registry.EntityStatusValues.COMPLETE,
-      windows: Registry.EntityStatusValues.COMPLETE
+      mac: Registry.StatusValues.COMPLETE,
+      windows: Registry.StatusValues.COMPLETE
     }
 
     return {
       complete:
         [...Object.values(assetBundles), ...Object.values(lods)].filter(
-          (value: Registry.BundleStatusValues) => value !== Registry.BundleStatusValues.OPTMIZED
+          (value: Registry.StatusValues) => value !== Registry.StatusValues.COMPLETE
         ).length === 0,
       assetBundles,
       lods,

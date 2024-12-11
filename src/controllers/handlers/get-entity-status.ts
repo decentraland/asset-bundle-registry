@@ -1,5 +1,5 @@
 import { DecentralandSignatureContext } from '@dcl/platform-crypto-middleware'
-import { HandlerContextWithPath, Registry } from '../../types'
+import { HandlerContextWithPath } from '../../types'
 import { EthAddress } from '@dcl/schemas'
 
 export async function getEntityStatusHandler(
@@ -26,7 +26,7 @@ export async function getEntityStatusHandler(
 
   const entity = await db.getRegistryById(entityId)
 
-  if (entityStatusAnalyzer.isOwnedBy(entity, userAddress)) {
+  if (entity && entityStatusAnalyzer.isOwnedBy(entity, userAddress)) {
     const entityStatus = await entityStatusAnalyzer.getEntityStatus(entity)
     return {
       body: JSON.stringify(entityStatus),

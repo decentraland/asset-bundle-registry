@@ -29,6 +29,7 @@ export type BaseComponents = {
   logs: ILoggerComponent
   server: IHttpServerComponent<GlobalContext>
   metrics: IMetricsComponent<keyof typeof metricDeclarations>
+  entityStatusAnalyzer: EntityStatusAnalyzerComponent
   db: DbComponent
 }
 
@@ -41,7 +42,6 @@ export type AppComponents = BaseComponents & {
   catalyst: CatalystComponent
   messageConsumer: MessageConsumerComponent
   entityManifestFetcher: EntityManifestFetcherComponent
-  entityStatusAnalyzer: EntityStatusAnalyzerComponent
 }
 
 // components used in tests
