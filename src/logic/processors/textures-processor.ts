@@ -80,7 +80,7 @@ export const createTexturesProcessor = ({
             )
           })
 
-          await db.remove(olderDeployments.map((registry: Registry.PartialDbEntity) => registry.id))
+          await db.deleteRegistries(olderDeployments.map((registry: Registry.PartialDbEntity) => registry.id))
         }
       })
 

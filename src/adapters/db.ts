@@ -140,7 +140,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
     return result.rows
   }
 
-  async function remove(entityIds: string[]): Promise<void> {
+  async function deleteRegistries(entityIds: string[]): Promise<void> {
     const query: SQLStatement = SQL`
       DELETE FROM registries
       WHERE id = ANY(${entityIds}::varchar(255)[])
@@ -156,6 +156,6 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
     getRegistriesByPointers,
     getRegistryById,
     getRelatedRegistries,
-    remove
+    deleteRegistries
   }
 }

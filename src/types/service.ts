@@ -10,7 +10,7 @@ export type DbComponent = {
   updateRegistryStatus(id: string, status: Registry.StatusValues): Promise<Registry.DbEntity | null>
   upsertRegistryBundle(id: string, platform: string, status: Registry.StatusValues): Promise<Registry.DbEntity | null>
   getRelatedRegistries(registry: Registry.DbEntity): Promise<Registry.PartialDbEntity[] | null>
-  remove(entityIds: string[]): Promise<void>
+  deleteRegistries(entityIds: string[]): Promise<void>
 }
 
 export type QueueMessage = any
