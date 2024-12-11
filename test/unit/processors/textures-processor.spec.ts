@@ -63,10 +63,19 @@ describe('textures-processor should', () => {
         expect(result).toEqual({ ok: true })
     })
 
-    // it('mark entity as error when manifest is not successful', async () => {
-    //     dbMock.getRegistryById = jest.fn().mockResolvedValue({ id: mockTexturesEvent.metadata.entityId, timestamp: 123, metadata: { pointers: ['0,0'] }})
-    //     entityManifestFetcher
-    //         .downloadManifest
-    //         .mockResolvedValue({ exitCode: ManifestStatusCode.EMBED_MATERIAL_FAILURE })
-    // })
+    it('mark entity as error when manifest is not successful', async () => {
+        dbMock.getRegistryById = jest.fn().mockResolvedValue({ id: mockTexturesEvent.metadata.entityId, timestamp: 123, metadata: { pointers: ['0,0'] }})
+        entityManifestFetcherMock
+            .downloadManifest
+            .mockResolvedValue({ exitCode: ManifestStatusCode.EMBED_MATERIAL_FAILURE })
+
+        dbMock.upsertRegistryBundle = jest.fn().mockResolvedValue({ status: Registry.StatusValues.ERROR })
+        
+        const result = await sut.process(mockTexturesEvent)
+
+        expect(dbMock.getRegistryById).toHaveBeenCalledWith(mockTexturesEvent.metadata.entityId)
+        expect(entityManifestFetcherMock.downloadManifest).toHaveBeenCalledWith(mockTexturesEvent.metadata.entityId, mockTexturesEvent.metadata.platform)
+        expect(dbMock.upsertRegistryBundle).toHaveBeenCalledWith(mockTexturesEvent.metadata.entityId, mockTexturesEvent.metadata.platform, Registry.StatusValues.ERROR)
+        expect(result).toEqual({ ok: true })
+    })
 })
