@@ -10,5 +10,4 @@ yarn-error.log
 .env.test
 *.log
 api/src/migrations
-
 hide.*
