@@ -3,7 +3,8 @@ import { HandlerContextWithPath } from '../../types'
 import { EthAddress } from '@dcl/schemas'
 
 export async function getEntityStatusHandler(
-  context: HandlerContextWithPath<'db' | 'entityStatusAnalyzer', '/entities/status/:id'> & DecentralandSignatureContext<any>
+  context: HandlerContextWithPath<'db' | 'entityStatusAnalyzer', '/entities/status/:id'> &
+    DecentralandSignatureContext<any>
 ) {
   const {
     params,
