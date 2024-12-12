@@ -176,6 +176,16 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
     await pg.query(query)
   }
 
+  async function markRegistriesAsObsolete(entityIds: string[]): Promise<void> {
+    const query: SQLStatement = SQL`
+      UPDATE registries
+      SET status = 'obsolete'
+      WHERE id = ANY(${entityIds}::varchar(255)[])
+    `
+
+    await pg.query(query)
+  }
+
   return {
     insertRegistry,
     updateRegistryStatus,
@@ -184,6 +194,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
     getRegistriesByPointers,
     getRegistryById,
     getRelatedRegistries,
-    deleteRegistries
+    deleteRegistries,
+    markRegistriesAsObsolete
   }
 }
