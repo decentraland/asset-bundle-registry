@@ -129,10 +129,6 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
             bundles->'assets'->>'windows' = 'complete'
             AND
             bundles->'assets'->>'mac' = 'complete'
-            AND
-            bundles->'lods'->>'windows' = 'complete'
-            AND
-            bundles->'lods'->>'mac' = 'complete'
           ) THEN 'complete'
           ELSE status
         END

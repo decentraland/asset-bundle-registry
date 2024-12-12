@@ -19,14 +19,8 @@ export function createEntityStatusAnalyzerComponent({
       windows: registry.bundles.lods.windows || Registry.Status.PENDING
     }
 
-    /* criteria:
-     * - mac and windows asset bundles must be complete
-     * - mac and windows lods must be complete
-     */
     const isComplete =
-      [...Object.values(assetBundles), ...Object.values(lods)].filter(
-        (value: Registry.Status) => value !== Registry.Status.COMPLETE
-      ).length === 0
+      assetBundles.mac === Registry.Status.COMPLETE && assetBundles.windows === Registry.Status.COMPLETE
 
     return {
       complete: isComplete,
