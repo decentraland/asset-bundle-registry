@@ -119,7 +119,11 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
     const query: SQLStatement = SQL`
       UPDATE registries
       SET 
-        bundles = jsonb_set(bundles, '{${bundleType},${platform}}', to_jsonb(${status}::text)),
+        bundles = jsonb_set(
+          bundles, 
+          ARRAY[${bundleType}::text, ${platform}::text], 
+          to_jsonb(${status}::text)
+        ),
         status = CASE
           WHEN (
             bundles->'assets'->>'windows' = 'complete'
@@ -132,7 +136,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
           ) THEN 'complete'
           ELSE status
         END
-      WHERE id = ${id.toLocaleLowerCase()}
+      WHERE id = ${id.toLowerCase()}
       RETURNING 
         id,
         type,
