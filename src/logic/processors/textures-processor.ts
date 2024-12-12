@@ -40,7 +40,7 @@ export const createTexturesProcessor = ({
         (manifest.exitCode === ManifestStatusCode.SUCCESS ||
           manifest.exitCode === ManifestStatusCode.CONVERSION_ERRORS_TOLERATED)
           ? Registry.Status.COMPLETE
-          : Registry.Status.ERROR
+          : Registry.Status.FAILED
 
       const registry: Registry.DbEntity | null = await db.upsertRegistryBundle(
         event.metadata.entityId,

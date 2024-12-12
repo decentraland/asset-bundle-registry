@@ -23,7 +23,7 @@ export namespace Registry {
   export enum Status {
     COMPLETE = 'complete',
     PENDING = 'pending',
-    ERROR = 'error'
+    FAILED = 'failed'
   }
 
   type StatusByPlatform = {
