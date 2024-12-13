@@ -128,29 +128,29 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
       WHERE id = ${id.toLowerCase()}
       RETURNING *
     )
-    UPDATE registries
+    UPDATE registries AS r
     SET 
       status = CASE
         WHEN (
-          bundles->'assets'->>'windows' = 'complete'
+          r.bundles->'assets'->>'windows' = 'complete'
           AND
-          bundles->'assets'->>'mac' = 'complete'
+          r.bundles->'assets'->>'mac' = 'complete'
         ) THEN 'complete'
-        ELSE status
+        ELSE r.status
       END
-    FROM updated_registry
-    WHERE registries.id = updated_registry.id
+    FROM updated_registry AS ur
+    WHERE r.id = ur.id
     RETURNING 
-      registries.id,
-      registries.type,
-      registries.timestamp,
-      registries.deployer,
-      registries.pointers,
-      registries.content,
-      registries.metadata,
-      registries.status,
-      registries.bundles
-  `
+      r.id,
+      r.type,
+      r.timestamp,
+      r.deployer,
+      r.pointers,
+      r.content,
+      r.metadata,
+      r.status,
+      r.bundles
+    `
 
     const result = await pg.query<Registry.DbEntity>(query)
     return result.rows[0] || null
