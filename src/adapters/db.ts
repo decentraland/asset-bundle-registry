@@ -117,40 +117,40 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
   ): Promise<Registry.DbEntity | null> {
     const bundleType = lods ? 'lods' : 'assets'
     const query: SQLStatement = SQL`
-    WITH updated_registry AS (
-      UPDATE registries
+      WITH updated_registry AS (
+        UPDATE registries
+        SET 
+          bundles = jsonb_set(
+            registries.bundles,
+            ARRAY[${bundleType}::text, ${platform}::text], 
+            to_jsonb(${status}::text)
+          )
+        WHERE registries.id = ${id.toLowerCase()}
+        RETURNING *
+      )
+      UPDATE registries AS r
       SET 
-        bundles = jsonb_set(
-          bundles, 
-          ARRAY[${bundleType}::text, ${platform}::text], 
-          to_jsonb(${status}::text)
-        )
-      WHERE id = ${id.toLowerCase()}
-      RETURNING *
-    )
-    UPDATE registries AS r
-    SET 
-      status = CASE
-        WHEN (
-          r.bundles->'assets'->>'windows' = 'complete'
-          AND
-          r.bundles->'assets'->>'mac' = 'complete'
-        ) THEN 'complete'
-        ELSE r.status
-      END
-    FROM updated_registry AS ur
-    WHERE r.id = ur.id
-    RETURNING 
-      r.id,
-      r.type,
-      r.timestamp,
-      r.deployer,
-      r.pointers,
-      r.content,
-      r.metadata,
-      r.status,
-      r.bundles
-    `
+        status = CASE
+          WHEN (
+            r.bundles->'assets'->>'windows' = 'complete'
+            AND
+            r.bundles->'assets'->>'mac' = 'complete'
+          ) THEN 'complete'
+          ELSE r.status
+        END
+      FROM updated_registry AS ur
+      WHERE r.id = ur.id
+      RETURNING 
+        r.id,
+        r.type,
+        r.timestamp,
+        r.deployer,
+        r.pointers,
+        r.content,
+        r.metadata,
+        r.status,
+        r.bundles
+      `
 
     const result = await pg.query<Registry.DbEntity>(query)
     return result.rows[0] || null
