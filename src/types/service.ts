@@ -8,7 +8,7 @@ export type DbComponent = {
   getRegistriesByPointers(pointers: string[]): Promise<Registry.DbEntity[] | null>
   getRegistryById(id: string): Promise<Registry.DbEntity | null>
   insertRegistry(registry: Registry.DbEntity): Promise<Registry.DbEntity>
-  updateRegistryStatus(id: string, status: Registry.Status): Promise<Registry.DbEntity | null>
+  updateRegistriesStatus(ids: string[], status: Registry.Status | 'obsolete'): Promise<Registry.DbEntity[] | null>
   upsertRegistryBundle(
     id: string,
     platform: string,
@@ -17,7 +17,6 @@ export type DbComponent = {
   ): Promise<Registry.DbEntity | null>
   getRelatedRegistries(registry: Registry.DbEntity): Promise<Registry.PartialDbEntity[] | null>
   deleteRegistries(entityIds: string[]): Promise<void>
-  markRegistriesAsObsolete(entityIds: string[]): Promise<void>
 }
 
 export type QueueMessage = any

@@ -57,6 +57,13 @@ export const createTexturesProcessor = ({
       logger.info(`Bundle stored`, { entityId: event.metadata.entityId, platform: event.metadata.platform, status })
 
       setImmediate(async () => {
+        if (
+          registry.bundles.assets.mac === Registry.Status.COMPLETE &&
+          registry.bundles.assets.windows === Registry.Status.COMPLETE
+        ) {
+          await db.updateRegistriesStatus([registry.id], Registry.Status.COMPLETE)
+        }
+
         const relatedEntities: Registry.PartialDbEntity[] | null = await db.getRelatedRegistries(registry)
 
         if (!relatedEntities) {
@@ -83,7 +90,10 @@ export const createTexturesProcessor = ({
             )
           })
 
-          await db.markRegistriesAsObsolete(olderDeployments.map((registry: Registry.PartialDbEntity) => registry.id))
+          await db.updateRegistriesStatus(
+            olderDeployments.map((registry: Registry.PartialDbEntity) => registry.id),
+            'obsolete'
+          )
         }
       })
 

@@ -88,11 +88,14 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
     return result.rows[0]
   }
 
-  async function updateRegistryStatus(id: string, status: Registry.Status): Promise<Registry.DbEntity | null> {
+  async function updateRegistriesStatus(
+    ids: string[],
+    status: Registry.Status | 'obsolete'
+  ): Promise<Registry.DbEntity[] | null> {
     const query: SQLStatement = SQL`
         UPDATE registries
         SET status = ${status}
-        WHERE id = ${id}
+        WHERE id = ANY(${ids}::varchar(255)[])
         RETURNING 
           id,
           type,
@@ -106,7 +109,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
       `
 
     const result = await pg.query<Registry.DbEntity>(query)
-    return result.rows[0] || null
+    return result.rows || null
   }
 
   async function upsertRegistryBundle(
@@ -117,40 +120,16 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
   ): Promise<Registry.DbEntity | null> {
     const bundleType = lods ? 'lods' : 'assets'
     const query: SQLStatement = SQL`
-      WITH updated_registry AS (
-        UPDATE registries
-        SET 
-          bundles = jsonb_set(
-            registries.bundles,
-            ARRAY[${bundleType}::text, ${platform}::text], 
-            to_jsonb(${status}::text)
-          )
-        WHERE registries.id = ${id.toLowerCase()}
-        RETURNING *
-      )
-      UPDATE registries AS r
+      UPDATE registries
       SET 
-        status = CASE
-          WHEN (
-            r.bundles->'assets'->>'windows' = 'complete'
-            AND
-            r.bundles->'assets'->>'mac' = 'complete'
-          ) THEN 'complete'
-          ELSE r.status
-        END
-      FROM updated_registry AS ur
-      WHERE r.id = ur.id
-      RETURNING 
-        r.id,
-        r.type,
-        r.timestamp,
-        r.deployer,
-        r.pointers,
-        r.content,
-        r.metadata,
-        r.status,
-        r.bundles
-      `
+        bundles = jsonb_set(
+          registries.bundles,
+          ARRAY[${bundleType}::text, ${platform}::text], 
+          to_jsonb(${status}::text)
+        )
+      WHERE registries.id = ${id.toLowerCase()}
+      RETURNING *
+    `
 
     const result = await pg.query<Registry.DbEntity>(query)
     return result.rows[0] || null
@@ -179,25 +158,14 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
     await pg.query(query)
   }
 
-  async function markRegistriesAsObsolete(entityIds: string[]): Promise<void> {
-    const query: SQLStatement = SQL`
-      UPDATE registries
-      SET status = 'obsolete'
-      WHERE id = ANY(${entityIds}::varchar(255)[])
-    `
-
-    await pg.query(query)
-  }
-
   return {
     insertRegistry,
-    updateRegistryStatus,
+    updateRegistriesStatus,
     upsertRegistryBundle,
     getRegistriesByOwner,
     getRegistriesByPointers,
     getRegistryById,
     getRelatedRegistries,
-    deleteRegistries,
-    markRegistriesAsObsolete
+    deleteRegistries
   }
 }
