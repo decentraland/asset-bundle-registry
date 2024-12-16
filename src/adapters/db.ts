@@ -25,7 +25,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
       FROM 
         registries
       WHERE 
-        pointers && ${pointers}::varchar(255)[] AND status = 'complete'
+        pointers && ${pointers}::varchar(255)[] AND status = ${Registry.Status.COMPLETE}::text
     `
 
     const result = await pg.query<Registry.DbEntity>(query)

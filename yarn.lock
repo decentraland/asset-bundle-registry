@@ -1200,6 +1200,16 @@
     ajv-keywords "^5.1.0"
     mitt "^3.0.1"
 
+"@dcl/schemas@^15.3.3":
+  version "15.3.3"
+  resolved "https://registry.yarnpkg.com/@dcl/schemas/-/schemas-15.3.3.tgz#29b35d4eb1af0085cb09e79ecdc39a0c074f59a9"
+  integrity sha512-AID1yUW7gvaE5abZrW8ATK6CA941KoHn4eFWauVCQINqTSfTgp1kBlCO3fYs+26di1tcJHI8XWvR2fuf3Q084w==
+  dependencies:
+    ajv "^8.11.0"
+    ajv-errors "^3.0.0"
+    ajv-keywords "^5.1.0"
+    mitt "^3.0.1"
+
 "@dcl/schemas@^9.2.0":
   version "9.15.0"
   resolved "https://registry.yarnpkg.com/@dcl/schemas/-/schemas-9.15.0.tgz#81337faa396d21a2d1e704e5ec3cfd7b7b14343e"
@@ -1208,15 +1218,6 @@
     ajv "^8.11.0"
     ajv-errors "^3.0.0"
     ajv-keywords "^5.1.0"
-
-"@dcl/schemas@https://sdk-team-cdn.decentraland.org/@dcl/schemas/branch/feat/ABConvertedEvent-new-properties/dcl-schemas-15.3.2-12284753098.commit-bbe7c6a.tgz":
-  version "15.3.2-12284753098.commit-bbe7c6a"
-  resolved "https://sdk-team-cdn.decentraland.org/@dcl/schemas/branch/feat/ABConvertedEvent-new-properties/dcl-schemas-15.3.2-12284753098.commit-bbe7c6a.tgz#0eb5fd575ca41ca24152a86ccdcd5401e9534efe"
-  dependencies:
-    ajv "^8.11.0"
-    ajv-errors "^3.0.0"
-    ajv-keywords "^5.1.0"
-    mitt "^3.0.1"
 
 "@eslint-community/eslint-utils@^4.2.0", "@eslint-community/eslint-utils@^4.4.0":
   version "4.4.1"

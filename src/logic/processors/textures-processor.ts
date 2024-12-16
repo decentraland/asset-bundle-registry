@@ -79,7 +79,7 @@ export const createTexturesProcessor = ({
         )
 
         if (olderDeployments?.length && registry.status === Registry.Status.COMPLETE) {
-          logger.info('Purging older related registries', {
+          logger.info('Marking older related registries as `obsolete`', {
             entityId: event.metadata.entityId,
             pointers: entity.metadata.pointers,
             entitiesToBeRemoved: JSON.stringify(
