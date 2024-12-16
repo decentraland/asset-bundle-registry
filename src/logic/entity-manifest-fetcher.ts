@@ -10,7 +10,7 @@ export async function createEntityManifestFetcherComponent({
 
   async function downloadManifest(entityId: string, platform: string): Promise<Manifest | null> {
     try {
-      const manifestName = platform !== 'webglb' ? `${entityId}_${platform}` : entityId
+      const manifestName = platform !== 'webgl' ? `${entityId}_${platform}` : entityId
       const url = `${entityManifestUrl}manifest/${manifestName}.json`
       logger.debug('Attempting to download entity manifest', { entityId, platform, url })
       const response = await fetch.fetch(url)

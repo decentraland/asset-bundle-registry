@@ -5,12 +5,12 @@ export namespace Registry {
     assets: {
       windows: Status
       mac: Status
-      webglb: Status
+      webgl: Status
     }
     lods: {
       windows: Status
       mac: Status
-      webglb: Status
+      webgl: Status
     }
   }
 
@@ -52,7 +52,8 @@ export enum ManifestStatusCode {
   DOWNLOAD_FAILED = 9,
   INVALID_PLATFORM = 10,
   GLTF_PROCESS_MISMATCH = 11,
-  CONVERSION_ERRORS_TOLERATED = 12
+  CONVERSION_ERRORS_TOLERATED = 12,
+  ALREADY_CONVERTED = 13
 }
 
 export type Manifest = {

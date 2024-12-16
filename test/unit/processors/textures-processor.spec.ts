@@ -7,7 +7,7 @@ describe('textures-processor should', () => {
     const mockTexturesEvent = {
         metadata: {
             entityId: '123',
-            platform: 'webglb'
+            platform: 'webgl'
         }
     }
     const dbMock = createDbMockComponent()

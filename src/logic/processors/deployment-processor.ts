@@ -26,12 +26,12 @@ export const createDeploymentProcessor = ({
         assets: {
           windows: Registry.Status.PENDING,
           mac: Registry.Status.PENDING,
-          webglb: Registry.Status.PENDING
+          webgl: Registry.Status.PENDING
         },
         lods: {
           windows: Registry.Status.PENDING,
           mac: Registry.Status.PENDING,
-          webglb: Registry.Status.PENDING
+          webgl: Registry.Status.PENDING
         }
       }
 

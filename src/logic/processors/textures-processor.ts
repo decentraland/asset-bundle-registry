@@ -14,6 +14,11 @@ export const createTexturesProcessor = ({
   entityManifestFetcher
 }: Pick<AppComponents, 'logs' | 'db' | 'entityManifestFetcher'>): EventHandlerComponent => {
   const logger = logs.getLogger('textures-processor')
+  const SUCCESS_CODES: number[] = [
+    ManifestStatusCode.SUCCESS,
+    ManifestStatusCode.CONVERSION_ERRORS_TOLERATED,
+    ManifestStatusCode.ALREADY_CONVERTED
+  ]
 
   return {
     process: async (event: AssetBundleConversionFinishedEvent): Promise<ProcessorResult> => {
@@ -36,11 +41,7 @@ export const createTexturesProcessor = ({
       })
 
       const status: Registry.Status =
-        manifest &&
-        (manifest.exitCode === ManifestStatusCode.SUCCESS ||
-          manifest.exitCode === ManifestStatusCode.CONVERSION_ERRORS_TOLERATED)
-          ? Registry.Status.COMPLETE
-          : Registry.Status.FAILED
+        manifest && SUCCESS_CODES.includes(manifest.exitCode) ? Registry.Status.COMPLETE : Registry.Status.FAILED
 
       const registry: Registry.DbEntity | null = await db.upsertRegistryBundle(
         event.metadata.entityId,
