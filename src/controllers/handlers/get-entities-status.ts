@@ -12,12 +12,11 @@ export async function getEntitiesStatusHandler(
 
   const userAddress: EthAddress = verification!.auth
 
-  const entities = await db.getRegistriesByOwner(userAddress)
+  const entities = await db.getSortedRegistriesByOwner(userAddress)
 
   if (entities) {
     const promises = entities
       .filter((entity) => entityStatusAnalyzer.isOwnedBy(entity, userAddress))
-      .sort((a, b) => a.timestamp - b.timestamp)
       .map(async (entity) => entityStatusAnalyzer.getEntityStatus(entity).catch((error) => ({ error })))
 
     const response = (await Promise.all(promises)).filter(

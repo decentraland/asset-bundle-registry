@@ -1,6 +1,6 @@
 import { HandlerContextWithPath } from '../../types'
 
-export async function getEntityHandler(context: HandlerContextWithPath<'db', '/entities/active'>) {
+export async function getActiveEntityHandler(context: HandlerContextWithPath<'db', '/entities/active'>) {
   const {
     components: { db }
   } = context

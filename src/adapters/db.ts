@@ -4,7 +4,7 @@ import { Registry } from '../types/types'
 import { EthAddress } from '@dcl/schemas'
 
 export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent {
-  async function getRegistriesByOwner(owner: EthAddress): Promise<Registry.DbEntity[] | null> {
+  async function getSortedRegistriesByOwner(owner: EthAddress): Promise<Registry.DbEntity[] | null> {
     const query: SQLStatement = SQL`
       SELECT 
         id, type, timestamp, deployer, pointers, content, metadata, status, bundles
@@ -12,6 +12,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
         registries
       WHERE 
         deployer = ${owner.toLocaleLowerCase()}
+      ORDER BY timestamp DESC
     `
 
     const result = await pg.query<Registry.DbEntity>(query)
@@ -162,7 +163,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
     insertRegistry,
     updateRegistriesStatus,
     upsertRegistryBundle,
-    getRegistriesByOwner,
+    getSortedRegistriesByOwner,
     getRegistriesByPointers,
     getRegistryById,
     getRelatedRegistries,

@@ -1,7 +1,7 @@
 import { Router } from '@well-known-components/http-server'
 import { GlobalContext } from '../types'
 import { getStatusHandler } from './handlers/get-service-status'
-import { getEntityHandler } from './handlers/get-entity'
+import { getActiveEntityHandler } from './handlers/get-entity'
 import { wellKnownComponents } from '@dcl/platform-crypto-middleware'
 import { getEntityStatusHandler } from './handlers/get-entity-status'
 import { getEntitiesStatusHandler } from './handlers/get-entities-status'
@@ -19,7 +19,7 @@ export async function setupRouter(globalContext: GlobalContext): Promise<Router<
   })
 
   router.get('/status', getStatusHandler)
-  router.post('/entities/active', getEntityHandler)
+  router.post('/entities/active', getActiveEntityHandler)
   router.get('/entities/status/:id', signedFetchMiddleware, getEntityStatusHandler)
   router.get('/entities/status', signedFetchMiddleware, getEntitiesStatusHandler)
 
