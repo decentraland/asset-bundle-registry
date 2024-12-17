@@ -17,6 +17,7 @@ export type DbComponent = {
   ): Promise<Registry.DbEntity | null>
   getRelatedRegistries(registry: Pick<Registry.DbEntity, 'pointers' | 'id'>): Promise<Registry.PartialDbEntity[]>
   deleteRegistries(entityIds: string[]): Promise<void>
+  markRegistriesAsOutdated(entityIds: string[]): Promise<void>
 }
 
 export type QueueMessage = any

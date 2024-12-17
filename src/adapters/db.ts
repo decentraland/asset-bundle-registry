@@ -7,7 +7,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
   async function getSortedRegistriesByOwner(owner: EthAddress): Promise<Registry.DbEntity[]> {
     const query: SQLStatement = SQL`
       SELECT 
-        id, type, timestamp, deployer, pointers, content, metadata, status, bundles
+        id, type, timestamp, deployer, pointers, content, metadata, status, bundles, is_latest isLatest
       FROM 
         registries
       WHERE 
@@ -21,7 +21,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
   async function getRegistriesByPointers(pointers: string[]): Promise<Registry.DbEntity[]> {
     const query = SQL`
       SELECT 
-        id, type, timestamp, deployer, pointers, content, metadata, status, bundles
+        id, type, timestamp, deployer, pointers, content, metadata, status, bundles, is_latest isLatest
       FROM 
         registries
       WHERE 
@@ -36,7 +36,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
   async function getRegistryById(id: string): Promise<Registry.DbEntity | null> {
     const query: SQLStatement = SQL`
       SELECT 
-        id, type, timestamp, deployer, pointers, content, metadata, status, bundles
+        id, type, timestamp, deployer, pointers, content, metadata, status, bundles, is_latest isLatest
       FROM 
         registries
       WHERE 
@@ -50,7 +50,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
   async function insertRegistry(registry: Registry.DbEntity): Promise<Registry.DbEntity> {
     const query: SQLStatement = SQL`
         INSERT INTO registries (
-          id, type, timestamp, deployer, pointers, content, metadata, status, bundles
+          id, type, timestamp, deployer, pointers, content, metadata, status, bundles, is_latest
         )
         VALUES (
           ${registry.id.toLocaleLowerCase()},
@@ -61,7 +61,8 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
           ${JSON.stringify(registry.content)}::jsonb,
           ${JSON.stringify(registry.metadata)}::jsonb,
           ${registry.status},
-          ${JSON.stringify(registry.bundles)}::jsonb
+          ${JSON.stringify(registry.bundles)}::jsonb,
+          ${registry.isLatest}
         )
         ON CONFLICT (id) DO UPDATE 
         SET
@@ -72,7 +73,8 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
           content = EXCLUDED.content,
           metadata = EXCLUDED.metadata,
           status = EXCLUDED.status,
-          bundles = EXCLUDED.bundles
+          bundles = EXCLUDED.bundles,
+          is_latest = EXCLUDED.is_latest
         RETURNING 
           id,
           type,
@@ -82,7 +84,8 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
           content,
           metadata,
           status,
-          bundles
+          bundles,
+          is_latest
       `
 
     const result = await pg.query<Registry.DbEntity>(query)
@@ -138,7 +141,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
   ): Promise<Registry.PartialDbEntity[]> {
     const query: SQLStatement = SQL`
       SELECT 
-        id, pointers, timestamp, status, bundles
+        id, pointers, timestamp, status, bundles, is_latest isLatest
       FROM 
         registries
       WHERE 
@@ -159,6 +162,16 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
     await pg.query(query)
   }
 
+  async function markRegistriesAsOutdated(entityIds: string[]): Promise<void> {
+    const query: SQLStatement = SQL`
+      UPDATE registries
+      SET is_latest = false
+      WHERE id = ANY(${entityIds}::varchar(255)[])
+    `
+
+    await pg.query(query)
+  }
+
   return {
     insertRegistry,
     updateRegistriesStatus,
@@ -167,6 +180,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
     getRegistriesByPointers,
     getRegistryById,
     getRelatedRegistries,
-    deleteRegistries
+    deleteRegistries,
+    markRegistriesAsOutdated
   }
 }
