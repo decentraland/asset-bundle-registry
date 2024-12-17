@@ -37,9 +37,40 @@ export const createDeploymentProcessor = ({
 
       const deployer = Authenticator.ownerAddress(event.entity.authChain)
 
-      await db.insertRegistry({ ...entity, deployer, status: Registry.Status.PENDING, bundles: defaultBundles })
+      const relatedEntities = await db.getRelatedRegistries(entity)
+
+      const splitRelatedEntities = relatedEntities?.reduce(
+        (acc: any, relatedEntity: Registry.PartialDbEntity) => {
+          if (relatedEntity.timestamp > entity.timestamp) {
+            acc.newerEntities.push(relatedEntity)
+          } else {
+            acc.olderEntities.push(relatedEntity)
+          }
+
+          return acc
+        },
+        { newerEntities: [] as Registry.PartialDbEntity[], olderEntities: [] as Registry.PartialDbEntity[] }
+      )
+
+      await db.insertRegistry({
+        ...entity,
+        deployer,
+        status: Registry.Status.PENDING,
+        bundles: defaultBundles,
+        isLatest: !splitRelatedEntities.newerEntities.length
+      })
 
       logger.debug('Deployment saved', { entityId: entity.id })
+
+      if (splitRelatedEntities.olderEntities.length) {
+        const olderEntitiesIds = splitRelatedEntities.olderEntities.map((entity: Registry.PartialDbEntity) => entity.id)
+        logger.debug('Marking older entities as outdated', {
+          newEntityId: entity.id,
+          olderEntitiesIds
+        })
+
+        await db.markRegistriesAsOutdated(olderEntitiesIds)
+      }
 
       return { ok: true }
     },
