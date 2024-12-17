@@ -65,17 +65,19 @@ export const createTexturesProcessor = ({
           await db.updateRegistriesStatus([registry.id], Registry.Status.COMPLETE)
         }
 
-        const relatedEntities: Registry.PartialDbEntity[] | null = await db.getRelatedRegistries(registry)
+        const relatedEntities: Registry.PartialDbEntity[] = await db.getRelatedRegistries(registry)
 
-        if (!relatedEntities) {
+        if (!relatedEntities.length) {
           logger.debug('No related entities found, skipping purge', {
             entityId: event.metadata.entityId,
             pointers: entity.metadata.pointers
           })
+
+          return
         }
 
         const olderDeployments: Registry.PartialDbEntity[] | undefined = relatedEntities?.filter(
-          (registry: Registry.PartialDbEntity) => registry.timestamp < entity.timestamp
+          (relatedEntity: Registry.PartialDbEntity) => relatedEntity.timestamp < registry.timestamp
         )
 
         if (olderDeployments?.length && registry.status === Registry.Status.COMPLETE) {
