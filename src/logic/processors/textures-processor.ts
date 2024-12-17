@@ -93,7 +93,7 @@ export const createTexturesProcessor = ({
 
           await db.updateRegistriesStatus(
             olderDeployments.map((registry: Registry.PartialDbEntity) => registry.id),
-            'obsolete'
+            Registry.Status.OBSOLETE
           )
         }
       })

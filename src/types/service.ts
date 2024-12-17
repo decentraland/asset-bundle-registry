@@ -4,20 +4,19 @@ import { Manifest, Registry } from './types'
 import { Entity, EthAddress } from '@dcl/schemas'
 
 export type DbComponent = {
-  getSortedRegistriesByOwner(owner: EthAddress): Promise<Registry.DbEntity[] | null>
-  getRegistriesByPointers(pointers: string[]): Promise<Registry.DbEntity[] | null>
+  getSortedRegistriesByOwner(owner: EthAddress): Promise<Registry.DbEntity[]>
+  getRegistriesByPointers(pointers: string[]): Promise<Registry.DbEntity[]>
   getRegistryById(id: string): Promise<Registry.DbEntity | null>
   insertRegistry(registry: Registry.DbEntity): Promise<Registry.DbEntity>
-  updateRegistriesStatus(ids: string[], status: Registry.Status | 'obsolete'): Promise<Registry.DbEntity[] | null>
+  updateRegistriesStatus(ids: string[], status: Registry.Status): Promise<Registry.DbEntity[]>
   upsertRegistryBundle(
     id: string,
     platform: string,
     lods: boolean,
     status: Registry.Status
   ): Promise<Registry.DbEntity | null>
-  getRelatedRegistries(registry: Pick<Registry.DbEntity, 'pointers' | 'id'>): Promise<Registry.PartialDbEntity[] | null>
+  getRelatedRegistries(registry: Pick<Registry.DbEntity, 'pointers' | 'id'>): Promise<Registry.PartialDbEntity[]>
   deleteRegistries(entityIds: string[]): Promise<void>
-  markRegistriesAsOutdated(entityIds: string[]): Promise<void>
 }
 
 export type QueueMessage = any

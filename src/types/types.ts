@@ -3,20 +3,19 @@ import { Entity } from '@dcl/schemas'
 export namespace Registry {
   export type Bundles = {
     assets: {
-      windows: Status
-      mac: Status
-      webgl: Status
+      windows: Omit<Status, 'obsolete' | 'fallback'>
+      mac: Omit<Status, 'obsolete' | 'fallback'>
+      webgl: Omit<Status, 'obsolete' | 'fallback'>
     }
     lods: {
-      windows: Status
-      mac: Status
-      webgl: Status
+      windows: Omit<Status, 'obsolete' | 'fallback'>
+      mac: Omit<Status, 'obsolete' | 'fallback'>
+      webgl: Omit<Status, 'obsolete' | 'fallback'>
     }
   }
 
   export type DbEntity = Omit<Entity, 'version'> & { deployer: string; bundles: Bundles } & {
-    status: Status | 'obsolete'
-    isLatest: boolean
+    status: Status
   }
 
   export type PartialDbEntity = Pick<DbEntity, 'id' | 'pointers' | 'timestamp' | 'status' | 'bundles'>
@@ -24,12 +23,14 @@ export namespace Registry {
   export enum Status {
     COMPLETE = 'complete',
     PENDING = 'pending',
-    FAILED = 'failed'
+    FAILED = 'failed',
+    OBSOLETE = 'obsolete',
+    FALLBACK = 'fallback'
   }
 
   type StatusByPlatform = {
-    mac: Status
-    windows: Status
+    mac: Omit<Status, 'obsolete' | 'fallback'>
+    windows: Omit<Status, 'obsolete' | 'fallback'>
   }
 
   export type EntityStatus = {
