@@ -11,6 +11,7 @@ import {
   CatalystComponent,
   DbComponent,
   EntityManifestFetcherComponent,
+  EntityStatusAnalyzerComponent,
   MessageConsumerComponent,
   MessageProcessorComponent,
   QueueComponent
@@ -28,6 +29,7 @@ export type BaseComponents = {
   logs: ILoggerComponent
   server: IHttpServerComponent<GlobalContext>
   metrics: IMetricsComponent<keyof typeof metricDeclarations>
+  entityStatusAnalyzer: EntityStatusAnalyzerComponent
   db: DbComponent
 }
 

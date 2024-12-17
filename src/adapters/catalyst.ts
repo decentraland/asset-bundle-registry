@@ -42,5 +42,17 @@ export async function createCatalystAdapter({
     return entity
   }
 
-  return { getEntityById }
+  async function getContent(id: string): Promise<Entity | undefined> {
+    const downloadedContent = await defaultContentClient.downloadContent(id)
+
+    if (!downloadedContent) {
+      return undefined
+    }
+
+    const contentString = downloadedContent.toString('utf-8')
+    const contentJson = JSON.parse(contentString)
+    return contentJson as Entity
+  }
+
+  return { getEntityById, getContent }
 }

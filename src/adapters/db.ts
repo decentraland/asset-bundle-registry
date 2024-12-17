@@ -1,8 +1,24 @@
 import SQL, { SQLStatement } from 'sql-template-strings'
 import { AppComponents, DbComponent } from '../types'
 import { Registry } from '../types/types'
+import { EthAddress } from '@dcl/schemas'
 
 export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent {
+  async function getSortedRegistriesByOwner(owner: EthAddress): Promise<Registry.DbEntity[] | null> {
+    const query: SQLStatement = SQL`
+      SELECT 
+        id, type, timestamp, deployer, pointers, content, metadata, status, bundles
+      FROM 
+        registries
+      WHERE 
+        deployer = ${owner.toLocaleLowerCase()}
+      ORDER BY timestamp DESC
+    `
+
+    const result = await pg.query<Registry.DbEntity>(query)
+    return result.rows
+  }
+
   async function getRegistriesByPointers(pointers: string[]): Promise<Registry.DbEntity[] | null> {
     const query = SQL`
       SELECT 
@@ -10,7 +26,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
       FROM 
         registries
       WHERE 
-        pointers && ${pointers}::varchar(255)[] AND status = 'optimized'
+        pointers && ${pointers}::varchar(255)[] AND status = ${Registry.Status.COMPLETE}::text
     `
 
     const result = await pg.query<Registry.DbEntity>(query)
@@ -24,7 +40,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
       FROM 
         registries
       WHERE 
-        id = ${id}
+        id = ${id.toLocaleLowerCase()}
     `
 
     const result = await pg.query<Registry.DbEntity>(query)
@@ -37,10 +53,10 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
           id, type, timestamp, deployer, pointers, content, metadata, status, bundles
         )
         VALUES (
-          ${registry.id},
+          ${registry.id.toLocaleLowerCase()},
           ${registry.type},
           ${registry.timestamp},
-          ${registry.deployer},
+          ${registry.deployer.toLocaleLowerCase()},
           ${registry.pointers}::varchar(255)[],
           ${JSON.stringify(registry.content)}::jsonb,
           ${JSON.stringify(registry.metadata)}::jsonb,
@@ -73,11 +89,14 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
     return result.rows[0]
   }
 
-  async function updateRegistryStatus(id: string, status: Registry.StatusValues): Promise<Registry.DbEntity | null> {
+  async function updateRegistriesStatus(
+    ids: string[],
+    status: Registry.Status | 'obsolete'
+  ): Promise<Registry.DbEntity[] | null> {
     const query: SQLStatement = SQL`
         UPDATE registries
         SET status = ${status}
-        WHERE id = ${id}
+        WHERE id = ANY(${ids}::varchar(255)[])
         RETURNING 
           id,
           type,
@@ -91,35 +110,26 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
       `
 
     const result = await pg.query<Registry.DbEntity>(query)
-    return result.rows[0] || null
+    return result.rows || null
   }
 
-  async function upsertRegistryBundle(id: string, platform: string, status: string): Promise<Registry.DbEntity | null> {
+  async function upsertRegistryBundle(
+    id: string,
+    platform: string,
+    lods: boolean,
+    status: string
+  ): Promise<Registry.DbEntity | null> {
+    const bundleType = lods ? 'lods' : 'assets'
     const query: SQLStatement = SQL`
       UPDATE registries
       SET 
-        bundles = COALESCE(bundles, '{}'::jsonb) || jsonb_build_object(${platform}::text, ${status}::text),
-        status = CASE
-          WHEN (
-            (COALESCE(bundles, '{}'::jsonb) || jsonb_build_object(${platform}::text, ${status}::text))->>'windows' = 'optimized'
-            AND
-            (COALESCE(bundles, '{}'::jsonb) || jsonb_build_object(${platform}::text, ${status}::text))->>'mac' = 'optimized'
-            AND
-            (COALESCE(bundles, '{}'::jsonb) || jsonb_build_object(${platform}::text, ${status}::text))->>'webglb' = 'optimized'
-          ) THEN 'optimized'
-          ELSE status
-        END
-      WHERE id = ${id}
-      RETURNING 
-        id,
-        type,
-        timestamp,
-        deployer,
-        pointers,
-        content,
-        metadata,
-        status,
-        bundles
+        bundles = jsonb_set(
+          registries.bundles,
+          ARRAY[${bundleType}::text, ${platform}::text], 
+          to_jsonb(${status}::text)
+        )
+      WHERE registries.id = ${id.toLowerCase()}
+      RETURNING *
     `
 
     const result = await pg.query<Registry.DbEntity>(query)
@@ -151,8 +161,9 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
 
   return {
     insertRegistry,
-    updateRegistryStatus,
+    updateRegistriesStatus,
     upsertRegistryBundle,
+    getSortedRegistriesByOwner,
     getRegistriesByPointers,
     getRegistryById,
     getRelatedRegistries,

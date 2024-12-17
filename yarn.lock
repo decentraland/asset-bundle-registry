@@ -1150,7 +1150,7 @@
   resolved "https://registry.yarnpkg.com/@dcl/catalyst-contracts/-/catalyst-contracts-4.4.2.tgz#e7a329d7aee25c90d7ee07dbe82200a048f17ff9"
   integrity sha512-gJZo3IB8U+jhBJWR0DgoLS+zaUDIb/u79e7Rp+MEM78uH3bvC19S3Dd8lxWEbPXNKlCB0saUptfK/Buw0c1y2Q==
 
-"@dcl/crypto@^3.4.0", "@dcl/crypto@^3.4.5":
+"@dcl/crypto@^3.4.0", "@dcl/crypto@^3.4.3", "@dcl/crypto@^3.4.5":
   version "3.4.5"
   resolved "https://registry.yarnpkg.com/@dcl/crypto/-/crypto-3.4.5.tgz#95ca2beab46fa3494b4d38f009bf0d49c87ba235"
   integrity sha512-uneyjOAOx7pi5kabZsLmPm9kSLkCk4Cok8FUsvT+6k8RquqkjKqocvkGVOMaoWsfU6S3mkLOyaeqEKmOy4ErxA==
@@ -1181,6 +1181,15 @@
   resolved "https://registry.yarnpkg.com/@dcl/hashing/-/hashing-3.0.4.tgz#4df2a4cb3a8114765aed34cb57b91c93bf33bfb3"
   integrity sha512-Cg+MoIOn+BYmQV2q8zSFnNYY+GldlnUazwBnfgrq3i66ZxOaZ65h01btd8OUtSAlfWG4VTNIOHDjtKqmuwJNBg==
 
+"@dcl/platform-crypto-middleware@^1.1.0":
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/@dcl/platform-crypto-middleware/-/platform-crypto-middleware-1.1.0.tgz#11434eb4fc8d461799ab71d28ce869ab330bdb23"
+  integrity sha512-E2AAIRcbeF+DLQ6urmOkoqwSOGaBlX498nygyOc3EnChEPjJhM0LiTQ9rwAG572DdMGf8ZGbNg+odx6i9M3cMA==
+  dependencies:
+    "@dcl/crypto" "^3.4.3"
+    "@well-known-components/fetch-component" "^2.0.2"
+    "@well-known-components/interfaces" "^1.4.2"
+
 "@dcl/schemas@^11.5.0":
   version "11.12.0"
   resolved "https://registry.yarnpkg.com/@dcl/schemas/-/schemas-11.12.0.tgz#f52493b615ebdea8e02819bc2ed4a456239f3747"
@@ -1191,10 +1200,10 @@
     ajv-keywords "^5.1.0"
     mitt "^3.0.1"
 
-"@dcl/schemas@^15.3.1":
-  version "15.3.1"
-  resolved "https://registry.yarnpkg.com/@dcl/schemas/-/schemas-15.3.1.tgz#6cc91aa431d1bc13188a2b591db35ba586aa5bb0"
-  integrity sha512-VVh4qBgow9OsvI+CvJO9jJfZ/VwM5nBytk5T+8aRpxY8txhCebuzmr8NGLkWgaYAAd5vs5C61MVAbKlK+Y1Zow==
+"@dcl/schemas@^15.3.3":
+  version "15.3.3"
+  resolved "https://registry.yarnpkg.com/@dcl/schemas/-/schemas-15.3.3.tgz#29b35d4eb1af0085cb09e79ecdc39a0c074f59a9"
+  integrity sha512-AID1yUW7gvaE5abZrW8ATK6CA941KoHn4eFWauVCQINqTSfTgp1kBlCO3fYs+26di1tcJHI8XWvR2fuf3Q084w==
   dependencies:
     ajv "^8.11.0"
     ajv-errors "^3.0.0"
@@ -2286,7 +2295,7 @@
   dependencies:
     dotenv "^16.0.1"
 
-"@well-known-components/fetch-component@^2.0.0":
+"@well-known-components/fetch-component@^2.0.0", "@well-known-components/fetch-component@^2.0.2":
   version "2.0.2"
   resolved "https://registry.yarnpkg.com/@well-known-components/fetch-component/-/fetch-component-2.0.2.tgz#02260611f9d05551efe825c4358cbc628a71c4c0"
   integrity sha512-LdY+6n9kuyACg3fcU4qMrNhLZuG7eqPxLSqzDgQyoHKeNjlzggoUqTVJKtIyi6vjPs8pSQ/Fx1xdLuBhOKCgww==
@@ -2316,7 +2325,7 @@
     on-finished "^2.4.1"
     path-to-regexp "^6.2.1"
 
-"@well-known-components/interfaces@^1.4.1", "@well-known-components/interfaces@^1.4.3":
+"@well-known-components/interfaces@^1.4.1", "@well-known-components/interfaces@^1.4.2", "@well-known-components/interfaces@^1.4.3":
   version "1.4.3"
   resolved "https://registry.yarnpkg.com/@well-known-components/interfaces/-/interfaces-1.4.3.tgz#026047966db480bd561a315fdc8116b88bf8d27a"
   integrity sha512-roVtoOHG6uaH+nL4C0ISnAwkkopc2FLsS7fqX+roI22EdX9PAknPoImhPU8/3u6jgRAVpglX5Zj4nWZkSaXPkQ==

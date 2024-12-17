@@ -18,6 +18,7 @@ import { createCatalystAdapter } from './adapters/catalyst'
 import { createMessagesConsumerComponent } from './logic/message-consumer'
 import path from 'path'
 import { createEntityManifestFetcherComponent } from './logic/entity-manifest-fetcher'
+import { createEntityStatusAnalyzerComponent } from './logic/entity-status-analyzer'
 
 // Initialize all the components of the app
 export async function initComponents(): Promise<AppComponents> {
@@ -74,6 +75,8 @@ export async function initComponents(): Promise<AppComponents> {
   const entityManifestFetcher = await createEntityManifestFetcherComponent({ fetch, logs, config })
   const messageProcessor = await createMessageProcessorComponent({ catalyst, entityManifestFetcher, logs, db })
   const messageConsumer = createMessagesConsumerComponent({ logs, queue, messageProcessor, metrics })
+  const entityStatusAnalyzer = createEntityStatusAnalyzerComponent({ catalyst })
+
 
   return {
     config,
@@ -88,6 +91,7 @@ export async function initComponents(): Promise<AppComponents> {
     messageProcessor,
     catalyst,
     messageConsumer,
-    entityManifestFetcher
+    entityManifestFetcher,
+    entityStatusAnalyzer
   }
 }

@@ -11,7 +11,9 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     pointers: { type: 'varchar(255)[]', notNull: true },
     content: { type: 'jsonb', notNull: true },
     metadata: { type: 'jsonb' },
-    status: { type: 'varchar(255)', notNull: true }
+    status: { type: 'varchar(255)', notNull: true },
+    bundles: { type: 'jsonb', notNull: true },
+    deployer: { type: 'varchar(255)', notNull: true }
   })
 
   pgm.createIndex('registries', 'pointers', { method: 'gin' })
