@@ -57,48 +57,46 @@ export const createTexturesProcessor = ({
 
       logger.info(`Bundle stored`, { entityId: event.metadata.entityId, platform: event.metadata.platform, status })
 
-      setImmediate(async () => {
-        if (
-          registry.bundles.assets.mac === Registry.Status.COMPLETE &&
-          registry.bundles.assets.windows === Registry.Status.COMPLETE
-        ) {
-          await db.updateRegistriesStatus([registry.id], Registry.Status.COMPLETE)
-        }
+      if (
+        registry.bundles.assets.mac === Registry.Status.COMPLETE &&
+        registry.bundles.assets.windows === Registry.Status.COMPLETE
+      ) {
+        await db.updateRegistriesStatus([registry.id], Registry.Status.COMPLETE)
+      }
 
-        const relatedEntities: Registry.PartialDbEntity[] = await db.getRelatedRegistries(registry)
+      const relatedEntities: Registry.PartialDbEntity[] = await db.getRelatedRegistries(registry)
 
-        if (!relatedEntities.length) {
-          logger.debug('No related entities found, skipping purge', {
-            entityId: event.metadata.entityId,
-            pointers: entity.metadata.pointers
-          })
+      if (!relatedEntities.length) {
+        logger.debug('No related entities found, skipping purge', {
+          entityId: event.metadata.entityId,
+          pointers: entity.metadata.pointers
+        })
 
-          return
-        }
+        return { ok: true }
+      }
 
-        const olderDeployments: Registry.PartialDbEntity[] | undefined = relatedEntities?.filter(
-          (relatedEntity: Registry.PartialDbEntity) => relatedEntity.timestamp < registry.timestamp
-        )
+      const olderDeployments: Registry.PartialDbEntity[] | undefined = relatedEntities?.filter(
+        (relatedEntity: Registry.PartialDbEntity) => relatedEntity.timestamp < registry.timestamp
+      )
 
-        if (olderDeployments?.length && registry.status === Registry.Status.COMPLETE) {
-          logger.info('Marking older related registries as `obsolete`', {
-            entityId: event.metadata.entityId,
-            pointers: entity.metadata.pointers,
-            entitiesToBeRemoved: JSON.stringify(
-              olderDeployments.map((registry: Registry.PartialDbEntity) => ({
-                id: registry.id,
-                pointers: registry.pointers,
-                timestamp: registry.timestamp
-              }))
-            )
-          })
-
-          await db.updateRegistriesStatus(
-            olderDeployments.map((registry: Registry.PartialDbEntity) => registry.id),
-            Registry.Status.OBSOLETE
+      if (olderDeployments?.length && registry.status === Registry.Status.COMPLETE) {
+        logger.info('Marking older related registries as `obsolete`', {
+          entityId: event.metadata.entityId,
+          pointers: entity.metadata.pointers,
+          entitiesToBeRemoved: JSON.stringify(
+            olderDeployments.map((registry: Registry.PartialDbEntity) => ({
+              id: registry.id,
+              pointers: registry.pointers,
+              timestamp: registry.timestamp
+            }))
           )
-        }
-      })
+        })
+
+        await db.updateRegistriesStatus(
+          olderDeployments.map((registry: Registry.PartialDbEntity) => registry.id),
+          Registry.Status.OBSOLETE
+        )
+      }
 
       return { ok: true }
     },

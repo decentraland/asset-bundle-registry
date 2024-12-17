@@ -12,7 +12,6 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
         registries
       WHERE 
         deployer = ${owner.toLocaleLowerCase()}
-      ORDER BY timestamp DESC
     `
 
     const result = await pg.query<Registry.DbEntity>(query)
@@ -26,7 +25,8 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
       FROM 
         registries
       WHERE 
-        pointers && ${pointers}::varchar(255)[] AND status = ${Registry.Status.COMPLETE}::text
+        pointers && ${pointers}::varchar(255)[] AND (status = ${Registry.Status.COMPLETE}::text OR status = ${Registry.Status.FALLBACK}::text)
+      ORDER BY timestamp DESC
     `
 
     const result = await pg.query<Registry.DbEntity>(query)
