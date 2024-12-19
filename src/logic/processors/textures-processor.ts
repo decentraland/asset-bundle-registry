@@ -55,7 +55,7 @@ export const createTexturesProcessor = ({
         return { ok: false, errors: ['Error storing bundle'] }
       }
 
-      logger.info(`Bundle stored`, { entityId: event.metadata.entityId, registry: JSON.stringify(registry) })
+      logger.info(`Bundle stored`, { entityId: event.metadata.entityId, bundles: JSON.stringify(registry.bundles) })
 
       if (
         registry.bundles.assets.mac === Registry.Status.COMPLETE &&
@@ -83,13 +83,7 @@ export const createTexturesProcessor = ({
         logger.info('Marking older related registries as `obsolete`', {
           entityId: event.metadata.entityId,
           pointers: entity.metadata.pointers,
-          entitiesToBeRemoved: JSON.stringify(
-            olderDeployments.map((registry: Registry.PartialDbEntity) => ({
-              id: registry.id,
-              pointers: registry.pointers,
-              timestamp: registry.timestamp
-            }))
-          )
+          entitiesToBeRemoved: JSON.stringify(olderDeployments.map((registry: Registry.PartialDbEntity) => registry.id))
         })
 
         await db.updateRegistriesStatus(

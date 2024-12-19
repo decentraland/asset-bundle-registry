@@ -142,7 +142,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
       FROM 
         registries
       WHERE 
-        pointers && ${registry.pointers}::varchar(255)[] AND id != ${registry.id}
+        pointers && ${registry.pointers}::varchar(255)[] AND id != ${registry.id} AND status != ${Registry.Status.OBSOLETE}
       ORDER BY timestamp DESC
     `
 
