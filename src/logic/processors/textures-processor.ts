@@ -43,7 +43,7 @@ export const createTexturesProcessor = ({
       const status: Registry.Status =
         manifest && SUCCESS_CODES.includes(manifest.exitCode) ? Registry.Status.COMPLETE : Registry.Status.FAILED
 
-      const registry: Registry.DbEntity | null = await db.upsertRegistryBundle(
+      let registry: Registry.DbEntity | null = await db.upsertRegistryBundle(
         event.metadata.entityId,
         event.metadata.platform,
         event.metadata.isLods,
@@ -61,7 +61,7 @@ export const createTexturesProcessor = ({
         registry.bundles.assets.mac === Registry.Status.COMPLETE &&
         registry.bundles.assets.windows === Registry.Status.COMPLETE
       ) {
-        await db.updateRegistriesStatus([registry.id], Registry.Status.COMPLETE)
+        registry = (await db.updateRegistriesStatus([registry.id], Registry.Status.COMPLETE))[0]
       }
 
       const relatedEntities: Registry.PartialDbEntity[] = await db.getRelatedRegistries(registry)
