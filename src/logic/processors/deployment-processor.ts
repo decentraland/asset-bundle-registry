@@ -13,7 +13,11 @@ function categorizeRelatedEntities(
 } {
   return relatedEntities.reduce(
     (acc: any, relatedEntity: Registry.PartialDbEntity) => {
-      if (relatedEntity.status === Registry.Status.COMPLETE && relatedEntity.timestamp < entity.timestamp) {
+      if (
+        relatedEntity.timestamp < entity.timestamp &&
+        (!acc.fallback || relatedEntity.timestamp > acc.fallback.timestamp) &&
+        (relatedEntity.status === Registry.Status.COMPLETE || relatedEntity.status === Registry.Status.FALLBACK)
+      ) {
         acc.fallback = relatedEntity
       } else {
         if (relatedEntity.timestamp > entity.timestamp) {
