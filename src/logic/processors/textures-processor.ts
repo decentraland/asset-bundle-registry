@@ -55,7 +55,7 @@ export const createTexturesProcessor = ({
         return { ok: false, errors: ['Error storing bundle'] }
       }
 
-      logger.info(`Bundle stored`, { entityId: event.metadata.entityId, platform: event.metadata.platform, status })
+      logger.info(`Bundle stored`, { entityId: event.metadata.entityId, registry: JSON.stringify(registry) })
 
       if (
         registry.bundles.assets.mac === Registry.Status.COMPLETE &&
