@@ -48,6 +48,7 @@ export type AppComponents = BaseComponents & {
 export type TestComponents = BaseComponents & {
   // A fetch component that only hits the test server
   localFetch: IFetchComponent
+  messageConsumer: MessageConsumerComponent
 }
 
 // this type simplifies the typings of http handlers
