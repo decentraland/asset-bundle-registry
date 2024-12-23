@@ -41,16 +41,6 @@ export async function getEntityStatusHandler(
   const entityId: string | undefined = params.id
   const userAddress: EthAddress = verification!.auth
 
-  if (!entityId) {
-    return {
-      status: 400,
-      body: {
-        ok: false,
-        message: 'No entity id provided'
-      }
-    }
-  }
-
   const entity = await db.getRegistryById(entityId)
 
   if (entity && isOwnedBy(entity, userAddress)) {
@@ -75,6 +65,7 @@ export async function getEntityStatusHandler(
 export async function getEntitiesStatusHandler(
   context: HandlerContextWithPath<'db', '/entities/status'> & DecentralandSignatureContext<any>
 ) {
+  console.log('YES')
   const {
     components: { db },
     verification
