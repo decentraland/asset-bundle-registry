@@ -93,6 +93,7 @@ export async function getEntitiesStatusHandler(
 export async function getEntitiesStatusHandler(
   context: HandlerContextWithPath<'db', '/entities/status'> & DecentralandSignatureContext<any>
 ) {
+  console.log('YES')
   const {
     components: { db },
     verification
