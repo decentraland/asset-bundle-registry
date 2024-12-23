@@ -4,18 +4,46 @@ import { AppComponents, EventHandlerComponent, ProcessorResult, Registry } from 
 export const createTexturesProcessor = ({
   logs,
   db,
+  catalyst,
   entityStatusFetcher,
   registryOrchestrator
-}: Pick<AppComponents, 'logs' | 'db' | 'entityStatusFetcher' | 'registryOrchestrator'>): EventHandlerComponent => {
+}: Pick<
+  AppComponents,
+  'logs' | 'db' | 'catalyst' | 'entityStatusFetcher' | 'registryOrchestrator'
+>): EventHandlerComponent => {
   const logger = logs.getLogger('textures-processor')
 
   return {
     process: async (event: AssetBundleConversionFinishedEvent): Promise<ProcessorResult> => {
-      const entity: Registry.DbEntity | null = await db.getRegistryById(event.metadata.entityId)
+      let entity: Registry.DbEntity | null = await db.getRegistryById(event.metadata.entityId)
 
       if (!entity) {
-        logger.error('Entity not found in the database', { entityId: event.metadata.entityId })
-        return { ok: false, errors: ['Entity not found in the database'] }
+        logger.info('Entity not found in the database, will create it', { entityId: event.metadata.entityId })
+        const fetchedEntity = await catalyst.getEntityById(event.metadata.entityId)
+
+        if (!fetchedEntity) {
+          logger.error('Entity not found', { event: JSON.stringify(event) })
+          return { ok: false, errors: [`Entity with id ${event.metadata.entityId} was not found`] }
+        }
+
+        const defaultBundles: Registry.Bundles = {
+          assets: {
+            windows: Registry.SimplifiedStatus.PENDING,
+            mac: Registry.SimplifiedStatus.PENDING,
+            webgl: Registry.SimplifiedStatus.PENDING
+          },
+          lods: {
+            windows: Registry.SimplifiedStatus.PENDING,
+            mac: Registry.SimplifiedStatus.PENDING,
+            webgl: Registry.SimplifiedStatus.PENDING
+          }
+        }
+
+        entity = await registryOrchestrator.persistAndRotateStates({
+          ...fetchedEntity,
+          deployer: '', // cannot infer from textures event
+          bundles: defaultBundles
+        })
       }
 
       const status: Registry.SimplifiedStatus = await entityStatusFetcher.fetchBundleStatus(

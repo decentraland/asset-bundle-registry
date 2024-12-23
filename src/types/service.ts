@@ -56,5 +56,5 @@ export type EntityStatusFetcher = {
 }
 
 export type RegistryOrchestratorComponent = {
-  persistAndRotateStates(registry: Omit<Registry.DbEntity, 'status'>): Promise<void>
+  persistAndRotateStates(registry: Omit<Registry.DbEntity, 'status'>): Promise<Registry.DbEntity>
 }

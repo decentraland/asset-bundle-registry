@@ -76,7 +76,7 @@ export function createRegistryOrchestratorComponent({
     return Registry.Status.PENDING
   }
 
-  async function persistAndRotateStates(registry: Omit<Registry.DbEntity, 'status'>): Promise<void> {
+  async function persistAndRotateStates(registry: Omit<Registry.DbEntity, 'status'>): Promise<Registry.DbEntity> {
     const relatedRegistries: Registry.PartialDbEntity[] = await db.getRelatedRegistries(registry)
     const splitRelatedEntities: {
       newerEntities: Registry.PartialDbEntity[]
@@ -93,7 +93,7 @@ export function createRegistryOrchestratorComponent({
       fallback: splitRelatedEntities.fallback?.id || ''
     })
 
-    await db.insertRegistry({
+    const insertedRegistry = await db.insertRegistry({
       ...registry,
       status: registryStatus
     })
@@ -121,6 +121,8 @@ export function createRegistryOrchestratorComponent({
           : Registry.Status.FALLBACK
       )
     }
+
+    return insertedRegistry
   }
 
   return { persistAndRotateStates }
