@@ -31,6 +31,7 @@ function isOwnedBy(registry: Registry.DbEntity | null, userAddress: string): boo
 export async function getEntityStatusHandler(
   context: HandlerContextWithPath<'db', '/entities/status/:id'> & DecentralandSignatureContext<any>
 ) {
+  console.log('ARRIVED')
   const {
     params,
     components: { db },
@@ -85,6 +86,42 @@ export async function getEntitiesStatusHandler(
     body: JSON.stringify([...parsedEntitiesStatuses, ...parsedHistoricalEntitiesStatuses]),
     headers: {
       'Content-Type': 'application/json'
+    }
+  }
+}
+
+export async function getEntitiesStatusHandler(
+  context: HandlerContextWithPath<'db', '/entities/status'> & DecentralandSignatureContext<any>
+) {
+  const {
+    components: { db },
+    verification
+  } = context
+
+  const userAddress: EthAddress = verification!.auth
+
+  const entities = await db.getSortedRegistriesByOwner(userAddress)
+
+  if (entities) {
+    const promises = entities
+      .filter((entity) => isOwnedBy(entity, userAddress))
+      .map((entity) => parseRegistryStatus(entity))
+
+    const response = (await Promise.all(promises)).filter((status: any): status is EntityStatus => !('error' in status))
+
+    return {
+      body: JSON.stringify(response),
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    }
+  }
+
+  return {
+    status: 404,
+    body: {
+      ok: false,
+      message: 'No active entities found for the provided id'
     }
   }
 }

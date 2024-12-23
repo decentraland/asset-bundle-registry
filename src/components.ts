@@ -105,6 +105,7 @@ export async function initComponents(): Promise<AppComponents> {
     messageConsumer,
     registryOrchestrator,
     entityStatusFetcher,
-    workerManager
+    workerManager,
+    entityStatusFetcher
   }
 }
