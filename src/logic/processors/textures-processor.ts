@@ -1,24 +1,13 @@
 import { AssetBundleConversionFinishedEvent } from '@dcl/schemas'
-import {
-  AppComponents,
-  EventHandlerComponent,
-  Manifest,
-  ProcessorResult,
-  Registry,
-  ManifestStatusCode
-} from '../../types'
+import { AppComponents, EventHandlerComponent, ProcessorResult, Registry } from '../../types'
 
 export const createTexturesProcessor = ({
   logs,
   db,
-  entityManifestFetcher
-}: Pick<AppComponents, 'logs' | 'db' | 'entityManifestFetcher'>): EventHandlerComponent => {
+  entityStatusFetcher,
+  registryOrchestrator
+}: Pick<AppComponents, 'logs' | 'db' | 'entityStatusFetcher' | 'registryOrchestrator'>): EventHandlerComponent => {
   const logger = logs.getLogger('textures-processor')
-  const SUCCESS_CODES: number[] = [
-    ManifestStatusCode.SUCCESS,
-    ManifestStatusCode.CONVERSION_ERRORS_TOLERATED,
-    ManifestStatusCode.ALREADY_CONVERTED
-  ]
 
   return {
     process: async (event: AssetBundleConversionFinishedEvent): Promise<ProcessorResult> => {
@@ -29,24 +18,15 @@ export const createTexturesProcessor = ({
         return { ok: false, errors: ['Entity not found in the database'] }
       }
 
-      const manifest: Manifest | null = await entityManifestFetcher.downloadManifest(
+      const status: Registry.SimplifiedStatus = await entityStatusFetcher.fetchBundleStatus(
         event.metadata.entityId,
         event.metadata.platform
       )
 
-      logger.debug('Metadata fetched', {
-        entityId: event.metadata.entityId,
-        platform: event.metadata.platform,
-        manifest: JSON.stringify(manifest)
-      })
-
-      const status: Registry.Status =
-        manifest && SUCCESS_CODES.includes(manifest.exitCode) ? Registry.Status.COMPLETE : Registry.Status.FAILED
-
-      let registry: Registry.DbEntity | null = await db.upsertRegistryBundle(
+      const registry: Registry.DbEntity | null = await db.upsertRegistryBundle(
         event.metadata.entityId,
         event.metadata.platform,
-        event.metadata.isLods,
+        !!event.metadata.isLods,
         status
       )
 
@@ -57,40 +37,7 @@ export const createTexturesProcessor = ({
 
       logger.info(`Bundle stored`, { entityId: event.metadata.entityId, bundles: JSON.stringify(registry.bundles) })
 
-      if (
-        registry.bundles.assets.mac === Registry.Status.COMPLETE &&
-        registry.bundles.assets.windows === Registry.Status.COMPLETE
-      ) {
-        registry = (await db.updateRegistriesStatus([registry.id], Registry.Status.COMPLETE))[0]
-      }
-
-      const relatedEntities: Registry.PartialDbEntity[] = await db.getRelatedRegistries(registry)
-
-      if (!relatedEntities.length) {
-        logger.debug('No related entities found, skipping purge', {
-          entityId: event.metadata.entityId,
-          pointers: entity.metadata.pointers
-        })
-
-        return { ok: true }
-      }
-
-      const olderDeployments: Registry.PartialDbEntity[] | undefined = relatedEntities?.filter(
-        (relatedEntity: Registry.PartialDbEntity) => relatedEntity.timestamp < registry.timestamp
-      )
-
-      if (olderDeployments?.length && registry.status === Registry.Status.COMPLETE) {
-        logger.info('Marking older related registries as `obsolete`', {
-          entityId: event.metadata.entityId,
-          pointers: entity.metadata.pointers,
-          entitiesToBeRemoved: JSON.stringify(olderDeployments.map((registry: Registry.PartialDbEntity) => registry.id))
-        })
-
-        await db.updateRegistriesStatus(
-          olderDeployments.map((registry: Registry.PartialDbEntity) => registry.id),
-          Registry.Status.OBSOLETE
-        )
-      }
+      await registryOrchestrator.persistAndRotateStates(registry)
 
       return { ok: true }
     },

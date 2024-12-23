@@ -1,13 +1,15 @@
 import { Router } from '@well-known-components/http-server'
 import { GlobalContext } from '../types'
 import { getStatusHandler } from './handlers/get-service-status'
-import { getActiveEntityHandler } from './handlers/get-entity'
+import { getActiveEntityHandler } from './handlers/get-active-entities'
 import { wellKnownComponents } from '@dcl/platform-crypto-middleware'
-import { getEntityStatusHandler } from './handlers/get-entity-status'
-import { getEntitiesStatusHandler } from './handlers/get-entities-status'
+import { getEntityStatusHandler, getEntitiesStatusHandler } from './handlers/get-entity-status'
+import { bearerTokenMiddleware, errorHandler } from '@dcl/platform-server-commons'
+import { createRegistryHandler } from './handlers/post-registry'
 
 export async function setupRouter(globalContext: GlobalContext): Promise<Router<GlobalContext>> {
   const router = new Router<GlobalContext>()
+  router.use(errorHandler)
 
   const signedFetchMiddleware = wellKnownComponents({
     fetcher: globalContext.components.fetch,
@@ -22,6 +24,12 @@ export async function setupRouter(globalContext: GlobalContext): Promise<Router<
   router.post('/entities/active', getActiveEntityHandler)
   router.get('/entities/status/:id', signedFetchMiddleware, getEntityStatusHandler)
   router.get('/entities/status', signedFetchMiddleware, getEntitiesStatusHandler)
+
+  const adminToken = await globalContext.components.config.getString('API_ADMIN_TOKEN')
+
+  if (!!adminToken) {
+    router.post('/registry', bearerTokenMiddleware(adminToken), createRegistryHandler)
+  }
 
   return router
 }

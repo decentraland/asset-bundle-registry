@@ -17,8 +17,8 @@ import { createMessageProcessorComponent } from './logic/message-processor'
 import { createCatalystAdapter } from './adapters/catalyst'
 import { createMessagesConsumerComponent } from './logic/message-consumer'
 import path from 'path'
-import { createEntityManifestFetcherComponent } from './logic/entity-manifest-fetcher'
-import { createEntityStatusAnalyzerComponent } from './logic/entity-status-analyzer'
+import { createEntityStatusFetcherComponent } from './logic/entity-status-fetcher'
+import { createRegistryOrchestratorComponent } from './logic/registry-orchestrator'
 
 // Initialize all the components of the app
 export async function initComponents(): Promise<AppComponents> {
@@ -72,11 +72,16 @@ export async function initComponents(): Promise<AppComponents> {
   const sqsEndpoint = await config.getString('AWS_SQS_ENDPOINT')
   const queue = sqsEndpoint ? await createSqsAdapter(sqsEndpoint) : createMemoryQueueAdapter()
   const catalyst = await createCatalystAdapter({ logs, fetch, config })
-  const entityManifestFetcher = await createEntityManifestFetcherComponent({ fetch, logs, config })
-  const messageProcessor = await createMessageProcessorComponent({ catalyst, entityManifestFetcher, logs, db })
+  const registryOrchestrator = await createRegistryOrchestratorComponent({ logs, db })
+  const entityStatusFetcher = await createEntityStatusFetcherComponent({ fetch, logs, config })
+  const messageProcessor = await createMessageProcessorComponent({
+    catalyst,
+    entityStatusFetcher,
+    registryOrchestrator,
+    logs,
+    db
+  })
   const messageConsumer = createMessagesConsumerComponent({ logs, queue, messageProcessor, metrics })
-  const entityStatusAnalyzer = createEntityStatusAnalyzerComponent({ catalyst })
-
 
   return {
     config,
@@ -91,7 +96,7 @@ export async function initComponents(): Promise<AppComponents> {
     messageProcessor,
     catalyst,
     messageConsumer,
-    entityManifestFetcher,
-    entityStatusAnalyzer
+    registryOrchestrator,
+    entityStatusFetcher
   }
 }

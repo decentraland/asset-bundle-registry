@@ -4,14 +4,18 @@ import { createTexturesProcessor } from './processors/textures-processor'
 
 export async function createMessageProcessorComponent({
   catalyst,
-  entityManifestFetcher,
+  entityStatusFetcher,
+  registryOrchestrator,
   db,
   logs
-}: Pick<AppComponents, 'catalyst' | 'entityManifestFetcher' | 'db' | 'logs'>): Promise<MessageProcessorComponent> {
+}: Pick<
+  AppComponents,
+  'catalyst' | 'entityStatusFetcher' | 'registryOrchestrator' | 'db' | 'logs'
+>): Promise<MessageProcessorComponent> {
   const log = logs.getLogger('message-processor')
   const processors: EventHandlerComponent[] = [
-    createDeploymentProcessor({ db, catalyst, logs }),
-    createTexturesProcessor({ db, logs, entityManifestFetcher })
+    createDeploymentProcessor({ registryOrchestrator, catalyst, logs }),
+    createTexturesProcessor({ db, logs, entityStatusFetcher, registryOrchestrator })
   ]
 
   async function process(message: any) {

@@ -1,6 +1,6 @@
 import { Message } from '@aws-sdk/client-sqs'
 import { IBaseComponent } from '@well-known-components/interfaces'
-import { Manifest, Registry } from './types'
+import { Registry } from './types'
 import { Entity, EthAddress } from '@dcl/schemas'
 
 export type DbComponent = {
@@ -13,7 +13,7 @@ export type DbComponent = {
     id: string,
     platform: string,
     lods: boolean,
-    status: Registry.Status
+    status: Registry.SimplifiedStatus
   ): Promise<Registry.DbEntity | null>
   getRelatedRegistries(registry: Pick<Registry.DbEntity, 'pointers' | 'id'>): Promise<Registry.PartialDbEntity[]>
   deleteRegistries(entityIds: string[]): Promise<void>
@@ -35,6 +35,7 @@ export type MessageProcessorComponent = {
 
 export type CatalystComponent = {
   getEntityById(id: string, contentServerUrl?: string): Promise<Entity>
+  getEntityByPointers(pointers: string[]): Promise<Entity[]>
   getContent(id: string): Promise<Entity | undefined>
 }
 
@@ -49,12 +50,11 @@ export type ProcessorResult = {
   errors?: string[]
 }
 
-export type EntityManifestFetcherComponent = {
-  downloadManifest(entityId: string, platform: string): Promise<Manifest | null>
+export type EntityStatusFetcher = {
+  fetchBundleStatus(entityId: string, platform: string): Promise<Registry.SimplifiedStatus>
+  fetchLODsStatus(entityId: string, platform: string): Promise<Registry.SimplifiedStatus>
 }
 
-export type EntityStatusAnalyzerComponent = {
-  checkIfAvailableOnCatalyst(id: string): Promise<boolean>
-  getEntityStatus(registry: Registry.DbEntity): Promise<Registry.EntityStatus>
-  isOwnedBy(registry: Registry.DbEntity | null, userAddress: string): boolean
+export type RegistryOrchestratorComponent = {
+  persistAndRotateStates(registry: Omit<Registry.DbEntity, 'status'>): Promise<void>
 }

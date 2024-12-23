@@ -3,45 +3,11 @@ import { AppComponents, EventHandlerComponent, ProcessorResult, Registry } from 
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
 import { Authenticator } from '@dcl/crypto'
 
-function categorizeRelatedEntities(
-  relatedEntities: Registry.PartialDbEntity[],
-  entity: Entity
-): {
-  newerEntities: Registry.PartialDbEntity[]
-  olderEntities: Registry.PartialDbEntity[]
-  fallback: Registry.PartialDbEntity | null
-} {
-  return relatedEntities.reduce(
-    (acc: any, relatedEntity: Registry.PartialDbEntity) => {
-      if (
-        relatedEntity.timestamp < entity.timestamp &&
-        (!acc.fallback || relatedEntity.timestamp > acc.fallback.timestamp) &&
-        (relatedEntity.status === Registry.Status.COMPLETE || relatedEntity.status === Registry.Status.FALLBACK)
-      ) {
-        acc.fallback = relatedEntity
-      } else {
-        if (relatedEntity.timestamp > entity.timestamp) {
-          acc.newerEntities.push(relatedEntity)
-        } else {
-          acc.olderEntities.push(relatedEntity)
-        }
-      }
-
-      return acc
-    },
-    {
-      newerEntities: [] as Registry.PartialDbEntity[],
-      olderEntities: [] as Registry.PartialDbEntity[],
-      fallback: null as Registry.PartialDbEntity | null
-    }
-  )
-}
-
 export const createDeploymentProcessor = ({
-  db,
+  registryOrchestrator,
   catalyst,
   logs
-}: Pick<AppComponents, 'db' | 'catalyst' | 'logs'>): EventHandlerComponent => {
+}: Pick<AppComponents, 'registryOrchestrator' | 'catalyst' | 'logs'>): EventHandlerComponent => {
   const logger = logs.getLogger('deployment-processor')
 
   return {
@@ -58,53 +24,23 @@ export const createDeploymentProcessor = ({
 
       const defaultBundles: Registry.Bundles = {
         assets: {
-          windows: Registry.Status.PENDING,
-          mac: Registry.Status.PENDING,
-          webgl: Registry.Status.PENDING
+          windows: Registry.SimplifiedStatus.PENDING,
+          mac: Registry.SimplifiedStatus.PENDING,
+          webgl: Registry.SimplifiedStatus.PENDING
         },
         lods: {
-          windows: Registry.Status.PENDING,
-          mac: Registry.Status.PENDING,
-          webgl: Registry.Status.PENDING
+          windows: Registry.SimplifiedStatus.PENDING,
+          mac: Registry.SimplifiedStatus.PENDING,
+          webgl: Registry.SimplifiedStatus.PENDING
         }
       }
 
       const deployer = Authenticator.ownerAddress(event.entity.authChain)
-
-      const relatedEntities: Registry.PartialDbEntity[] = await db.getRelatedRegistries(entity)
-      const splitRelatedEntities: {
-        newerEntities: Registry.PartialDbEntity[]
-        olderEntities: Registry.PartialDbEntity[]
-        fallback: Registry.PartialDbEntity | null
-      } = categorizeRelatedEntities(relatedEntities, entity)
-
-      await db.insertRegistry({
+      await registryOrchestrator.persistAndRotateStates({
         ...entity,
         deployer,
-        status: Registry.Status.PENDING,
         bundles: defaultBundles
       })
-
-      logger.debug('Deployment saved', { entityId: entity.id })
-
-      if (splitRelatedEntities.olderEntities.length) {
-        const olderEntitiesIds = splitRelatedEntities.olderEntities.map((entity: Registry.PartialDbEntity) => entity.id)
-        logger.debug('Marking older entities as outdated', {
-          newEntityId: entity.id,
-          olderEntitiesIds: olderEntitiesIds.join(', ')
-        })
-
-        await db.updateRegistriesStatus(olderEntitiesIds, Registry.Status.OBSOLETE)
-      }
-
-      if (splitRelatedEntities.fallback) {
-        logger.debug('Marking entity as fallback', {
-          entityId: entity.id,
-          fallbackId: splitRelatedEntities.fallback.id
-        })
-
-        await db.updateRegistriesStatus([splitRelatedEntities.fallback.id], Registry.Status.FALLBACK)
-      }
 
       return { ok: true }
     },
