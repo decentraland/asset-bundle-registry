@@ -43,7 +43,7 @@ export const createTexturesProcessor = ({
       const status: Registry.Status =
         manifest && SUCCESS_CODES.includes(manifest.exitCode) ? Registry.Status.COMPLETE : Registry.Status.FAILED
 
-      const registry: Registry.DbEntity | null = await db.upsertRegistryBundle(
+      let registry: Registry.DbEntity | null = await db.upsertRegistryBundle(
         event.metadata.entityId,
         event.metadata.platform,
         event.metadata.isLods,
@@ -55,48 +55,42 @@ export const createTexturesProcessor = ({
         return { ok: false, errors: ['Error storing bundle'] }
       }
 
-      logger.info(`Bundle stored`, { entityId: event.metadata.entityId, platform: event.metadata.platform, status })
+      logger.info(`Bundle stored`, { entityId: event.metadata.entityId, bundles: JSON.stringify(registry.bundles) })
 
-      setImmediate(async () => {
-        if (
-          registry.bundles.assets.mac === Registry.Status.COMPLETE &&
-          registry.bundles.assets.windows === Registry.Status.COMPLETE
-        ) {
-          await db.updateRegistriesStatus([registry.id], Registry.Status.COMPLETE)
-        }
+      if (
+        registry.bundles.assets.mac === Registry.Status.COMPLETE &&
+        registry.bundles.assets.windows === Registry.Status.COMPLETE
+      ) {
+        registry = (await db.updateRegistriesStatus([registry.id], Registry.Status.COMPLETE))[0]
+      }
 
-        const relatedEntities: Registry.PartialDbEntity[] | null = await db.getRelatedRegistries(registry)
+      const relatedEntities: Registry.PartialDbEntity[] = await db.getRelatedRegistries(registry)
 
-        if (!relatedEntities) {
-          logger.debug('No related entities found, skipping purge', {
-            entityId: event.metadata.entityId,
-            pointers: entity.metadata.pointers
-          })
-        }
+      if (!relatedEntities.length) {
+        logger.debug('No related entities found, skipping purge', {
+          entityId: event.metadata.entityId,
+          pointers: entity.metadata.pointers
+        })
 
-        const olderDeployments: Registry.PartialDbEntity[] | undefined = relatedEntities?.filter(
-          (registry: Registry.PartialDbEntity) => registry.timestamp < entity.timestamp
+        return { ok: true }
+      }
+
+      const olderDeployments: Registry.PartialDbEntity[] | undefined = relatedEntities?.filter(
+        (relatedEntity: Registry.PartialDbEntity) => relatedEntity.timestamp < registry.timestamp
+      )
+
+      if (olderDeployments?.length && registry.status === Registry.Status.COMPLETE) {
+        logger.info('Marking older related registries as `obsolete`', {
+          entityId: event.metadata.entityId,
+          pointers: entity.metadata.pointers,
+          entitiesToBeRemoved: JSON.stringify(olderDeployments.map((registry: Registry.PartialDbEntity) => registry.id))
+        })
+
+        await db.updateRegistriesStatus(
+          olderDeployments.map((registry: Registry.PartialDbEntity) => registry.id),
+          Registry.Status.OBSOLETE
         )
-
-        if (olderDeployments?.length && registry.status === Registry.Status.COMPLETE) {
-          logger.info('Marking older related registries as `obsolete`', {
-            entityId: event.metadata.entityId,
-            pointers: entity.metadata.pointers,
-            entitiesToBeRemoved: JSON.stringify(
-              olderDeployments.map((registry: Registry.PartialDbEntity) => ({
-                id: registry.id,
-                pointers: registry.pointers,
-                timestamp: registry.timestamp
-              }))
-            )
-          })
-
-          await db.updateRegistriesStatus(
-            olderDeployments.map((registry: Registry.PartialDbEntity) => registry.id),
-            'obsolete'
-          )
-        }
-      })
+      }
 
       return { ok: true }
     },

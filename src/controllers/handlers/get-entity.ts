@@ -1,4 +1,4 @@
-import { HandlerContextWithPath } from '../../types'
+import { HandlerContextWithPath, Registry } from '../../types'
 
 export async function getActiveEntityHandler(context: HandlerContextWithPath<'db', '/entities/active'>) {
   const {
@@ -20,8 +20,24 @@ export async function getActiveEntityHandler(context: HandlerContextWithPath<'db
 
   const entities = await db.getRegistriesByPointers(pointers)
 
+  // group by pointers
+  const groupByWholePointers = entities.reduce(
+    (acc, entity) => {
+      const key = entity.pointers.join(',')
+      if (!acc[key]) {
+        acc[key] = []
+      }
+      acc[key].push(entity)
+      return acc
+    },
+    {} as Record<string, Registry.DbEntity[]>
+  )
+
+  // get first element of each group
+  const entitiesByPointers = Object.values(groupByWholePointers).map((group) => (group.length ? group[0] : undefined))
+
   return {
-    body: JSON.stringify(entities),
+    body: JSON.stringify(entitiesByPointers),
     headers: {
       'Content-Type': 'application/json'
     }

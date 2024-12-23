@@ -4,7 +4,7 @@ import { Registry } from '../types/types'
 import { EthAddress } from '@dcl/schemas'
 
 export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent {
-  async function getSortedRegistriesByOwner(owner: EthAddress): Promise<Registry.DbEntity[] | null> {
+  async function getSortedRegistriesByOwner(owner: EthAddress): Promise<Registry.DbEntity[]> {
     const query: SQLStatement = SQL`
       SELECT 
         id, type, timestamp, deployer, pointers, content, metadata, status, bundles
@@ -12,21 +12,21 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
         registries
       WHERE 
         deployer = ${owner.toLocaleLowerCase()}
-      ORDER BY timestamp DESC
     `
 
     const result = await pg.query<Registry.DbEntity>(query)
     return result.rows
   }
 
-  async function getRegistriesByPointers(pointers: string[]): Promise<Registry.DbEntity[] | null> {
+  async function getRegistriesByPointers(pointers: string[]): Promise<Registry.DbEntity[]> {
     const query = SQL`
       SELECT 
         id, type, timestamp, deployer, pointers, content, metadata, status, bundles
       FROM 
         registries
       WHERE 
-        pointers && ${pointers}::varchar(255)[] AND status = ${Registry.Status.COMPLETE}::text
+        pointers && ${pointers}::varchar(255)[] AND (status = ${Registry.Status.COMPLETE}::text OR status = ${Registry.Status.FALLBACK}::text)
+      ORDER BY timestamp DESC
     `
 
     const result = await pg.query<Registry.DbEntity>(query)
@@ -89,10 +89,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
     return result.rows[0]
   }
 
-  async function updateRegistriesStatus(
-    ids: string[],
-    status: Registry.Status | 'obsolete'
-  ): Promise<Registry.DbEntity[] | null> {
+  async function updateRegistriesStatus(ids: string[], status: Registry.Status): Promise<Registry.DbEntity[]> {
     const query: SQLStatement = SQL`
         UPDATE registries
         SET status = ${status}
@@ -136,14 +133,17 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
     return result.rows[0] || null
   }
 
-  async function getRelatedRegistries(registry: Registry.DbEntity): Promise<Registry.PartialDbEntity[] | null> {
+  async function getRelatedRegistries(
+    registry: Pick<Registry.DbEntity, 'pointers' | 'id'>
+  ): Promise<Registry.PartialDbEntity[]> {
     const query: SQLStatement = SQL`
       SELECT 
         id, pointers, timestamp, status, bundles
       FROM 
         registries
       WHERE 
-        pointers && ${registry.pointers}::varchar(255)[] AND id != ${registry.id}
+        pointers && ${registry.pointers}::varchar(255)[] AND id != ${registry.id} AND status != ${Registry.Status.OBSOLETE}
+      ORDER BY timestamp DESC
     `
 
     const result = await pg.query<Registry.PartialDbEntity>(query)
