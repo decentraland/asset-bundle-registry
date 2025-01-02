@@ -31,7 +31,6 @@ function isOwnedBy(registry: Registry.DbEntity | null, userAddress: string): boo
 export async function getEntityStatusHandler(
   context: HandlerContextWithPath<'db', '/entities/status/:id'> & DecentralandSignatureContext<any>
 ) {
-  console.log('ARRIVED')
   const {
     params,
     components: { db },
@@ -93,7 +92,6 @@ export async function getEntitiesStatusHandler(
 export async function getEntitiesStatusHandler(
   context: HandlerContextWithPath<'db', '/entities/status'> & DecentralandSignatureContext<any>
 ) {
-  console.log('YES')
   const {
     components: { db },
     verification
