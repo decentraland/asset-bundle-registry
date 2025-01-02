@@ -8,7 +8,7 @@ export function createRegistryOrchestratorComponent({
 
   function categorizeRelatedEntities(
     relatedEntities: Registry.PartialDbEntity[],
-    by: number
+    registry: Omit<Registry.DbEntity, 'status'>
   ): {
     newerEntities: Registry.PartialDbEntity[]
     olderEntities: Registry.PartialDbEntity[]
@@ -16,16 +16,18 @@ export function createRegistryOrchestratorComponent({
   } {
     return relatedEntities.reduce(
       (acc: any, relatedEntity: Registry.PartialDbEntity) => {
-        if (
-          relatedEntity.timestamp < by &&
-          (!acc.fallback || relatedEntity.timestamp > acc.fallback.timestamp) &&
-          (relatedEntity.status === Registry.Status.COMPLETE || relatedEntity.status === Registry.Status.FALLBACK)
-        ) {
-          acc.fallback = relatedEntity
-        } else if (relatedEntity.timestamp > by) {
-          acc.newerEntities.push(relatedEntity)
-        } else {
-          acc.olderEntities.push(relatedEntity)
+        if (relatedEntity.id.toLocaleLowerCase() !== registry.id.toLocaleLowerCase()) {
+          if (
+            relatedEntity.timestamp < registry.timestamp &&
+            (!acc.fallback || relatedEntity.timestamp > acc.fallback.timestamp) &&
+            (relatedEntity.status === Registry.Status.COMPLETE || relatedEntity.status === Registry.Status.FALLBACK)
+          ) {
+            acc.fallback = relatedEntity
+          } else if (relatedEntity.timestamp > registry.timestamp) {
+            acc.newerEntities.push(relatedEntity)
+          } else {
+            acc.olderEntities.push(relatedEntity)
+          }
         }
 
         return acc
@@ -82,7 +84,7 @@ export function createRegistryOrchestratorComponent({
       newerEntities: Registry.PartialDbEntity[]
       olderEntities: Registry.PartialDbEntity[]
       fallback: Registry.PartialDbEntity | null
-    } = categorizeRelatedEntities(relatedRegistries, registry.timestamp)
+    } = categorizeRelatedEntities(relatedRegistries, registry)
     const registryStatus: Registry.Status = determineRegistryStatus(registry, splitRelatedEntities)
 
     logger.info('Persisting entity', {
