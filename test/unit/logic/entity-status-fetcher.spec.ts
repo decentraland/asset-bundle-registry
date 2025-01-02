@@ -141,13 +141,30 @@ describe('entity status fetcher', () => {
             expect(status).toBe(Registry.SimplifiedStatus.FAILED)
         })
 
-        it('should return FAILED when fetch throws an error', async () => {
+        it('should retry on network errors and succeed eventually', async () => {
             const sut: EntityStatusFetcher = await createEntityStatusFetcherComponent({ fetch: mockFetch, logs, config })
-
-            mockFetch.fetch.mockRejectedValue(new Error('Network error'))
-
-            const status = await sut.fetchLODsStatus(ENTITY_ID, 'webgl')
-            expect(status).toBe(Registry.SimplifiedStatus.FAILED)
+    
+            const manifest = createManifest(ManifestStatusCode.SUCCESS)
+            mockFetch.fetch
+                .mockRejectedValueOnce(new Error('ECONNRESET'))
+                .mockRejectedValueOnce(new Error('ECONNRESET'))
+                .mockResolvedValueOnce({
+                    ok: true,
+                    json: jest.fn().mockResolvedValue(manifest)
+                })
+    
+            const status = await sut.fetchBundleStatus(ENTITY_ID, 'webgl')
+            expect(status).toBe(Registry.SimplifiedStatus.COMPLETE)
+            expect(mockFetch.fetch).toHaveBeenCalledTimes(3)
+        })
+    
+        it('should fail after max retries', async () => {
+            const sut: EntityStatusFetcher = await createEntityStatusFetcherComponent({ fetch: mockFetch, logs, config })
+    
+            mockFetch.fetch.mockRejectedValue(new Error('ECONNRESET'))
+    
+            await expect(sut.fetchBundleStatus(ENTITY_ID, 'webgl')).rejects.toThrow('ECONNRESET')
+            expect(mockFetch.fetch).toHaveBeenCalledTimes(3)
         })
 
         it('should use platform suffix for non-webgl platforms', async () => {
