@@ -22,7 +22,12 @@ import { createRegistryOrchestratorComponent } from './logic/registry-orchestrat
 
 // Initialize all the components of the app
 export async function initComponents(): Promise<AppComponents> {
-  const config = await createDotEnvConfigComponent({ path: ['.env.default', '.env.local', '.env'] })
+  const config = await createDotEnvConfigComponent(
+    { path: ['.env.default', '.env'] },
+    {
+      LOG_LEVEL: 'ALL'
+    }
+  )
   const logs = await createLogComponent({ config })
 
   const logger = logs.getLogger('components')
