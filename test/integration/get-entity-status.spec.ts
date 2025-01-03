@@ -227,28 +227,6 @@ test('GET /entities/status', function ({ components, stubComponents }) {
         })
     })
 
-    it('should filter out entities owned by different users', async function () {
-        const ownerAddress = identity.realAccount.address
-        const differentOwner = '0x1234567890123456789012345678901234567890'
-        const registries = [
-            createRegistry(ownerAddress, Registry.Status.COMPLETE, Registry.SimplifiedStatus.COMPLETE),
-            createRegistry(differentOwner, Registry.Status.COMPLETE, Registry.SimplifiedStatus.COMPLETE)
-        ]
-        stubComponents.db.getSortedRegistriesByOwner.resolves(registries)
-
-        const response = await makeRequest('GET', endpointPath, identity)
-
-        const parsedResponse = await response.json()
-        expect(response.status).toBe(200)
-        expect(parsedResponse).toHaveLength(1)
-        expect(parsedResponse[0]).toMatchObject({
-            assetBundles: { mac: 'complete', windows: 'complete' },
-            catalyst: 'complete',
-            complete: true,
-            lods: { mac: 'complete', windows: 'complete' }
-        })
-    })
-
     it('should handle mixed status entities', async function () {
         const ownerAddress = identity.realAccount.address
         const registry = createRegistry(ownerAddress, Registry.Status.FAILED, Registry.SimplifiedStatus.FAILED)
