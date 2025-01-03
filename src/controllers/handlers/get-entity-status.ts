@@ -99,28 +99,13 @@ export async function getEntitiesStatusHandler(
 
   const userAddress: EthAddress = verification!.auth
 
-  const entities = await db.getSortedRegistriesByOwner(userAddress)
-
-  if (entities) {
-    const promises = entities
-      .filter((entity) => isOwnedBy(entity, userAddress))
-      .map((entity) => parseRegistryStatus(entity))
-
-    const response = (await Promise.all(promises)).filter((status: any): status is EntityStatus => !('error' in status))
-
-    return {
-      body: JSON.stringify(response),
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    }
-  }
+  const entities = (await db.getSortedRegistriesByOwner(userAddress)) || []
+  const response = await Promise.all(entities.map((entity) => parseRegistryStatus(entity)))
 
   return {
-    status: 404,
-    body: {
-      ok: false,
-      message: 'No active entities found for the provided id'
+    body: JSON.stringify(response),
+    headers: {
+      'Content-Type': 'application/json'
     }
   }
 }
