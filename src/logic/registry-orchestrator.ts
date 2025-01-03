@@ -1,5 +1,11 @@
 import { AppComponents, Registry, RegistryOrchestratorComponent } from '../types'
 
+type RelatedEntities = {
+  newerEntities: Registry.PartialDbEntity[]
+  olderEntities: Registry.PartialDbEntity[]
+  fallback: Registry.PartialDbEntity | null
+}
+
 export function createRegistryOrchestratorComponent({
   db,
   logs
@@ -9,33 +15,31 @@ export function createRegistryOrchestratorComponent({
   function categorizeRelatedEntities(
     relatedEntities: Registry.PartialDbEntity[],
     registry: Omit<Registry.DbEntity, 'status'>
-  ): {
-    newerEntities: Registry.PartialDbEntity[]
-    olderEntities: Registry.PartialDbEntity[]
-    fallback: Registry.PartialDbEntity | null
-  } {
+  ): RelatedEntities {
     return relatedEntities.reduce(
-      (acc: any, relatedEntity: Registry.PartialDbEntity) => {
-        if (relatedEntity.id.toLocaleLowerCase() !== registry.id.toLocaleLowerCase()) {
-          if (
-            relatedEntity.timestamp < registry.timestamp &&
-            (!acc.fallback || relatedEntity.timestamp > acc.fallback.timestamp) &&
-            (relatedEntity.status === Registry.Status.COMPLETE || relatedEntity.status === Registry.Status.FALLBACK)
-          ) {
-            acc.fallback = relatedEntity
-          } else if (relatedEntity.timestamp > registry.timestamp) {
-            acc.newerEntities.push(relatedEntity)
-          } else {
-            acc.olderEntities.push(relatedEntity)
-          }
+      (acc: RelatedEntities, relatedEntity: Registry.PartialDbEntity) => {
+        if (relatedEntity.id.toLocaleLowerCase() === registry.id.toLocaleLowerCase()) {
+          return acc
+        }
+
+        if (
+          relatedEntity.timestamp < registry.timestamp &&
+          (!acc.fallback || relatedEntity.timestamp > acc.fallback.timestamp) &&
+          (relatedEntity.status === Registry.Status.COMPLETE || relatedEntity.status === Registry.Status.FALLBACK)
+        ) {
+          acc.fallback = relatedEntity
+        } else if (relatedEntity.timestamp > registry.timestamp) {
+          acc.newerEntities.push(relatedEntity)
+        } else {
+          acc.olderEntities.push(relatedEntity)
         }
 
         return acc
       },
       {
-        newerEntities: [] as Registry.PartialDbEntity[],
-        olderEntities: [] as Registry.PartialDbEntity[],
-        fallback: null as Registry.PartialDbEntity | null
+        newerEntities: [],
+        olderEntities: [],
+        fallback: null
       }
     )
   }

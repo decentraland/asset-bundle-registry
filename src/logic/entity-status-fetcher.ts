@@ -32,6 +32,7 @@ export async function createEntityStatusFetcherComponent({
 }: Pick<AppComponents, 'fetch' | 'logs' | 'config'>): Promise<EntityStatusFetcher> {
   const ASSET_BUNDLE_CDN_URL = (await config.requireString('ASSET_BUNDLE_CDN_URL')).replace(/\/?$/, '/')
   const logger = logs.getLogger('entity-status-fetcher')
+  const LEVEL_OF_DETAILS = ['0', '1', '2']
 
   async function withRetry<T>(
     operation: () => Promise<T>,
@@ -98,7 +99,7 @@ export async function createEntityStatusFetcherComponent({
     return withRetry(async () => {
       const lodsBaseUrl = `${ASSET_BUNDLE_CDN_URL}LOD`
       const urlPlatformSuffix = platform === 'webgl' ? '' : `_${platform}`
-      const allUrls = ['0', '1', '2'].map(
+      const allUrls = LEVEL_OF_DETAILS.map(
         (levelOfDetail: string) => `${lodsBaseUrl}/${levelOfDetail}/${entityId}_${levelOfDetail}${urlPlatformSuffix}`
       )
 
