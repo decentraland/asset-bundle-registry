@@ -42,6 +42,10 @@ export async function createCatalystAdapter({
     return entity
   }
 
+  async function getEntityByPointers(pointers: string[]): Promise<Entity[]> {
+    return defaultContentClient.fetchEntitiesByPointers(pointers)
+  }
+
   async function getContent(id: string): Promise<Entity | undefined> {
     const downloadedContent = await defaultContentClient.downloadContent(id)
 
@@ -54,5 +58,5 @@ export async function createCatalystAdapter({
     return contentJson as Entity
   }
 
-  return { getEntityById, getContent }
+  return { getEntityById, getEntityByPointers, getContent }
 }

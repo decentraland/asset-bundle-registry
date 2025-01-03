@@ -6,7 +6,7 @@ export async function getActiveEntityHandler(context: HandlerContextWithPath<'db
   } = context
 
   const body = await context.request.json()
-  const pointers = body.pointers
+  const pointers: string[] = body.pointers
 
   if (pointers?.length === 0) {
     return {
@@ -20,7 +20,6 @@ export async function getActiveEntityHandler(context: HandlerContextWithPath<'db
 
   const entities = await db.getRegistriesByPointers(pointers)
 
-  // group by pointers
   const groupByWholePointers = entities.reduce(
     (acc, entity) => {
       const key = entity.pointers.join(',')

@@ -1,34 +1,49 @@
 import { DecentralandSignatureContext } from '@dcl/platform-crypto-middleware'
-import { HandlerContextWithPath } from '../../types'
+import { EntityStatus, HandlerContextWithPath, Registry } from '../../types'
 import { EthAddress } from '@dcl/schemas'
 
+function parseRegistryStatus(registry: Registry.DbEntity): EntityStatus {
+  const assetBundles = {
+    mac: registry.bundles.assets.mac || Registry.SimplifiedStatus.PENDING,
+    windows: registry.bundles.assets.windows || Registry.SimplifiedStatus.PENDING
+  }
+  const lods = {
+    mac: registry.bundles.lods.mac || Registry.SimplifiedStatus.PENDING,
+    windows: registry.bundles.lods.windows || Registry.SimplifiedStatus.PENDING
+  }
+
+  const isComplete =
+    assetBundles.mac === Registry.SimplifiedStatus.COMPLETE &&
+    assetBundles.windows === Registry.SimplifiedStatus.COMPLETE
+
+  return {
+    catalyst: Registry.SimplifiedStatus.COMPLETE, // if there is a registry, it was already uploaded to catalyst
+    complete: isComplete,
+    assetBundles,
+    lods
+  }
+}
+
+function isOwnedBy(registry: Registry.DbEntity | null, userAddress: string): boolean {
+  return !!registry && registry.deployer.toLocaleLowerCase() === userAddress.toLocaleLowerCase()
+}
+
 export async function getEntityStatusHandler(
-  context: HandlerContextWithPath<'db' | 'entityStatusAnalyzer', '/entities/status/:id'> &
-    DecentralandSignatureContext<any>
+  context: HandlerContextWithPath<'db', '/entities/status/:id'> & DecentralandSignatureContext<any>
 ) {
   const {
     params,
-    components: { db, entityStatusAnalyzer },
+    components: { db },
     verification
   } = context
 
   const entityId: string | undefined = params.id
   const userAddress: EthAddress = verification!.auth
 
-  if (!entityId) {
-    return {
-      status: 400,
-      body: {
-        ok: false,
-        message: 'No entity id provided'
-      }
-    }
-  }
-
   const entity = await db.getRegistryById(entityId)
 
-  if (entity && entityStatusAnalyzer.isOwnedBy(entity, userAddress)) {
-    const entityStatus = await entityStatusAnalyzer.getEntityStatus(entity)
+  if (entity && isOwnedBy(entity, userAddress)) {
+    const entityStatus = parseRegistryStatus(entity)
     return {
       body: JSON.stringify(entityStatus),
       headers: {
@@ -42,6 +57,30 @@ export async function getEntityStatusHandler(
     body: {
       ok: false,
       message: 'No active entity found for the provided id'
+    },
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  }
+}
+
+export async function getEntitiesStatusHandler(
+  context: HandlerContextWithPath<'db', '/entities/status'> & DecentralandSignatureContext<any>
+) {
+  const {
+    components: { db },
+    verification
+  } = context
+
+  const userAddress: EthAddress = verification!.auth
+
+  const entities = (await db.getSortedRegistriesByOwner(userAddress)) || []
+  const response = await Promise.all(entities.map((entity) => parseRegistryStatus(entity)))
+
+  return {
+    body: JSON.stringify(response),
+    headers: {
+      'Content-Type': 'application/json'
     }
   }
 }

@@ -10,11 +10,11 @@ import { IPgComponent } from '@well-known-components/pg-component'
 import {
   CatalystComponent,
   DbComponent,
-  EntityManifestFetcherComponent,
-  EntityStatusAnalyzerComponent,
   MessageConsumerComponent,
   MessageProcessorComponent,
-  QueueComponent
+  QueueComponent,
+  EntityStatusFetcher,
+  RegistryOrchestratorComponent
 } from './service'
 import { metricDeclarations } from '../metrics'
 
@@ -29,8 +29,10 @@ export type BaseComponents = {
   logs: ILoggerComponent
   server: IHttpServerComponent<GlobalContext>
   metrics: IMetricsComponent<keyof typeof metricDeclarations>
-  entityStatusAnalyzer: EntityStatusAnalyzerComponent
   db: DbComponent
+  catalyst: CatalystComponent
+  entityStatusFetcher: EntityStatusFetcher
+  registryOrchestrator: RegistryOrchestratorComponent
 }
 
 // components used in runtime
@@ -39,15 +41,14 @@ export type AppComponents = BaseComponents & {
   statusChecks: IBaseComponent
   queue: QueueComponent
   messageProcessor: MessageProcessorComponent
-  catalyst: CatalystComponent
   messageConsumer: MessageConsumerComponent
-  entityManifestFetcher: EntityManifestFetcherComponent
 }
 
 // components used in tests
 export type TestComponents = BaseComponents & {
   // A fetch component that only hits the test server
   localFetch: IFetchComponent
+  messageConsumer: MessageConsumerComponent
 }
 
 // this type simplifies the typings of http handlers

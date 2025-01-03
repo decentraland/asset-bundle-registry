@@ -67,7 +67,6 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
         SET
           type = EXCLUDED.type,
           timestamp = EXCLUDED.timestamp,
-          deployer = EXCLUDED.deployer,
           pointers = EXCLUDED.pointers,
           content = EXCLUDED.content,
           metadata = EXCLUDED.metadata,
