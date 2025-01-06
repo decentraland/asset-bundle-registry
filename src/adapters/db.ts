@@ -236,6 +236,34 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
     return result.rows[0]
   }
 
+  async function getSortedHistoricalRegistriesByOwner(owner: EthAddress): Promise<Registry.DbEntity[]> {
+    const query: SQLStatement = SQL`
+      SELECT 
+        id, type, timestamp, deployer, pointers, content, metadata, status, bundles
+      FROM 
+        historical_registries
+      WHERE 
+        deployer = ${owner.toLocaleLowerCase()}
+    `
+
+    const result = await pg.query<Registry.DbEntity>(query)
+    return result.rows
+  }
+
+  async function getHistoricalRegistryById(id: string): Promise<Registry.DbEntity | null> {
+    const query: SQLStatement = SQL`
+      SELECT 
+        id, type, timestamp, deployer, pointers, content, metadata, status, bundles
+      FROM 
+        historical_registries
+      WHERE 
+        id = ${id.toLocaleLowerCase()}
+    `
+
+    const result = await pg.query<Registry.DbEntity>(query)
+    return result.rows[0] || null
+  }
+
   return {
     insertRegistry,
     updateRegistriesStatus,
@@ -246,6 +274,8 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
     getRelatedRegistries,
     deleteRegistries,
     getBatchOfDeprecatedRegistriesOlderThan,
-    insertHistoricalRegistry
+    insertHistoricalRegistry,
+    getSortedHistoricalRegistriesByOwner,
+    getHistoricalRegistryById
   }
 }

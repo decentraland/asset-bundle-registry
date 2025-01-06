@@ -11,6 +11,8 @@ export function createDbMockComponent(): DbComponent {
         getSortedRegistriesByOwner: jest.fn(),
         updateRegistriesStatus: jest.fn(),
         getBatchOfDeprecatedRegistriesOlderThan: jest.fn(),
-        insertHistoricalRegistry: jest.fn()
+        insertHistoricalRegistry: jest.fn(),
+        getHistoricalRegistryById: jest.fn(),
+        getSortedHistoricalRegistriesByOwner: jest.fn()
     }
 }
