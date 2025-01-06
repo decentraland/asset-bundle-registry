@@ -17,12 +17,12 @@ export function createWorkerManagerComponent(components: Pick<AppComponents, 'db
   const logger = components.logs.getLogger('worker-manager')
   const scheduledJobs: Set<NodeJS.Timeout> = new Set()
 
-  async function scheduleDailyWorker(workerToExecute: () => Promise<void>, taskName: string): Promise<void> {
-    logger.info(`Executing ${taskName}...`)
+  async function scheduleDailyWorker(workerToExecute: () => Promise<void>): Promise<void> {
+    logger.info(`Executing worker...`)
     try {
       await workerToExecute()
     } catch (error: any) {
-      logger.error(`Error during ${taskName} execution:`, error)
+      logger.error(`Error during worker execution:`, error)
     }
   }
 
@@ -63,12 +63,12 @@ export function createWorkerManagerComponent(components: Pick<AppComponents, 'db
 
     // first run at midnight
     const midnightTimeout = setTimeout(async () => {
-      await scheduleDailyWorker(databasePurgerWorker, 'db-registries-purger')
+      await scheduleDailyWorker(databasePurgerWorker)
 
       // then, every 24hs
       const dailyInterval = setInterval(
         async () => {
-          await scheduleDailyWorker(databasePurgerWorker, 'db-registries-purger')
+          await scheduleDailyWorker(databasePurgerWorker)
         },
         24 * 60 * 60 * 1000
       )
