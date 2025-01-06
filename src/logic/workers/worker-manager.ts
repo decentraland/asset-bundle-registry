@@ -1,0 +1,93 @@
+import path from 'path'
+import { Worker } from 'worker_threads'
+import { IBaseComponent } from '@well-known-components/interfaces'
+
+import { AppComponents } from '../../types'
+
+const databasePurgerWorkerPath = path.resolve(__dirname, './db-active-entities-purger.js')
+
+function getTimeUntilMidnight(): number {
+  const now = new Date()
+  const nextMidnight = new Date()
+  nextMidnight.setHours(24, 0, 0, 0)
+  return nextMidnight.getTime() - now.getTime()
+}
+
+export function createWorkerManagerComponent(components: Pick<AppComponents, 'db' | 'logs'>): IBaseComponent {
+  const logger = components.logs.getLogger('worker-manager')
+  const scheduledJobs: Set<NodeJS.Timeout> = new Set()
+
+  async function scheduleDailyWorker(workerToExecute: () => Promise<void>, taskName: string): Promise<void> {
+    logger.info(`Executing ${taskName}...`)
+    try {
+      await workerToExecute()
+    } catch (error: any) {
+      logger.error(`Error during ${taskName} execution:`, error)
+    }
+  }
+
+  async function databasePurgerWorker(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const worker = new Worker(databasePurgerWorkerPath, {
+        workerData: {
+          components
+        }
+      })
+
+      worker.on('message', (msg) => {
+        logger.info(`Worker message: ${msg}`)
+      })
+
+      worker.on('error', (error: any) => {
+        logger.error('Worker error:', error)
+        reject(error)
+      })
+
+      worker.on('exit', (code) => {
+        if (code === 0) {
+          logger.info('Worker completed successfully')
+          resolve()
+        } else {
+          const errorMsg = `Worker stopped with exit code ${code}`
+          logger.error(errorMsg)
+          reject(new Error(errorMsg))
+        }
+      })
+    })
+  }
+
+  async function start(): Promise<void> {
+    logger.info('Setting up workers...')
+    const timeUntilMidnight = getTimeUntilMidnight()
+    logger.info(`Time until midnight: ${timeUntilMidnight / 1000}s`)
+
+    // first run at midnight
+    const midnightTimeout = setTimeout(async () => {
+      await scheduleDailyWorker(databasePurgerWorker, 'db-registries-purger')
+
+      // then, every 24hs
+      const dailyInterval = setInterval(
+        async () => {
+          await scheduleDailyWorker(databasePurgerWorker, 'db-registries-purger')
+        },
+        24 * 60 * 60 * 1000
+      )
+
+      scheduledJobs.add(dailyInterval)
+    }, timeUntilMidnight)
+
+    scheduledJobs.add(midnightTimeout)
+  }
+
+  async function stop(): Promise<void> {
+    logger.info('Stopping worker scheduler...')
+    scheduledJobs.forEach((scheduledJob) => {
+      clearTimeout(scheduledJob)
+    })
+
+    scheduledJobs.clear()
+    logger.info('All scheduled jobs cleared')
+  }
+
+  return { start, stop }
+}

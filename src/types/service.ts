@@ -17,6 +17,12 @@ export type DbComponent = {
   ): Promise<Registry.DbEntity | null>
   getRelatedRegistries(registry: Pick<Registry.DbEntity, 'pointers' | 'id'>): Promise<Registry.PartialDbEntity[]>
   deleteRegistries(entityIds: string[]): Promise<void>
+  getBatchOfDeprecatedRegistriesOlderThan(
+    dateInMilliseconds: number,
+    failedIds: Set<string>,
+    limit: number
+  ): Promise<{ registries: Registry.DbEntity[] }>
+  insertHistoricalRegistry(registry: Registry.DbEntity): Promise<Registry.DbEntity>
 }
 
 export type QueueMessage = any

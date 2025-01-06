@@ -42,6 +42,7 @@ export type AppComponents = BaseComponents & {
   queue: QueueComponent
   messageProcessor: MessageProcessorComponent
   messageConsumer: MessageConsumerComponent
+  workerManger: IBaseComponent
 }
 
 // components used in tests
