@@ -50,6 +50,18 @@ export async function getEntityStatusHandler(
         'Content-Type': 'application/json'
       }
     }
+  } else if (!entity) {
+    entity = await db.getHistoricalRegistryById(entityId)
+
+    if (entity && isOwnedBy(entity, userAddress)) {
+      const entityStatus = parseRegistryStatus(entity)
+      return {
+        body: JSON.stringify(entityStatus),
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
+    }
   }
 
   return {
