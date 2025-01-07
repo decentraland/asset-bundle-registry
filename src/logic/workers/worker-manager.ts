@@ -22,7 +22,10 @@ export function createWorkerManagerComponent(components: Pick<AppComponents, 'db
     try {
       await workerToExecute()
     } catch (error: any) {
-      logger.error(`Error during worker execution:`, error)
+      logger.error(`Error during worker execution:`, {
+        message: error?.message || 'Unknown error',
+        stack: error?.stack || 'No stack trace available'
+      })
     }
   }
 
@@ -61,22 +64,24 @@ export function createWorkerManagerComponent(components: Pick<AppComponents, 'db
     const timeUntilMidnight = getTimeUntilMidnight()
     logger.info(`Time until midnight: ${timeUntilMidnight / 1000}s`)
 
+    await scheduleDailyWorker(databasePurgerWorker)
+
     // first run at midnight
-    const midnightTimeout = setTimeout(async () => {
-      await scheduleDailyWorker(databasePurgerWorker)
+    // const midnightTimeout = setTimeout(async () => {
+    //   await scheduleDailyWorker(databasePurgerWorker)
 
-      // then, every 24hs
-      const dailyInterval = setInterval(
-        async () => {
-          await scheduleDailyWorker(databasePurgerWorker)
-        },
-        24 * 60 * 60 * 1000
-      )
+    //   // then, every 24hs
+    //   const dailyInterval = setInterval(
+    //     async () => {
+    //       await scheduleDailyWorker(databasePurgerWorker)
+    //     },
+    //     24 * 60 * 60 * 1000
+    //   )
 
-      scheduledJobs.add(dailyInterval)
-    }, timeUntilMidnight)
+    //   scheduledJobs.add(dailyInterval)
+    // }, timeUntilMidnight)
 
-    scheduledJobs.add(midnightTimeout)
+    // scheduledJobs.add(midnightTimeout)
   }
 
   async function stop(): Promise<void> {
