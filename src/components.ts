@@ -78,7 +78,7 @@ export async function initComponents(): Promise<AppComponents> {
   const sqsEndpoint = await config.getString('AWS_SQS_ENDPOINT')
   const queue = sqsEndpoint ? await createSqsAdapter(sqsEndpoint) : createMemoryQueueAdapter()
   const catalyst = await createCatalystAdapter({ logs, fetch, config })
-  const registryOrchestrator = await createRegistryOrchestratorComponent({ logs, db })
+  const registryOrchestrator = createRegistryOrchestratorComponent({ logs, db, metrics })
   const entityStatusFetcher = await createEntityStatusFetcherComponent({ fetch, logs, config })
   const messageProcessor = await createMessageProcessorComponent({
     catalyst,
@@ -88,7 +88,7 @@ export async function initComponents(): Promise<AppComponents> {
     db
   })
   const messageConsumer = createMessagesConsumerComponent({ logs, queue, messageProcessor, metrics })
-  const workerManager = createWorkerManagerComponent({ db, logs })
+  const workerManager = createWorkerManagerComponent({ metrics, logs })
 
   return {
     config,

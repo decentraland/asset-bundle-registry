@@ -64,6 +64,7 @@ async function main() {
       try {
         if (batchIds.length > 0) {
           await db.deleteRegistries(batchIds)
+          metrics.increment('registries_purge_count', {}, batchIds.length)
         }
       } catch (error: any) {
         logger.error('Failed to delete registries; excluding them', {

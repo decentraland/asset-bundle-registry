@@ -13,14 +13,19 @@ function getTimeUntilMidnight(): number {
   return nextMidnight.getTime() - now.getTime()
 }
 
-export function createWorkerManagerComponent(components: Pick<AppComponents, 'db' | 'logs'>): IBaseComponent {
+export function createWorkerManagerComponent(components: Pick<AppComponents, 'logs' | 'metrics'>): IBaseComponent {
   const logger = components.logs.getLogger('worker-manager')
   const scheduledJobs: Set<NodeJS.Timeout> = new Set()
 
   async function scheduleDailyWorker(workerToExecute: () => Promise<void>): Promise<void> {
     logger.info(`Executing worker...`)
     try {
+      const { end: endMetricTimer } = components.metrics.startTimer('worker_run_duration_seconds')
+      components.metrics.observe('last_worker_run_timestamp', {}, Date.now())
+
       await workerToExecute()
+
+      endMetricTimer()
     } catch (error: any) {
       logger.error(`Error during worker execution:`, {
         message: error?.message || 'Unknown error',
