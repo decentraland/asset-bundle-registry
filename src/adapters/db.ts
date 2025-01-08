@@ -150,12 +150,116 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
   }
 
   async function deleteRegistries(entityIds: string[]): Promise<void> {
-    const query: SQLStatement = SQL`
-      DELETE FROM registries
-      WHERE id = ANY(${entityIds}::varchar(255)[])
+    const MAX_BATCH_SIZE = 1000
+
+    for (let i = 0; i < entityIds.length; i += MAX_BATCH_SIZE) {
+      const chunk = entityIds.slice(i, i + MAX_BATCH_SIZE)
+      const query: SQLStatement = SQL`
+        DELETE FROM registries
+        WHERE id = ANY(${chunk}::varchar(255)[])
+      `
+      await pg.query(query)
+    }
+  }
+
+  async function getBatchOfDeprecatedRegistriesOlderThan(
+    dateInMilliseconds: number,
+    failedIds: Set<string>,
+    limit: number = 100
+  ): Promise<{ registries: Registry.DbEntity[] }> {
+    const parsedIds = Array.from(failedIds)
+      .map((id) => `'${id}'`)
+      .join(',')
+
+    const baseQuery = SQL`
+      SELECT 
+        id, type, timestamp, deployer, pointers, content, metadata, status, bundles
+      FROM 
+        registries
+      WHERE 
+        timestamp < ${dateInMilliseconds}
+        AND status NOT IN (${Registry.Status.COMPLETE}::text, ${Registry.Status.FALLBACK}::text)
+        AND id NOT IN (${parsedIds})
+      ORDER BY 
+        timestamp DESC
+      LIMIT ${limit}
     `
 
-    await pg.query(query)
+    const result = await pg.query<Registry.DbEntity>(baseQuery)
+
+    return {
+      registries: result.rows
+    }
+  }
+
+  async function insertHistoricalRegistry(registry: Registry.DbEntity): Promise<Registry.DbEntity> {
+    const query: SQLStatement = SQL`
+        INSERT INTO historical_registries (
+          id, type, timestamp, deployer, pointers, content, metadata, status, bundles, migrated_at
+        )
+        VALUES (
+          ${registry.id.toLocaleLowerCase()},
+          ${registry.type},
+          ${registry.timestamp},
+          ${registry.deployer.toLocaleLowerCase()},
+          ${registry.pointers}::varchar(255)[],
+          ${JSON.stringify(registry.content)}::jsonb,
+          ${JSON.stringify(registry.metadata)}::jsonb,
+          ${registry.status},
+          ${JSON.stringify(registry.bundles)}::jsonb,
+          ${Date.now()}
+        )
+        ON CONFLICT (id) DO UPDATE 
+        SET
+          type = EXCLUDED.type,
+          timestamp = EXCLUDED.timestamp,
+          pointers = EXCLUDED.pointers,
+          content = EXCLUDED.content,
+          metadata = EXCLUDED.metadata,
+          status = EXCLUDED.status,
+          bundles = EXCLUDED.bundles
+        RETURNING 
+          id,
+          type,
+          timestamp,
+          deployer,
+          pointers,
+          content,
+          metadata,
+          status,
+          bundles
+      `
+
+    const result = await pg.query<Registry.DbEntity>(query)
+    return result.rows[0]
+  }
+
+  async function getSortedHistoricalRegistriesByOwner(owner: EthAddress): Promise<Registry.DbEntity[]> {
+    const query: SQLStatement = SQL`
+      SELECT 
+        id, type, timestamp, deployer, pointers, content, metadata, status, bundles
+      FROM 
+        historical_registries
+      WHERE 
+        deployer = ${owner.toLocaleLowerCase()}
+    `
+
+    const result = await pg.query<Registry.DbEntity>(query)
+    return result.rows
+  }
+
+  async function getHistoricalRegistryById(id: string): Promise<Registry.DbEntity | null> {
+    const query: SQLStatement = SQL`
+      SELECT 
+        id, type, timestamp, deployer, pointers, content, metadata, status, bundles
+      FROM 
+        historical_registries
+      WHERE 
+        id = ${id.toLocaleLowerCase()}
+    `
+
+    const result = await pg.query<Registry.DbEntity>(query)
+    return result.rows[0] || null
   }
 
   return {
@@ -166,6 +270,10 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
     getRegistriesByPointers,
     getRegistryById,
     getRelatedRegistries,
-    deleteRegistries
+    deleteRegistries,
+    getBatchOfDeprecatedRegistriesOlderThan,
+    insertHistoricalRegistry,
+    getSortedHistoricalRegistriesByOwner,
+    getHistoricalRegistryById
   }
 }

@@ -9,6 +9,10 @@ export function createDbMockComponent(): DbComponent {
         getRelatedRegistries: jest.fn(),
         deleteRegistries: jest.fn(),
         getSortedRegistriesByOwner: jest.fn(),
-        updateRegistriesStatus: jest.fn()
+        updateRegistriesStatus: jest.fn(),
+        getBatchOfDeprecatedRegistriesOlderThan: jest.fn(),
+        insertHistoricalRegistry: jest.fn(),
+        getHistoricalRegistryById: jest.fn(),
+        getSortedHistoricalRegistriesByOwner: jest.fn()
     }
 }

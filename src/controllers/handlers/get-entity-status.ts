@@ -40,7 +40,7 @@ export async function getEntityStatusHandler(
   const entityId: string | undefined = params.id
   const userAddress: EthAddress = verification!.auth
 
-  const entity = await db.getRegistryById(entityId)
+  const entity = (await db.getRegistryById(entityId)) || (await db.getHistoricalRegistryById(entityId))
 
   if (entity && isOwnedBy(entity, userAddress)) {
     const entityStatus = parseRegistryStatus(entity)
@@ -75,10 +75,14 @@ export async function getEntitiesStatusHandler(
   const userAddress: EthAddress = verification!.auth
 
   const entities = (await db.getSortedRegistriesByOwner(userAddress)) || []
-  const response = await Promise.all(entities.map((entity) => parseRegistryStatus(entity)))
+  const parsedEntitiesStatuses = await Promise.all(entities.map((entity) => parseRegistryStatus(entity)))
+  const historicalEntities = (await db.getSortedHistoricalRegistriesByOwner(userAddress)) || []
+  const parsedHistoricalEntitiesStatuses = await Promise.all(
+    historicalEntities.map((historicalEntity) => parseRegistryStatus(historicalEntity))
+  )
 
   return {
-    body: JSON.stringify(response),
+    body: JSON.stringify([...parsedEntitiesStatuses, ...parsedHistoricalEntitiesStatuses]),
     headers: {
       'Content-Type': 'application/json'
     }

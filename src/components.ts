@@ -19,6 +19,7 @@ import { createMessagesConsumerComponent } from './logic/message-consumer'
 import path from 'path'
 import { createEntityStatusFetcherComponent } from './logic/entity-status-fetcher'
 import { createRegistryOrchestratorComponent } from './logic/registry-orchestrator'
+import { createWorkerManagerComponent } from './logic/workers/worker-manager'
 
 // Initialize all the components of the app
 export async function initComponents(): Promise<AppComponents> {
@@ -87,6 +88,7 @@ export async function initComponents(): Promise<AppComponents> {
     db
   })
   const messageConsumer = createMessagesConsumerComponent({ logs, queue, messageProcessor, metrics })
+  const workerManager = createWorkerManagerComponent({ db, logs })
 
   return {
     config,
@@ -102,6 +104,7 @@ export async function initComponents(): Promise<AppComponents> {
     catalyst,
     messageConsumer,
     registryOrchestrator,
-    entityStatusFetcher
+    entityStatusFetcher,
+    workerManager
   }
 }

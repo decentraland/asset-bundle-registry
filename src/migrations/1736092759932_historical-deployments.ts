@@ -4,7 +4,7 @@ import { MigrationBuilder, ColumnDefinitions } from 'node-pg-migrate'
 export const shorthands: ColumnDefinitions | undefined = undefined
 
 export async function up(pgm: MigrationBuilder): Promise<void> {
-  pgm.createTable('registries', {
+  pgm.createTable('historical_registries', {
     id: { type: 'varchar(255)', notNull: true, primaryKey: true },
     type: { type: 'varchar(255)', notNull: true },
     timestamp: { type: 'bigint', notNull: true },
@@ -13,13 +13,16 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     metadata: { type: 'jsonb' },
     status: { type: 'varchar(255)', notNull: true },
     bundles: { type: 'jsonb', notNull: true },
-    deployer: { type: 'varchar(255)', notNull: true }
+    deployer: { type: 'varchar(255)', notNull: true },
+    migrated_at: { type: 'bigint', notNull: true }
   })
 
-  pgm.createIndex('registries', 'pointers', { method: 'gin' })
+  pgm.createIndex('historical_registries', 'deployer')
+  pgm.createIndex('historical_registries', 'pointers', { method: 'gin' })
 }
 
 export async function down(pgm: MigrationBuilder): Promise<void> {
-  pgm.dropIndex('registries', 'pointers', { ifExists: true })
-  pgm.dropTable('registries', { ifExists: true })
+  pgm.dropIndex('historical_registries', 'pointers', { ifExists: true })
+  pgm.dropIndex('historical_registries', 'deployer', { ifExists: true })
+  pgm.dropTable('historical_registries', { ifExists: true })
 }
