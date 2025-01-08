@@ -31,11 +31,7 @@ export function createWorkerManagerComponent(components: Pick<AppComponents, 'db
 
   async function databasePurgerWorker(): Promise<void> {
     return new Promise((resolve, reject) => {
-      const worker = new Worker(databasePurgerWorkerPath, {
-        workerData: {
-          components
-        }
-      })
+      const worker = new Worker(databasePurgerWorkerPath)
 
       worker.on('message', (msg) => {
         logger.info(`Worker message: ${msg}`)
