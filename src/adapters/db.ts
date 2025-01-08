@@ -167,7 +167,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
     failedIds: Set<string>,
     limit: number = 100
   ): Promise<{ registries: Registry.DbEntity[] }> {
-    const baseQuery = SQL`
+    let baseQuery = SQL`
       SELECT 
         id, type, timestamp, deployer, pointers, content, metadata, status, bundles
       FROM 
@@ -178,10 +178,15 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
         AND status != ${Registry.Status.FALLBACK}::text
     `
 
-    const filteredQuery = failedIds.size > 0 ? SQL`${baseQuery} AND id NOT IN (${Array.from(failedIds)})` : baseQuery
+    if (failedIds.size) {
+      const parsedIds = Array.from(failedIds)
+        .map((id) => `'${id}'`)
+        .join(',')
+      baseQuery = SQL`${baseQuery} AND id NOT IN {${parsedIds}}`
+    }
 
     const query: SQLStatement = SQL`
-      ${filteredQuery}
+      ${baseQuery}
       ORDER BY 
         timestamp DESC
       LIMIT ${limit}
