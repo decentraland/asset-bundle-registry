@@ -4,7 +4,7 @@ import { IBaseComponent } from '@well-known-components/interfaces'
 
 import { AppComponents } from '../../types'
 
-const databasePurgerWorkerPath = path.resolve(__dirname, './db-active-entities-purger.js')
+const databasePurgerWorkerPath = path.resolve(__dirname, './obsolete-registries-purger.js')
 
 function getTimeUntilMidnight(): number {
   const now = new Date()
@@ -60,24 +60,22 @@ export function createWorkerManagerComponent(components: Pick<AppComponents, 'db
     const timeUntilMidnight = getTimeUntilMidnight()
     logger.info(`Time until midnight: ${timeUntilMidnight / 1000}s`)
 
-    await scheduleDailyWorker(databasePurgerWorker)
-
     // first run at midnight
-    // const midnightTimeout = setTimeout(async () => {
-    //   await scheduleDailyWorker(databasePurgerWorker)
+    const midnightTimeout = setTimeout(async () => {
+      await scheduleDailyWorker(databasePurgerWorker)
 
-    //   // then, every 24hs
-    //   const dailyInterval = setInterval(
-    //     async () => {
-    //       await scheduleDailyWorker(databasePurgerWorker)
-    //     },
-    //     24 * 60 * 60 * 1000
-    //   )
+      // then, every 24hs
+      const dailyInterval = setInterval(
+        async () => {
+          await scheduleDailyWorker(databasePurgerWorker)
+        },
+        24 * 60 * 60 * 1000
+      )
 
-    //   scheduledJobs.add(dailyInterval)
-    // }, timeUntilMidnight)
+      scheduledJobs.add(dailyInterval)
+    }, timeUntilMidnight)
 
-    // scheduledJobs.add(midnightTimeout)
+    scheduledJobs.add(midnightTimeout)
   }
 
   async function stop(): Promise<void> {

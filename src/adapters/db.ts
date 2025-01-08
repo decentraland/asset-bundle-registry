@@ -167,7 +167,11 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
     failedIds: Set<string>,
     limit: number = 100
   ): Promise<{ registries: Registry.DbEntity[] }> {
-    let baseQuery = SQL`
+    const parsedIds = Array.from(failedIds)
+      .map((id) => `'${id}'`)
+      .join(',')
+
+    const baseQuery = SQL`
       SELECT 
         id, type, timestamp, deployer, pointers, content, metadata, status, bundles
       FROM 
@@ -176,23 +180,13 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
         timestamp < ${dateInMilliseconds}
         AND status != ${Registry.Status.COMPLETE}::text
         AND status != ${Registry.Status.FALLBACK}::text
-    `
-
-    if (failedIds.size) {
-      const parsedIds = Array.from(failedIds)
-        .map((id) => `'${id}'`)
-        .join(',')
-      baseQuery = SQL`${baseQuery} AND id NOT IN {${parsedIds}}`
-    }
-
-    const query: SQLStatement = SQL`
-      ${baseQuery}
+        AND id NOT IN (${parsedIds})
       ORDER BY 
         timestamp DESC
       LIMIT ${limit}
     `
 
-    const result = await pg.query<Registry.DbEntity>(query)
+    const result = await pg.query<Registry.DbEntity>(baseQuery)
 
     return {
       registries: result.rows
@@ -201,7 +195,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
 
   async function insertHistoricalRegistry(registry: Registry.DbEntity): Promise<Registry.DbEntity> {
     const query: SQLStatement = SQL`
-        INSERT INTO registries (
+        INSERT INTO historical_registries (
           id, type, timestamp, deployer, pointers, content, metadata, status, bundles, migrated_at
         )
         VALUES (
