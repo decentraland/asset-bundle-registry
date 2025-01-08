@@ -30,7 +30,7 @@ export const metricDeclarations = {
     type: IMetricsComponent.CounterType
   },
   registries_served_count: {
-    help: 'Count of registries served',
+    help: 'Count of registries successfully served',
     type: IMetricsComponent.CounterType
   }
 }

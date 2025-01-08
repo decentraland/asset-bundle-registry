@@ -3,11 +3,14 @@ import { Registry, RegistryOrchestratorComponent } from "../../../src/types"
 import { createDbMockComponent } from "../mocks/db"
 import { createLogMockComponent } from "../mocks/logs"
 import { createRegistryOrchestratorComponent } from "../../../src/logic/registry-orchestrator"
+import { createTestMetricsComponent } from "@well-known-components/metrics"
+import { metricDeclarations } from "../../../src/metrics"
 
 describe('registry orchestrator should', () => {
     const mockDb = createDbMockComponent()
     const logs = createLogMockComponent()
-    let sut: RegistryOrchestratorComponent = createRegistryOrchestratorComponent({ db: mockDb, logs })
+    const metrics = createTestMetricsComponent(metricDeclarations)
+    let sut: RegistryOrchestratorComponent = createRegistryOrchestratorComponent({ metrics, db: mockDb, logs })
 
     const createRegistry = (
         partial: Partial<Registry.DbEntity> = {}
