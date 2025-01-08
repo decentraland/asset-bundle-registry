@@ -1,12 +1,38 @@
-import { workerData } from 'worker_threads'
-import { AppComponents } from '../../types'
-
-const { db, logs } = workerData.components as Pick<AppComponents, 'db' | 'logs'>
-const logger = logs.getLogger('active-entities-purger-worker')
+import { createDotEnvConfigComponent } from '@well-known-components/env-config-provider'
+import { createLogComponent } from '@well-known-components/logger'
+import { metricDeclarations } from '../../metrics'
+import { createMetricsComponent } from '@well-known-components/metrics'
+import { createPgComponent } from '@well-known-components/pg-component'
+import { createDbAdapter } from '../../adapters/db'
 
 const BATCH_SIZE = 100
 
-;(async () => {
+async function main() {
+  const config = await createDotEnvConfigComponent(
+    { path: ['.env.default', '.env'] },
+    {
+      LOG_LEVEL: 'ALL'
+    }
+  )
+
+  const logs = await createLogComponent({ config })
+  const metrics = await createMetricsComponent(metricDeclarations, { config })
+
+  let databaseUrl: string | undefined = await config.getString('PG_COMPONENT_PSQL_CONNECTION_STRING')
+  if (!databaseUrl) {
+    const dbUser = await config.requireString('PG_COMPONENT_PSQL_USER')
+    const dbDatabaseName = await config.requireString('PG_COMPONENT_PSQL_DATABASE')
+    const dbPort = await config.requireString('PG_COMPONENT_PSQL_PORT')
+    const dbHost = await config.requireString('PG_COMPONENT_PSQL_HOST')
+    const dbPassword = await config.requireString('PG_COMPONENT_PSQL_PASSWORD')
+    databaseUrl = `postgres://${dbUser}:${dbPassword}@${dbHost}:${dbPort}/${dbDatabaseName}`
+  }
+
+  const pg = await createPgComponent({ logs, config, metrics })
+
+  const db = createDbAdapter({ pg })
+  const logger = logs.getLogger('db-purger-worker')
+
   try {
     const from = Date.now()
     const excludedRegistryIds = new Set<string>()
@@ -56,9 +82,12 @@ const BATCH_SIZE = 100
     logger.info(`Completed processing ${processedCount} registries.`)
   } catch (error: any) {
     logger.error('Error while migrating registries', {
-      error: error?.message || 'Unknown error'
+      error: error?.message || 'Unknown error',
+      stack: error?.stack || 'Unknown stack'
     })
   }
-})()
-  .then(() => logger.info('Active entities purger completed'))
-  .catch(logger.error)
+}
+
+main().catch((error) => {
+  console.error(error)
+})
