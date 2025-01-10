@@ -20,6 +20,8 @@ import path from 'path'
 import { createEntityStatusFetcherComponent } from './logic/entity-status-fetcher'
 import { createRegistryOrchestratorComponent } from './logic/registry-orchestrator'
 import { createWorkerManagerComponent } from './logic/workers/worker-manager'
+import { createRedisComponent } from './adapters/redis'
+import { createInMemoryCacheComponent } from './adapters/memory-cache'
 
 // Initialize all the components of the app
 export async function initComponents(): Promise<AppComponents> {
@@ -90,6 +92,11 @@ export async function initComponents(): Promise<AppComponents> {
   const messageConsumer = createMessagesConsumerComponent({ logs, queue, messageProcessor, metrics })
   const workerManager = createWorkerManagerComponent({ metrics, logs })
 
+  const redisHostUrl = await config.getString('REDIS_HOST')
+  const memoryStorage = redisHostUrl
+    ? await createRedisComponent(redisHostUrl, { logs })
+    : createInMemoryCacheComponent()
+
   return {
     config,
     fetch,
@@ -105,6 +112,7 @@ export async function initComponents(): Promise<AppComponents> {
     messageConsumer,
     registryOrchestrator,
     entityStatusFetcher,
-    workerManager
+    workerManager,
+    memoryStorage
   }
 }

@@ -14,7 +14,8 @@ import {
   MessageProcessorComponent,
   QueueComponent,
   EntityStatusFetcher,
-  RegistryOrchestratorComponent
+  RegistryOrchestratorComponent,
+  ICacheStorage
 } from './service'
 import { metricDeclarations } from '../metrics'
 
@@ -43,6 +44,7 @@ export type AppComponents = BaseComponents & {
   messageProcessor: MessageProcessorComponent
   messageConsumer: MessageConsumerComponent
   workerManager: IBaseComponent
+  memoryStorage: ICacheStorage
 }
 
 // components used in tests
