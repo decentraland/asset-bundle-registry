@@ -40,7 +40,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
       FROM 
         registries
       WHERE 
-        id = ${id.toLocaleLowerCase()}
+        id = ${id}
     `
 
     const result = await pg.query<Registry.DbEntity>(query)
@@ -53,7 +53,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
           id, type, timestamp, deployer, pointers, content, metadata, status, bundles
         )
         VALUES (
-          ${registry.id.toLocaleLowerCase()},
+          ${registry.id},
           ${registry.type},
           ${registry.timestamp},
           ${registry.deployer.toLocaleLowerCase()},
@@ -124,7 +124,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
           ARRAY[${bundleType}::text, ${platform}::text], 
           to_jsonb(${status}::text)
         )
-      WHERE registries.id = ${id.toLowerCase()}
+      WHERE registries.id = ${id}
       RETURNING *
     `
 
@@ -198,7 +198,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
           id, type, timestamp, deployer, pointers, content, metadata, status, bundles, migrated_at
         )
         VALUES (
-          ${registry.id.toLocaleLowerCase()},
+          ${registry.id},
           ${registry.type},
           ${registry.timestamp},
           ${registry.deployer.toLocaleLowerCase()},
@@ -255,7 +255,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
       FROM 
         historical_registries
       WHERE 
-        id = ${id.toLocaleLowerCase()}
+        id = ${id}
     `
 
     const result = await pg.query<Registry.DbEntity>(query)
@@ -274,7 +274,6 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
     getBatchOfDeprecatedRegistriesOlderThan,
     insertHistoricalRegistry,
     getSortedHistoricalRegistriesByOwner,
-    getHistoricalRegistryById,
-    markRegistriesAsOutdated
+    getHistoricalRegistryById
   }
 }

@@ -29,23 +29,6 @@ async function withRetry<T>(
   throw new Error('Should never reach this point')
 }
 
-async function processPointers(components: AppComponents, pointers: string[]): Promise<string[]> {
-  const logs = components.logs.getLogger('populate-db')
-  const missingPointers: string[] = []
-  const batches = splitPointersInBatchOfN(pointers, 1000)
-
-  for (const batch of batches) {
-    logs.info(`Processing batch of ${batch.length} pointers`)
-    const scenesAlreadyStored = await components.db.getRegistriesByPointers(batch)
-    const pointersToStore = batch.filter(
-      (pointer) => !scenesAlreadyStored.some((scene) => scene.pointers.includes(pointer))
-    )
-    missingPointers.push(...pointersToStore)
-  }
-
-  return missingPointers
-}
-
 async function processEntities(components: AppComponents, missingPointers: string[]): Promise<any> {
   const logs = components.logs.getLogger('populate-db')
   const batches = splitPointersInBatchOfN(missingPointers, 1000)
@@ -95,10 +78,10 @@ async function main() {
   logs.info('Populating database with initial data')
 
   const worldManifest = await fetchWorldManifest(components)
-  const missingPointers = await processPointers(components, worldManifest.occupied)
+  const pointers = worldManifest.occupied
 
-  logs.info(`Found ${missingPointers.length} missing pointers`)
-  const { entityIds, pointersWithoutEntities } = await processEntities(components, missingPointers)
+  logs.info(`Found ${pointers.length} pointers to process`)
+  const { entityIds, pointersWithoutEntities } = await processEntities(components, pointers)
   logs.info(`Found ${entityIds.length} entities and ${pointersWithoutEntities.length} pointers without entities`)
 
   // save result in file

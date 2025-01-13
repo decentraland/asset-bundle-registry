@@ -8,7 +8,7 @@
     "build": "tsc -p tsconfig.json",
     "start": "node --trace-warnings --abort-on-uncaught-exception --unhandled-rejections=strict dist/index.js",
     "test": "jest --forceExit --detectOpenHandles --coverage --verbose --passWithNoTests",
-    "populate:db": "node --trace-warnings --abort-on-uncaught-exception --unhandled-rejections=strict dist/scripts/index.js",
+    "init:db": "node --trace-warnings --abort-on-uncaught-exception --unhandled-rejections=strict dist/scripts/index.js",
     "lint:check": "eslint '**/*.{js,ts}'",
     "lint:fix": "eslint '**/*.{js,ts}' --fix",
     "migrate": "node-pg-migrate --tsconfig ./tsconfig.json --migrations-dir ./src/migrations"

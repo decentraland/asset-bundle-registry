@@ -36,7 +36,7 @@ export async function createEntityStatusFetcherComponent({
 
   async function withRetry<T>(
     operation: () => Promise<T>,
-    maxRetries: number = 3,
+    maxRetries: number = 5,
     baseDelay: number = 1000
   ): Promise<T> {
     for (let attempt = 0; attempt < maxRetries; attempt++) {

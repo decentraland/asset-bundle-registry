@@ -88,24 +88,3 @@ export async function getEntitiesStatusHandler(
     }
   }
 }
-
-export async function getEntitiesStatusHandler(
-  context: HandlerContextWithPath<'db', '/entities/status'> & DecentralandSignatureContext<any>
-) {
-  const {
-    components: { db },
-    verification
-  } = context
-
-  const userAddress: EthAddress = verification!.auth
-
-  const entities = (await db.getSortedRegistriesByOwner(userAddress)) || []
-  const response = await Promise.all(entities.map((entity) => parseRegistryStatus(entity)))
-
-  return {
-    body: JSON.stringify(response),
-    headers: {
-      'Content-Type': 'application/json'
-    }
-  }
-}

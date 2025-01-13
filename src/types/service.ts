@@ -25,7 +25,6 @@ export type DbComponent = {
   insertHistoricalRegistry(registry: Registry.DbEntity): Promise<Registry.DbEntity>
   getSortedHistoricalRegistriesByOwner(owner: EthAddress): Promise<Registry.DbEntity[]>
   getHistoricalRegistryById(id: string): Promise<Registry.DbEntity | null>
-  markRegistriesAsOutdated(entityIds: string[]): Promise<void>
 }
 
 export type QueueMessage = any
