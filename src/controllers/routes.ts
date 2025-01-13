@@ -3,7 +3,7 @@ import { GlobalContext } from '../types'
 import { getStatusHandler } from './handlers/get-service-status'
 import { getActiveEntityHandler } from './handlers/get-active-entities'
 import { wellKnownComponents } from '@dcl/platform-crypto-middleware'
-import { getEntityStatusHandler, getEntitiesStatusHandler } from './handlers/get-entity-status'
+import { getEntityStatusHandler, getEntitiesStatusHandler, getBundleStatusHandler } from './handlers/get-entity-status'
 import { bearerTokenMiddleware, errorHandler } from '@dcl/platform-server-commons'
 import { createRegistryHandler } from './handlers/post-registry'
 
@@ -24,6 +24,7 @@ export async function setupRouter(globalContext: GlobalContext): Promise<Router<
   router.post('/entities/active', getActiveEntityHandler)
   router.get('/entities/status/:id', signedFetchMiddleware, getEntityStatusHandler)
   router.get('/entities/status', signedFetchMiddleware, getEntitiesStatusHandler)
+  router.get('/bundles/status/:id', getBundleStatusHandler)
 
   const adminToken = await globalContext.components.config.getString('API_ADMIN_TOKEN')
 

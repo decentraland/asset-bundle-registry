@@ -34,6 +34,8 @@ export type BaseComponents = {
   catalyst: CatalystComponent
   entityStatusFetcher: EntityStatusFetcher
   registryOrchestrator: RegistryOrchestratorComponent
+  memoryStorage: ICacheStorage
+
 }
 
 // components used in runtime
@@ -44,7 +46,6 @@ export type AppComponents = BaseComponents & {
   messageProcessor: MessageProcessorComponent
   messageConsumer: MessageConsumerComponent
   workerManager: IBaseComponent
-  memoryStorage: ICacheStorage
 }
 
 // components used in tests

@@ -88,3 +88,34 @@ export async function getEntitiesStatusHandler(
     }
   }
 }
+
+export async function getBundleStatusHandler(context: HandlerContextWithPath<'memoryStorage', '/bundles/status/:id'>) {
+  const {
+    params,
+    components: { memoryStorage }
+  } = context
+
+  const entityId: string | undefined = params.id
+
+  const status = await memoryStorage.get(entityId)
+
+  if (status) {
+    return {
+      body: JSON.stringify(status),
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    }
+  }
+
+  return {
+    status: 404,
+    body: {
+      ok: false,
+      message: 'No status found for the provided id'
+    },
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  }
+}
