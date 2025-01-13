@@ -40,7 +40,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
       FROM 
         registries
       WHERE 
-        id = ${id}
+        LOWER(id) = ${id.toLocaleLowerCase()}
     `
 
     const result = await pg.query<Registry.DbEntity>(query)
@@ -89,10 +89,12 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
   }
 
   async function updateRegistriesStatus(ids: string[], status: Registry.Status): Promise<Registry.DbEntity[]> {
+    const parsedIds = ids.map((id) => id.toLocaleLowerCase())
+
     const query: SQLStatement = SQL`
         UPDATE registries
         SET status = ${status}
-        WHERE id = ANY(${ids}::varchar(255)[])
+        WHERE LOWER(id) = ANY(${parsedIds}::varchar(255)[])
         RETURNING 
           id,
           type,
@@ -124,7 +126,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
           ARRAY[${bundleType}::text, ${platform}::text], 
           to_jsonb(${status}::text)
         )
-      WHERE registries.id = ${id}
+      WHERE LOWER(registries.id) = ${id.toLocaleLowerCase()}
       RETURNING *
     `
 
@@ -141,7 +143,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
       FROM 
         registries
       WHERE 
-        pointers && ${registry.pointers}::varchar(255)[] AND id != ${registry.id} AND status != ${Registry.Status.OBSOLETE}
+        pointers && ${registry.pointers}::varchar(255)[] AND LOWER(id) != ${registry.id.toLocaleLowerCase()} AND status != ${Registry.Status.OBSOLETE}
       ORDER BY timestamp DESC
     `
 
@@ -153,10 +155,10 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
     const MAX_BATCH_SIZE = 1000
 
     for (let i = 0; i < entityIds.length; i += MAX_BATCH_SIZE) {
-      const chunk = entityIds.slice(i, i + MAX_BATCH_SIZE)
+      const parsedIdsChunk = entityIds.slice(i, i + MAX_BATCH_SIZE).map((id) => id.toLocaleLowerCase())
       const query: SQLStatement = SQL`
         DELETE FROM registries
-        WHERE id = ANY(${chunk}::varchar(255)[])
+        WHERE LOWER(id) = ANY(${parsedIdsChunk}::varchar(255)[])
       `
       await pg.query(query)
     }
@@ -168,7 +170,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
     limit: number = 100
   ): Promise<{ registries: Registry.DbEntity[] }> {
     const parsedIds = Array.from(failedIds)
-      .map((id) => `'${id}'`)
+      .map((id) => `'${id.toLocaleLowerCase()}'`)
       .join(',')
 
     const baseQuery = SQL`
@@ -179,7 +181,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
       WHERE 
         timestamp < ${dateInMilliseconds}
         AND status NOT IN (${Registry.Status.COMPLETE}::text, ${Registry.Status.FALLBACK}::text)
-        AND id NOT IN (${parsedIds})
+        AND LOWER(id) NOT IN (${parsedIds})
       ORDER BY 
         timestamp DESC
       LIMIT ${limit}
@@ -255,7 +257,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
       FROM 
         historical_registries
       WHERE 
-        id = ${id}
+        LOWER(id) = ${id.toLocaleLowerCase()}
     `
 
     const result = await pg.query<Registry.DbEntity>(query)
