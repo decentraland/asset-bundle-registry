@@ -112,9 +112,7 @@ export const createStatusProcessor = async ({
       DeploymentToSqs.validate(event)
       AssetBundleConversionManuallyQueuedEvent.validate(event)
 
-      return (
-        !DeploymentToSqs.validate.errors?.length && !AssetBundleConversionManuallyQueuedEvent.validate.errors?.length
-      )
+      return !DeploymentToSqs.validate.errors || !AssetBundleConversionManuallyQueuedEvent.validate.errors
     },
     name: 'Status Processor'
   }
