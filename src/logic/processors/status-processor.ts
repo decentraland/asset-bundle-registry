@@ -15,10 +15,12 @@ type AssetBundleAdminStatusResponse = {
 }
 
 export const createStatusProcessor = async ({
+  logs,
   config,
   fetch,
   memoryStorage
-}: Pick<AppComponents, 'config' | 'fetch' | 'memoryStorage'>): Promise<EventHandlerComponent> => {
+}: Pick<AppComponents, 'logs' | 'config' | 'fetch' | 'memoryStorage'>): Promise<EventHandlerComponent> => {
+  const logger = logs.getLogger('status-processor')
   const assetBundleAdminUrl = await config.requireString('ASSET_BUNDLE_ADMIN_URL')
 
   async function getAmountOfMessagesInABQueues() {
@@ -100,6 +102,7 @@ export const createStatusProcessor = async ({
 
       statusToCache.when = Date.now()
       await memoryStorage.set(entityId, statusToCache)
+      logger.debug('Status cached', { entityId, statusToCache })
 
       return { ok: true }
     },

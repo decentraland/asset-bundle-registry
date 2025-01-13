@@ -20,20 +20,20 @@ export async function createMessageProcessorComponent({
   const processors: EventHandlerComponent[] = [
     createDeploymentProcessor({ catalyst, logs, registryOrchestrator }),
     createTexturesProcessor({ db, logs, catalyst, entityStatusFetcher, registryOrchestrator }),
-    await createStatusProcessor({ config, fetch, memoryStorage })
+    await createStatusProcessor({ logs, config, fetch, memoryStorage })
   ]
 
   async function process(message: any) {
     log.debug('Processing', { message })
 
-    const handler: EventHandlerComponent | undefined = processors.find((p) => p.canProcess(message))
+    const handlers: EventHandlerComponent[] | undefined = processors.filter((p) => p.canProcess(message))
 
-    if (!handler) {
+    if (!handlers) {
       log.warn('No handler found for the message', { message })
       return
     }
 
-    await handler.process(message)
+    await Promise.all(handlers.map((handler) => handler.process(message)))
   }
 
   return { process }
