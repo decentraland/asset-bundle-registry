@@ -1,6 +1,5 @@
 import { AssetBundleConversionFinishedEvent } from '@dcl/schemas'
 import { AppComponents, EventHandlerComponent, ProcessorResult, Registry } from '../../types'
-import { platform } from 'os'
 
 export const createTexturesProcessor = ({
   logs,
@@ -68,7 +67,7 @@ export const createTexturesProcessor = ({
       logger.info(`Bundle stored`, { entityId: event.metadata.entityId, bundles: JSON.stringify(registry.bundles) })
 
       await registryOrchestrator.persistAndRotateStates(registry)
-      await memoryStorage.removeDeployment(`${platform}`, event.metadata.entityId)
+      await memoryStorage.removeDeployment(event.metadata.platform, event.metadata.entityId)
 
       return { ok: true }
     },

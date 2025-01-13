@@ -11,8 +11,7 @@ describe('registry orchestrator should', () => {
     const mockDb = createDbMockComponent()
     const logs = createLogMockComponent()
     const metrics = createTestMetricsComponent(metricDeclarations)
-    const memoryStorage = createInMemoryCacheComponent()
-    let sut: RegistryOrchestratorComponent = createRegistryOrchestratorComponent({ metrics, db: mockDb, logs, memoryStorage })
+    let sut: RegistryOrchestratorComponent = createRegistryOrchestratorComponent({ metrics, db: mockDb, logs })
 
     const createRegistry = (
         partial: Partial<Registry.DbEntity> = {}
