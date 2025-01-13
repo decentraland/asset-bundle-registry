@@ -9,8 +9,9 @@ type RelatedEntities = {
 export function createRegistryOrchestratorComponent({
   db,
   logs,
-  metrics
-}: Pick<AppComponents, 'db' | 'logs' | 'metrics'>): RegistryOrchestratorComponent {
+  metrics,
+  memoryStorage
+}: Pick<AppComponents, 'db' | 'logs' | 'metrics' | 'memoryStorage'>): RegistryOrchestratorComponent {
   const logger = logs.getLogger('registry-orchestrator')
 
   function categorizeRelatedEntities(
@@ -129,7 +130,10 @@ export function createRegistryOrchestratorComponent({
       )
     }
 
-    registryStatus === Registry.Status.COMPLETE && metrics.increment('registries_ready_count')
+    if (registryStatus === Registry.Status.COMPLETE) {
+      metrics.increment('registries_ready_count')
+      await memoryStorage.purge(registry.id)
+    }
 
     return insertedRegistry
   }

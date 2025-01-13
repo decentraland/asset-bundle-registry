@@ -86,7 +86,7 @@ export async function initComponents(): Promise<AppComponents> {
     : createInMemoryCacheComponent()
 
   const catalyst = await createCatalystAdapter({ logs, fetch, config })
-  const registryOrchestrator = createRegistryOrchestratorComponent({ logs, db, metrics })
+  const registryOrchestrator = createRegistryOrchestratorComponent({ logs, db, metrics, memoryStorage })
   const entityStatusFetcher = await createEntityStatusFetcherComponent({ fetch, logs, config })
   const messageProcessor = await createMessageProcessorComponent({
     catalyst,
