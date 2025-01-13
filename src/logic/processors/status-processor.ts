@@ -80,6 +80,8 @@ export const createStatusProcessor = async ({
 
       const { entityId, isPriority, platform } = getEventProperties(event)
 
+      logger.info('Processing status', { entityId, platform })
+
       const statusToCache = (await memoryStorage.get(entityId)) || {
         windowsPendingJobs: undefined,
         windowsPriorityPendingJobs: undefined,
