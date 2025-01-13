@@ -180,7 +180,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
         registries
       WHERE 
         timestamp < ${dateInMilliseconds}
-        AND status NOT IN (${Registry.Status.COMPLETE}::text, ${Registry.Status.FALLBACK}::text)
+        AND status NOT IN (${Registry.Status.COMPLETE}::text, ${Registry.Status.FALLBACK}::text, ${Registry.Status.PENDING}::text)
         AND LOWER(id) NOT IN (${parsedIds})
       ORDER BY 
         timestamp DESC
