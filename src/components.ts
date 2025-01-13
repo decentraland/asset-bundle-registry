@@ -79,6 +79,12 @@ export async function initComponents(): Promise<AppComponents> {
 
   const sqsEndpoint = await config.getString('AWS_SQS_ENDPOINT')
   const queue = sqsEndpoint ? await createSqsAdapter(sqsEndpoint) : createMemoryQueueAdapter()
+
+  const redisHostUrl = await config.getString('REDIS_HOST')
+  const memoryStorage = redisHostUrl
+    ? await createRedisComponent(redisHostUrl, { logs })
+    : createInMemoryCacheComponent()
+
   const catalyst = await createCatalystAdapter({ logs, fetch, config })
   const registryOrchestrator = createRegistryOrchestratorComponent({ logs, db, metrics })
   const entityStatusFetcher = await createEntityStatusFetcherComponent({ fetch, logs, config })
@@ -86,16 +92,14 @@ export async function initComponents(): Promise<AppComponents> {
     catalyst,
     entityStatusFetcher,
     registryOrchestrator,
+    db,
     logs,
-    db
+    config,
+    fetch,
+    memoryStorage
   })
   const messageConsumer = createMessagesConsumerComponent({ logs, queue, messageProcessor, metrics })
   const workerManager = createWorkerManagerComponent({ metrics, logs })
-
-  const redisHostUrl = await config.getString('REDIS_HOST')
-  const memoryStorage = redisHostUrl
-    ? await createRedisComponent(redisHostUrl, { logs })
-    : createInMemoryCacheComponent()
 
   return {
     config,

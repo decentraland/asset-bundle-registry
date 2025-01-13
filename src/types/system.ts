@@ -35,7 +35,6 @@ export type BaseComponents = {
   entityStatusFetcher: EntityStatusFetcher
   registryOrchestrator: RegistryOrchestratorComponent
   memoryStorage: ICacheStorage
-
 }
 
 // components used in runtime
