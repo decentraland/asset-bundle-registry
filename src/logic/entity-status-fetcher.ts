@@ -31,12 +31,13 @@ export async function createEntityStatusFetcherComponent({
   config
 }: Pick<AppComponents, 'fetch' | 'logs' | 'config'>): Promise<EntityStatusFetcher> {
   const ASSET_BUNDLE_CDN_URL = (await config.requireString('ASSET_BUNDLE_CDN_URL')).replace(/\/?$/, '/')
+  const MAX_RETRIES = (await config.getNumber('MAX_RETRIES')) || 5
   const logger = logs.getLogger('entity-status-fetcher')
   const LEVEL_OF_DETAILS = ['0', '1', '2']
 
   async function withRetry<T>(
     operation: () => Promise<T>,
-    maxRetries: number = 3,
+    maxRetries: number = 5,
     baseDelay: number = 1000
   ): Promise<T> {
     for (let attempt = 0; attempt < maxRetries; attempt++) {
@@ -92,7 +93,7 @@ export async function createEntityStatusFetcherComponent({
       } else {
         return Registry.SimplifiedStatus.FAILED
       }
-    })
+    }, MAX_RETRIES)
   }
 
   async function fetchLODsStatus(entityId: string, platform: string): Promise<Registry.SimplifiedStatus> {
@@ -106,7 +107,7 @@ export async function createEntityStatusFetcherComponent({
       const allResponses = await Promise.all(allUrls.map((url) => fetch.fetch(url, { method: 'HEAD' })))
       const allExist = allResponses.every((response) => response.ok)
       return allExist ? Registry.SimplifiedStatus.COMPLETE : Registry.SimplifiedStatus.FAILED
-    })
+    }, MAX_RETRIES)
   }
 
   return {

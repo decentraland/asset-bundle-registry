@@ -8,6 +8,7 @@ describe('entity status fetcher', () => {
     const logs = createLogMockComponent()
     const config = createConfigMockComponent()
     config.requireString = jest.fn().mockResolvedValue(ASSET_BUNDLE_CDN_URL)
+    config.getNumber = jest.fn().mockResolvedValue(2)
     const mockFetch = {
         fetch: jest.fn()
     }
@@ -147,7 +148,6 @@ describe('entity status fetcher', () => {
             const manifest = createManifest(ManifestStatusCode.SUCCESS)
             mockFetch.fetch
                 .mockRejectedValueOnce(new Error('ECONNRESET'))
-                .mockRejectedValueOnce(new Error('ECONNRESET'))
                 .mockResolvedValueOnce({
                     ok: true,
                     json: jest.fn().mockResolvedValue(manifest)
@@ -155,7 +155,7 @@ describe('entity status fetcher', () => {
     
             const status = await sut.fetchBundleStatus(ENTITY_ID, 'webgl')
             expect(status).toBe(Registry.SimplifiedStatus.COMPLETE)
-            expect(mockFetch.fetch).toHaveBeenCalledTimes(3)
+            expect(mockFetch.fetch).toHaveBeenCalledTimes(2)
         })
     
         it('should fail after max retries', async () => {
@@ -164,7 +164,7 @@ describe('entity status fetcher', () => {
             mockFetch.fetch.mockRejectedValue(new Error('ECONNRESET'))
     
             await expect(sut.fetchBundleStatus(ENTITY_ID, 'webgl')).rejects.toThrow('ECONNRESET')
-            expect(mockFetch.fetch).toHaveBeenCalledTimes(3)
+            expect(mockFetch.fetch).toHaveBeenCalledTimes(2)
         })
 
         it('should use platform suffix for non-webgl platforms', async () => {
