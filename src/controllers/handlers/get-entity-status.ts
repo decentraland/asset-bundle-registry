@@ -89,30 +89,21 @@ export async function getEntitiesStatusHandler(
   }
 }
 
-export async function getBundleStatusHandler(context: HandlerContextWithPath<'memoryStorage', '/bundles/status/:id'>) {
+export async function getQueuesStatuses(context: HandlerContextWithPath<'memoryStorage', '/queues/status'>) {
   const {
-    params,
     components: { memoryStorage }
   } = context
 
-  const entityId: string | undefined = params.id
-
-  const status = await memoryStorage.get(entityId)
-
-  if (status) {
-    return {
-      body: JSON.stringify(status),
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    }
-  }
+  const windowsPendingJobs = await memoryStorage.getDeployments('windows')
+  const macPendingJobs = await memoryStorage.getDeployments('mac')
+  const webglPendingJobs = await memoryStorage.getDeployments('webgl')
 
   return {
-    status: 404,
+    status: 200,
     body: {
-      ok: false,
-      message: 'No status found for the provided id'
+      windowsPendingJobs,
+      macPendingJobs,
+      webglPendingJobs
     },
     headers: {
       'Content-Type': 'application/json'

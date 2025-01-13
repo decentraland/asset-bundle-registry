@@ -68,7 +68,7 @@ export type RegistryOrchestratorComponent = {
 }
 
 export type ICacheStorage = IBaseComponent & {
-  get(key: string): Promise<any>
-  set(key: string, value: any): Promise<void>
-  purge(key: string): Promise<void>
+  getDeployments(platform: string): Promise<string[]>
+  addDeployment(platform: string, deploymentId: string): Promise<void>
+  removeDeployment(platform: string, deploymentId: string): Promise<void>
 }

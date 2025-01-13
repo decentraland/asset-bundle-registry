@@ -1,15 +1,17 @@
 import { AssetBundleConversionFinishedEvent } from '@dcl/schemas'
 import { AppComponents, EventHandlerComponent, ProcessorResult, Registry } from '../../types'
+import { platform } from 'os'
 
 export const createTexturesProcessor = ({
   logs,
   db,
   catalyst,
   entityStatusFetcher,
-  registryOrchestrator
+  registryOrchestrator,
+  memoryStorage
 }: Pick<
   AppComponents,
-  'logs' | 'db' | 'catalyst' | 'entityStatusFetcher' | 'registryOrchestrator'
+  'logs' | 'db' | 'catalyst' | 'entityStatusFetcher' | 'registryOrchestrator' | 'memoryStorage'
 >): EventHandlerComponent => {
   const logger = logs.getLogger('textures-processor')
 
@@ -66,6 +68,7 @@ export const createTexturesProcessor = ({
       logger.info(`Bundle stored`, { entityId: event.metadata.entityId, bundles: JSON.stringify(registry.bundles) })
 
       await registryOrchestrator.persistAndRotateStates(registry)
+      await memoryStorage.removeDeployment(`${platform}`, event.metadata.entityId)
 
       return { ok: true }
     },
