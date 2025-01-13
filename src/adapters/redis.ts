@@ -1,7 +1,7 @@
 import { createClient } from 'redis'
 import { AppComponents, ICacheStorage } from '../types'
 
-const TWO_HOURS_IN_SECONDS = 60 * 60 * 2
+const TWENTY_FOUR_HOURS_IN_SECONDS = 60 * 60 * 24
 
 export async function createRedisComponent(
   hostUrl: string,
@@ -57,7 +57,7 @@ export async function createRedisComponent(
     try {
       const serializedValue = JSON.stringify(value)
       await client.set(key, serializedValue, {
-        EX: TWO_HOURS_IN_SECONDS // expiration time (TTL)
+        EX: TWENTY_FOUR_HOURS_IN_SECONDS // expiration time (TTL)
       })
       logger.debug(`Successfully set key "${key}"`)
     } catch (err: any) {

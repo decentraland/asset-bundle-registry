@@ -1,5 +1,6 @@
 import { AppComponents, EventHandlerComponent, MessageProcessorComponent } from '../types'
 import { createDeploymentProcessor } from './processors/deployment-processor'
+import { createStatusProcessor } from './processors/status-processor'
 import { createTexturesProcessor } from './processors/textures-processor'
 
 export async function createMessageProcessorComponent({
@@ -7,15 +8,19 @@ export async function createMessageProcessorComponent({
   entityStatusFetcher,
   registryOrchestrator,
   db,
-  logs
+  logs,
+  config,
+  fetch,
+  memoryStorage
 }: Pick<
   AppComponents,
-  'catalyst' | 'entityStatusFetcher' | 'registryOrchestrator' | 'db' | 'logs'
+  'catalyst' | 'entityStatusFetcher' | 'registryOrchestrator' | 'db' | 'logs' | 'config' | 'fetch' | 'memoryStorage'
 >): Promise<MessageProcessorComponent> {
   const log = logs.getLogger('message-processor')
   const processors: EventHandlerComponent[] = [
     createDeploymentProcessor({ catalyst, logs, registryOrchestrator }),
-    createTexturesProcessor({ db, logs, catalyst, entityStatusFetcher, registryOrchestrator })
+    createTexturesProcessor({ db, logs, catalyst, entityStatusFetcher, registryOrchestrator }),
+    await createStatusProcessor({ config, fetch, memoryStorage })
   ]
 
   async function process(message: any) {

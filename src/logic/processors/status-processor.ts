@@ -15,12 +15,10 @@ type AssetBundleAdminStatusResponse = {
 }
 
 export const createStatusProcessor = async ({
-  logs,
   config,
   fetch,
   memoryStorage
-}: Pick<AppComponents, 'logs' | 'config' | 'fetch' | 'memoryStorage'>): Promise<EventHandlerComponent> => {
-  const logger = logs.getLogger('status-processor')
+}: Pick<AppComponents, 'config' | 'fetch' | 'memoryStorage'>): Promise<EventHandlerComponent> => {
   const assetBundleAdminUrl = await config.requireString('ASSET_BUNDLE_ADMIN_URL')
 
   async function getAmountOfMessagesInABQueues() {
@@ -48,7 +46,7 @@ export const createStatusProcessor = async ({
     let isPriority: boolean = false
     let platform: 'webgl' | 'windows' | 'mac' | 'all' = 'all'
 
-    if (event?.type === Events.Type.ASSET_BUNDLE && event.subType === Events.SubType.AssetBundle.MANUALLY_QUEUED) {
+    if (event.type === Events.Type.ASSET_BUNDLE && event.subType === Events.SubType.AssetBundle.MANUALLY_QUEUED) {
       const manuallyQueuedEvent = event as AssetBundleConversionManuallyQueuedEvent
 
       entityId = manuallyQueuedEvent.metadata.entityId
@@ -100,6 +98,7 @@ export const createStatusProcessor = async ({
         statusToCache[`web${prefix}PendingJobs`] = amountOfMessages[`webgl${prefix}`]
       }
 
+      statusToCache.when = Date.now()
       await memoryStorage.set(entityId, statusToCache)
 
       return { ok: true }

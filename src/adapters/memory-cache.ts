@@ -15,8 +15,13 @@ export function createInMemoryCacheComponent(): ICacheStorage {
     cache.set(key, value)
   }
 
+  async function purge(key: string): Promise<void> {
+    cache.delete(key)
+  }
+
   return {
     get,
-    set
+    set,
+    purge
   }
 }
