@@ -5,12 +5,14 @@ import { createLogMockComponent } from "../mocks/logs"
 import { createRegistryOrchestratorComponent } from "../../../src/logic/registry-orchestrator"
 import { createTestMetricsComponent } from "@well-known-components/metrics"
 import { metricDeclarations } from "../../../src/metrics"
+import { createInMemoryCacheComponent } from "../../../src/adapters/memory-cache"
 
 describe('registry orchestrator should', () => {
     const mockDb = createDbMockComponent()
     const logs = createLogMockComponent()
     const metrics = createTestMetricsComponent(metricDeclarations)
-    let sut: RegistryOrchestratorComponent = createRegistryOrchestratorComponent({ metrics, db: mockDb, logs })
+    const memoryStorage = createInMemoryCacheComponent()
+    let sut: RegistryOrchestratorComponent = createRegistryOrchestratorComponent({ metrics, db: mockDb, logs, memoryStorage })
 
     const createRegistry = (
         partial: Partial<Registry.DbEntity> = {}
