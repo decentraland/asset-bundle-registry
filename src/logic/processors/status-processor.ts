@@ -41,11 +41,11 @@ export const createStatusProcessor = async ({
       logger.info('Processing status', { entityId, platform })
 
       if (platform === 'all') {
-        keys.push(`job:windows:${entityId}`)
-        keys.push(`job:mac:${entityId}`)
-        keys.push(`job:webgl:${entityId}`)
+        keys.push(`jobs:windows:${entityId}`)
+        keys.push(`jobs:mac:${entityId}`)
+        keys.push(`jobs:webgl:${entityId}`)
       } else {
-        keys.push(`job:${platform}:${entityId}`)
+        keys.push(`jobs:${platform}:${entityId}`)
       }
 
       for (const key of keys) {
