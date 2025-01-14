@@ -1,47 +1,49 @@
 import { LRUCache } from 'lru-cache'
 import { ICacheStorage } from '../types'
 
+const TWENTY_FOUR_HOURS_IN_MILLISECONDS = 1000 * 60 * 60 * 24
+
 export function createInMemoryCacheComponent(): ICacheStorage {
-  const cache = new LRUCache<string, Set<string>>({
+  const cache = new LRUCache<string, { value: any; expiresAt?: number }>({
     max: 1000,
-    ttl: 1000 * 60 * 60 * 2
+    ttl: TWENTY_FOUR_HOURS_IN_MILLISECONDS
   })
 
-  function getOrCreateSet(key: string): Set<string> {
-    let set = cache.get(key)
-    if (!set) {
-      set = new Set<string>()
-      cache.set(key, set)
-    }
-    return set
-  }
+  async function start() {}
 
-  async function addDeployment(key: string, entityId: string): Promise<void> {
-    const set = getOrCreateSet(key)
-    set.add(entityId)
-    cache.set(key, set)
-  }
+  async function stop() {}
 
-  async function getDeployments(key: string): Promise<string[]> {
-    const set = cache.get(key)
-    return set ? Array.from(set) : []
-  }
+  async function get(pattern: string): Promise<string[]> {
+    const regex = new RegExp(pattern.replace('*', '.*'))
+    const matchingKeys = [...cache.keys()].filter((key) => regex.test(key))
 
-  async function removeDeployment(key: string, entityId: string): Promise<void> {
-    const set = cache.get(key)
-    if (set) {
-      set.delete(entityId)
-      if (set.size === 0) {
-        cache.delete(key)
+    const validKeys = matchingKeys.filter((key) => {
+      const entry = cache.get(key)
+      if (entry && (!entry.expiresAt || entry.expiresAt > Date.now())) {
+        return true
       } else {
-        cache.set(key, set)
+        cache.delete(key)
+        return false
       }
-    }
+    })
+
+    return validKeys.map((key) => key.split(':').pop()!)
+  }
+
+  async function set<T>(key: string, value: T): Promise<void> {
+    const expiresAt = Date.now() + TWENTY_FOUR_HOURS_IN_MILLISECONDS
+    cache.set(key, { value, expiresAt })
+  }
+
+  async function purge(key: string): Promise<void> {
+    cache.delete(key)
   }
 
   return {
-    addDeployment,
-    getDeployments,
-    removeDeployment
+    get,
+    set,
+    purge,
+    start,
+    stop
   }
 }

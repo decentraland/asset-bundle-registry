@@ -1,6 +1,8 @@
 import { createClient } from 'redis'
 import { AppComponents, ICacheStorage } from '../types'
 
+const TWENTY_FOUR_HOURS_IN_SECONDS = 60 * 60 * 24
+
 export async function createRedisComponent(
   hostUrl: string,
   components: Pick<AppComponents, 'logs'>
@@ -38,41 +40,43 @@ export async function createRedisComponent(
     }
   }
 
-  async function getDeployments(key: string): Promise<string[]> {
+  async function get(pattern: string): Promise<string[]> {
     try {
-      const deployments = await client.sMembers(key)
-      logger.debug(`Successfully fetched deployments for "${key}`)
-      return deployments
+      const keys = await client.keys(pattern)
+      return keys.map((key) => key.split(':').pop()!)
     } catch (err: any) {
-      logger.error(`Error getting deployments for "${key}"`, err)
+      logger.error(`Error getting key "${pattern}"`, err)
       throw err
     }
   }
 
-  async function addDeployment(key: string, entityId: string): Promise<void> {
+  async function set<T>(key: string, value: T): Promise<void> {
     try {
-      await client.sAdd(key, entityId)
-      logger.debug(`Successfully added deployment "${entityId}" to "${key}"`)
+      const serializedValue = JSON.stringify(value)
+      await client.set(key, serializedValue, {
+        EX: TWENTY_FOUR_HOURS_IN_SECONDS // expiration time (TTL)
+      })
+      logger.debug(`Successfully set key "${key}"`)
     } catch (err: any) {
-      logger.error(`Error adding deployment "${entityId}" to "${key}"`, err)
+      logger.error(`Error setting key "${key}"`, err)
       throw err
     }
   }
 
-  async function removeDeployment(key: string, entityId: string): Promise<void> {
+  async function purge(key: string): Promise<void> {
     try {
-      await client.sRem(key, entityId)
-      logger.debug(`Successfully removed deployment "${entityId}" from "${key}"`)
+      await client.del(key)
+      logger.debug(`Successfully purged key "${key}"`)
     } catch (err: any) {
-      logger.error(`Error removing deployment "${entityId}" from "${key}"`, err)
+      logger.error(`Error purging key "${key}"`, err)
       throw err
     }
   }
 
   return {
-    getDeployments,
-    addDeployment,
-    removeDeployment,
+    get,
+    set,
+    purge,
     start,
     stop
   }

@@ -41,15 +41,15 @@ export const createStatusProcessor = async ({
       logger.info('Processing status', { entityId, platform })
 
       if (platform === 'all') {
-        keys.push(`windows`)
-        keys.push(`mac`)
-        keys.push(`webgl`)
+        keys.push(`job:windows:${entityId}`)
+        keys.push(`job:mac:${entityId}`)
+        keys.push(`job:webgl:${entityId}`)
       } else {
-        keys.push(`${platform}`)
+        keys.push(`job:${platform}:${entityId}`)
       }
 
       for (const key of keys) {
-        await memoryStorage.addDeployment(key, entityId)
+        await memoryStorage.set(`${key}`, Date.now())
       }
 
       return { ok: true }

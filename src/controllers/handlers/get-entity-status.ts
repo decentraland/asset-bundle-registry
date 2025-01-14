@@ -94,9 +94,9 @@ export async function getQueuesStatuses(context: HandlerContextWithPath<'memoryS
     components: { memoryStorage }
   } = context
 
-  const windowsPendingJobs = await memoryStorage.getDeployments('windows')
-  const macPendingJobs = await memoryStorage.getDeployments('mac')
-  const webglPendingJobs = await memoryStorage.getDeployments('webgl')
+  const windowsPendingJobs = await memoryStorage.get('jobs:windows:*')
+  const macPendingJobs = await memoryStorage.get('jobs:mac:*')
+  const webglPendingJobs = await memoryStorage.get('jobs:webgl:*')
 
   return {
     status: 200,
