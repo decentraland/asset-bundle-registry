@@ -24,25 +24,16 @@ export async function createMessageProcessorComponent({
   ]
 
   async function process(message: any) {
-    try {
-      log.debug('Processing', { message })
+    log.debug('Processing', { message })
 
-      const handlers: EventHandlerComponent[] | undefined = processors.filter((p) => p.canProcess(message))
+    const handlers: EventHandlerComponent[] | undefined = processors.filter((p) => p.canProcess(message))
 
-      if (!handlers) {
-        log.warn('No handler found for the message', { message })
-        return
-      }
-
-      await Promise.all(handlers.map((handler) => handler.process(message)))
-    } catch (error: any) {
-      log.error('Error processing message', {
-        error: error?.message || 'Unknown error',
-        stack: JSON.stringify(error?.stack) || 'Unknown stack'
-      })
-
-      throw error
+    if (!handlers) {
+      log.warn('No handler found for the message', { message })
+      return
     }
+
+    await Promise.all(handlers.map((handler) => handler.process(message)))
   }
 
   return { process }
