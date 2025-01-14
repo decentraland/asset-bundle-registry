@@ -65,8 +65,12 @@ export async function createRedisComponent(
 
   async function purge(key: string): Promise<void> {
     try {
-      await client.del(key)
-      logger.debug(`Successfully purged key "${key}"`)
+      // check if key exists before deleting it
+      const exists = await client.exists(key)
+      if (exists) {
+        await client.del(key)
+        logger.debug(`Successfully purged key "${key}"`)
+      }
     } catch (err: any) {
       logger.error(`Error purging key "${key}"`, err)
       throw err
