@@ -33,7 +33,18 @@ export async function createMessageProcessorComponent({
       return
     }
 
-    await Promise.all(handlers.map((handler) => handler.process(message)))
+    await Promise.all(
+      handlers.map((handler) =>
+        handler.process(message).catch((error) => {
+          log.error('Failed to process', {
+            error: error?.message || 'Unexpected processor failure',
+            stack: JSON.stringify(error?.stack)
+          })
+
+          return { ok: false, errors: [error?.message || 'Unexpected processor failure'] }
+        })
+      )
+    )
   }
 
   return { process }
