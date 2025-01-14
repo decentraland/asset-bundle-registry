@@ -4,14 +4,13 @@ import { Entity } from '@dcl/schemas'
 
 import { AppComponents, CatalystComponent } from '../types'
 import { ContentClient, createContentClient } from 'dcl-catalyst-client'
-import { withRetry } from '../utils/timer'
 
 export async function createCatalystAdapter({
   config,
   logs,
   fetch
 }: Pick<AppComponents, 'config' | 'logs' | 'fetch'>): Promise<CatalystComponent> {
-  const logger = logs.getLogger('catalyst-client')
+  const log = logs.getLogger('catalyst-client')
   const catalystLoadBalancer = await config.requireString('CATALYST_LOADBALANCER_HOST')
 
   // TODO: implement rotation
@@ -37,15 +36,10 @@ export async function createCatalystAdapter({
   }
 
   async function getEntityById(id: string, contentServerUrl?: string): Promise<Entity> {
-    return withRetry(
-      async () => {
-        const contentClient = getContentClientOrDefault(contentServerUrl)
-        logger.debug('Fetching entity by id', { id })
-        const entity = await contentClient.fetchEntityById(id)
-        return entity
-      },
-      { maxRetries: 3, logger }
-    )
+    const contentClient = getContentClientOrDefault(contentServerUrl)
+    log.debug('Fetching entity by id', { id })
+    const entity = await contentClient.fetchEntityById(id)
+    return entity
   }
 
   async function getEntityByPointers(pointers: string[]): Promise<Entity[]> {
