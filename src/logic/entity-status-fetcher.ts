@@ -1,4 +1,5 @@
 import { AppComponents, EntityStatusFetcher, Registry } from '../types'
+import { withRetry } from '../utils/timer'
 
 export enum ManifestStatusCode {
   SUCCESS = 0,
@@ -35,79 +36,61 @@ export async function createEntityStatusFetcherComponent({
   const logger = logs.getLogger('entity-status-fetcher')
   const LEVEL_OF_DETAILS = ['0', '1', '2']
 
-  async function withRetry<T>(
-    operation: () => Promise<T>,
-    maxRetries: number = 5,
-    baseDelay: number = 1000
-  ): Promise<T> {
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      try {
-        return await operation()
-      } catch (error: any) {
-        const isLastAttempt = attempt === maxRetries - 1
-        if (isLastAttempt) throw error
-
-        const delay = baseDelay * Math.pow(2, attempt)
-        logger.warn('Operation failed, retrying...', {
-          attempt: attempt + 1,
-          delay,
-          error: error?.message || 'unknown'
-        })
-        await new Promise((resolve) => setTimeout(resolve, delay))
-      }
-    }
-    throw new Error('Should never reach this point')
-  }
-
   async function fetchBundleStatus(entityId: string, platform: string): Promise<Registry.SimplifiedStatus> {
-    return withRetry(async () => {
-      const manifestName = platform !== 'webgl' ? `${entityId}_${platform}` : entityId
-      const manifestUrl = `${ASSET_BUNDLE_CDN_URL}manifest/${manifestName}.json`
+    return withRetry(
+      async () => {
+        const manifestName = platform !== 'webgl' ? `${entityId}_${platform}` : entityId
+        const manifestUrl = `${ASSET_BUNDLE_CDN_URL}manifest/${manifestName}.json`
 
-      const response = await fetch.fetch(manifestUrl)
+        const response = await fetch.fetch(manifestUrl)
 
-      if (!response.ok) {
-        if (response.status === 404) {
-          logger.warn('Manifest not found', { entityId, platform, manifestUrl })
-          return Registry.SimplifiedStatus.PENDING
-        } else {
-          logger.error('Failed to fetch bundle status', {
-            entityId,
-            platform,
-            status: response.status,
-            manifestUrl
-          })
+        if (!response.ok) {
+          if (response.status === 404) {
+            logger.warn('Manifest not found', { entityId, platform, manifestUrl })
+            return Registry.SimplifiedStatus.PENDING
+          } else {
+            logger.error('Failed to fetch bundle status', {
+              entityId,
+              platform,
+              status: response.status,
+              manifestUrl
+            })
 
-          throw new Error('Failed to fetch bundle status')
+            throw new Error('Failed to fetch bundle status')
+          }
         }
-      }
 
-      const parsedManifest: Manifest = await response.json()
+        const parsedManifest: Manifest = await response.json()
 
-      if (
-        parsedManifest.exitCode === ManifestStatusCode.SUCCESS ||
-        parsedManifest.exitCode === ManifestStatusCode.CONVERSION_ERRORS_TOLERATED ||
-        parsedManifest.exitCode === ManifestStatusCode.ALREADY_CONVERTED
-      ) {
-        return Registry.SimplifiedStatus.COMPLETE
-      } else {
-        return Registry.SimplifiedStatus.FAILED
-      }
-    }, MAX_RETRIES)
+        if (
+          parsedManifest.exitCode === ManifestStatusCode.SUCCESS ||
+          parsedManifest.exitCode === ManifestStatusCode.CONVERSION_ERRORS_TOLERATED ||
+          parsedManifest.exitCode === ManifestStatusCode.ALREADY_CONVERTED
+        ) {
+          return Registry.SimplifiedStatus.COMPLETE
+        } else {
+          return Registry.SimplifiedStatus.FAILED
+        }
+      },
+      { maxRetries: MAX_RETRIES, logger }
+    )
   }
 
   async function fetchLODsStatus(entityId: string, platform: string): Promise<Registry.SimplifiedStatus> {
-    return withRetry(async () => {
-      const lodsBaseUrl = `${ASSET_BUNDLE_CDN_URL}LOD`
-      const urlPlatformSuffix = platform === 'webgl' ? '' : `_${platform}`
-      const allUrls = LEVEL_OF_DETAILS.map(
-        (levelOfDetail: string) => `${lodsBaseUrl}/${levelOfDetail}/${entityId}_${levelOfDetail}${urlPlatformSuffix}`
-      )
+    return withRetry(
+      async () => {
+        const lodsBaseUrl = `${ASSET_BUNDLE_CDN_URL}LOD`
+        const urlPlatformSuffix = platform === 'webgl' ? '' : `_${platform}`
+        const allUrls = LEVEL_OF_DETAILS.map(
+          (levelOfDetail: string) => `${lodsBaseUrl}/${levelOfDetail}/${entityId}_${levelOfDetail}${urlPlatformSuffix}`
+        )
 
-      const allResponses = await Promise.all(allUrls.map((url) => fetch.fetch(url, { method: 'HEAD' })))
-      const allExist = allResponses.every((response) => response.ok)
-      return allExist ? Registry.SimplifiedStatus.COMPLETE : Registry.SimplifiedStatus.FAILED
-    }, MAX_RETRIES)
+        const allResponses = await Promise.all(allUrls.map((url) => fetch.fetch(url, { method: 'HEAD' })))
+        const allExist = allResponses.every((response) => response.ok)
+        return allExist ? Registry.SimplifiedStatus.COMPLETE : Registry.SimplifiedStatus.FAILED
+      },
+      { maxRetries: MAX_RETRIES, logger }
+    )
   }
 
   return {
