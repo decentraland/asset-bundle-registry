@@ -17,6 +17,7 @@ function parseRegistryStatus(registry: Registry.DbEntity): EntityStatus {
     assetBundles.windows === Registry.SimplifiedStatus.COMPLETE
 
   return {
+    entityId: registry.id,
     catalyst: Registry.SimplifiedStatus.COMPLETE, // if there is a registry, it was already uploaded to catalyst
     complete: isComplete,
     assetBundles,
