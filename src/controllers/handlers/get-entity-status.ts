@@ -94,9 +94,11 @@ export async function getQueuesStatuses(context: HandlerContextWithPath<'memoryS
     components: { memoryStorage }
   } = context
 
-  const windowsPendingJobs = await memoryStorage.get('jobs:windows:*')
-  const macPendingJobs = await memoryStorage.get('jobs:mac:*')
-  const webglPendingJobs = await memoryStorage.get('jobs:webgl:*')
+  const platforms: string[] = ['windows', 'mac', 'webgl']
+
+  const [windowsPendingJobs, macPendingJobs, webglPendingJobs] = await Promise.all(
+    platforms.map(async (platform) => await memoryStorage.get(`jobs:${platform}:*`))
+  )
 
   return {
     status: 200,

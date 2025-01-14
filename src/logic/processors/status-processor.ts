@@ -1,6 +1,7 @@
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
 import { AppComponents, EventHandlerComponent, ProcessorResult } from '../../types'
 import { AssetBundleConversionManuallyQueuedEvent, Events } from '@dcl/schemas'
+import { generateCacheKey } from '../../utils/key-generator'
 
 export const createStatusProcessor = async ({
   logs,
@@ -41,11 +42,11 @@ export const createStatusProcessor = async ({
       logger.info('Processing status', { entityId, platform })
 
       if (platform === 'all') {
-        keys.push(`jobs:windows:${entityId}`)
-        keys.push(`jobs:mac:${entityId}`)
-        keys.push(`jobs:webgl:${entityId}`)
+        ;['windows', 'mac', 'webgl'].forEach((platform: any) => {
+          keys.push(generateCacheKey(platform, entityId))
+        })
       } else {
-        keys.push(`jobs:${platform}:${entityId}`)
+        keys.push(generateCacheKey(platform, entityId))
       }
 
       for (const key of keys) {
