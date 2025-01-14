@@ -88,3 +88,27 @@ export async function getEntitiesStatusHandler(
     }
   }
 }
+
+export async function getQueuesStatuses(context: HandlerContextWithPath<'memoryStorage', '/queues/status'>) {
+  const {
+    components: { memoryStorage }
+  } = context
+
+  const platforms: string[] = ['windows', 'mac', 'webgl']
+
+  const [windowsPendingJobs, macPendingJobs, webglPendingJobs] = await Promise.all(
+    platforms.map(async (platform) => await memoryStorage.get(`jobs:${platform}:*`))
+  )
+
+  return {
+    status: 200,
+    body: {
+      windowsPendingJobs,
+      macPendingJobs,
+      webglPendingJobs
+    },
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  }
+}

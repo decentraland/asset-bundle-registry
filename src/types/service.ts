@@ -66,3 +66,9 @@ export type EntityStatusFetcher = {
 export type RegistryOrchestratorComponent = {
   persistAndRotateStates(registry: Omit<Registry.DbEntity, 'status'>): Promise<Registry.DbEntity>
 }
+
+export type ICacheStorage = IBaseComponent & {
+  get(key: string): Promise<any>
+  set(key: string, value: any): Promise<void>
+  purge(key: string): Promise<void>
+}

@@ -14,7 +14,8 @@ import {
   MessageProcessorComponent,
   QueueComponent,
   EntityStatusFetcher,
-  RegistryOrchestratorComponent
+  RegistryOrchestratorComponent,
+  ICacheStorage
 } from './service'
 import { metricDeclarations } from '../metrics'
 
@@ -33,6 +34,7 @@ export type BaseComponents = {
   catalyst: CatalystComponent
   entityStatusFetcher: EntityStatusFetcher
   registryOrchestrator: RegistryOrchestratorComponent
+  memoryStorage: ICacheStorage
 }
 
 // components used in runtime
