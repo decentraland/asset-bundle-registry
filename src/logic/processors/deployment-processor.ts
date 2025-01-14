@@ -12,37 +12,46 @@ export const createDeploymentProcessor = ({
 
   return {
     process: async (event: DeploymentToSqs): Promise<ProcessorResult> => {
-      const entity: Entity = await catalyst.getEntityById(
-        event.entity.entityId,
-        event.contentServerUrls?.length ? event.contentServerUrls[0] : undefined
-      )
+      try {
+        const entity: Entity = await catalyst.getEntityById(
+          event.entity.entityId,
+          event.contentServerUrls?.length ? event.contentServerUrls[0] : undefined
+        )
 
-      if (!entity) {
-        logger.error('Entity not found', { event: JSON.stringify(event) })
-        return { ok: false, errors: [`Entity with id ${event.entity.entityId} was not found`] }
-      }
-
-      const defaultBundles: Registry.Bundles = {
-        assets: {
-          windows: Registry.SimplifiedStatus.PENDING,
-          mac: Registry.SimplifiedStatus.PENDING,
-          webgl: Registry.SimplifiedStatus.PENDING
-        },
-        lods: {
-          windows: Registry.SimplifiedStatus.PENDING,
-          mac: Registry.SimplifiedStatus.PENDING,
-          webgl: Registry.SimplifiedStatus.PENDING
+        if (!entity) {
+          logger.error('Entity not found', { event: JSON.stringify(event) })
+          return { ok: false, errors: [`Entity with id ${event.entity.entityId} was not found`] }
         }
+
+        const defaultBundles: Registry.Bundles = {
+          assets: {
+            windows: Registry.SimplifiedStatus.PENDING,
+            mac: Registry.SimplifiedStatus.PENDING,
+            webgl: Registry.SimplifiedStatus.PENDING
+          },
+          lods: {
+            windows: Registry.SimplifiedStatus.PENDING,
+            mac: Registry.SimplifiedStatus.PENDING,
+            webgl: Registry.SimplifiedStatus.PENDING
+          }
+        }
+
+        const deployer = Authenticator.ownerAddress(event.entity.authChain)
+        await registryOrchestrator.persistAndRotateStates({
+          ...entity,
+          deployer,
+          bundles: defaultBundles
+        })
+
+        return { ok: true }
+      } catch (error: any) {
+        logger.error('Failed to process', {
+          error: error?.message || 'Unexpected processor failure',
+          stack: JSON.stringify(error?.stack)
+        })
+
+        return { ok: false, errors: [error?.message || 'Unexpected processor failure'] }
       }
-
-      const deployer = Authenticator.ownerAddress(event.entity.authChain)
-      await registryOrchestrator.persistAndRotateStates({
-        ...entity,
-        deployer,
-        bundles: defaultBundles
-      })
-
-      return { ok: true }
     },
     canProcess: (event: any): boolean => {
       DeploymentToSqs.validate(event)

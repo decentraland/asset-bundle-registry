@@ -41,6 +41,7 @@ type StatusByPlatform = {
 }
 
 export type EntityStatus = {
+  entityId: string
   complete: boolean
   lods: StatusByPlatform
   assetBundles: StatusByPlatform

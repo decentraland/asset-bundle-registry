@@ -35,25 +35,34 @@ export const createStatusProcessor = async ({
 
   return {
     process: async (event: any): Promise<ProcessorResult> => {
-      const keys: string[] = []
+      try {
+        const keys: string[] = []
 
-      const { entityId, platform } = getEventProperties(event)
+        const { entityId, platform } = getEventProperties(event)
 
-      logger.info('Processing status', { entityId, platform })
+        logger.info('Processing status', { entityId, platform })
 
-      if (platform === 'all') {
-        ;['windows', 'mac', 'webgl'].forEach((platform: any) => {
+        if (platform === 'all') {
+          ;['windows', 'mac', 'webgl'].forEach((platform: any) => {
+            keys.push(generateCacheKey(platform, entityId))
+          })
+        } else {
           keys.push(generateCacheKey(platform, entityId))
+        }
+
+        for (const key of keys) {
+          await memoryStorage.set(`${key}`, Date.now())
+        }
+
+        return { ok: true }
+      } catch (error: any) {
+        logger.error('Failed to process', {
+          error: error?.message || 'Unexpected processor failure',
+          stack: JSON.stringify(error?.stack)
         })
-      } else {
-        keys.push(generateCacheKey(platform, entityId))
-      }
 
-      for (const key of keys) {
-        await memoryStorage.set(`${key}`, Date.now())
+        return { ok: false, errors: [error?.message || 'Unexpected processor failure'] }
       }
-
-      return { ok: true }
     },
     canProcess: (event: any): boolean => {
       DeploymentToSqs.validate(event)
