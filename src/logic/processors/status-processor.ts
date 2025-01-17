@@ -12,6 +12,7 @@ export const createStatusProcessor = async ({
   function getEventProperties(event: any) {
     let entityId: string = ''
     let isPriority: boolean = false
+    let isLods: boolean = false
     let platform: 'webgl' | 'windows' | 'mac' | 'all' = 'all'
 
     if (event.type === Events.Type.ASSET_BUNDLE && event.subType === Events.SubType.AssetBundle.MANUALLY_QUEUED) {
@@ -20,6 +21,7 @@ export const createStatusProcessor = async ({
       entityId = manuallyQueuedEvent.metadata.entityId
       isPriority = manuallyQueuedEvent.metadata.isPriority
       platform = manuallyQueuedEvent.metadata.platform
+      isLods = manuallyQueuedEvent.metadata.isLods
     } else {
       const deploymentEvent = event as DeploymentToSqs
 
@@ -29,7 +31,8 @@ export const createStatusProcessor = async ({
     return {
       entityId,
       isPriority,
-      platform
+      platform,
+      isLods
     }
   }
 
@@ -38,7 +41,12 @@ export const createStatusProcessor = async ({
       try {
         const keys: string[] = []
 
-        const { entityId, platform } = getEventProperties(event)
+        const { entityId, platform, isLods } = getEventProperties(event)
+
+        if (isLods) {
+          logger.info('Skipping processing status for LODs', { entityId, platform })
+          return { ok: true }
+        }
 
         logger.info('Processing status', { entityId, platform })
 
