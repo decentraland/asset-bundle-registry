@@ -95,8 +95,8 @@ export function createRegistryOrchestratorComponent({
     logger.info('Persisting entity', {
       entityId: registry.id,
       status: registryStatus,
-      newerEntities: splitRelatedEntities.newerEntities?.join(', ') || '',
-      olderEntities: splitRelatedEntities.olderEntities?.join(', ') || '',
+      newerEntities: splitRelatedEntities.newerEntities?.map((relatedEntity) => relatedEntity.id).join(', ') || '',
+      olderEntities: splitRelatedEntities.olderEntities?.map((relatedEntity) => relatedEntity.id).join(', ') || '',
       fallback: splitRelatedEntities.fallback?.id || ''
     })
 
