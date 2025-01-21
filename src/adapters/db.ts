@@ -72,6 +72,10 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
           metadata = EXCLUDED.metadata,
           status = EXCLUDED.status,
           bundles = EXCLUDED.bundles
+          deployer = CASE
+            WHEN EXCLUDED.deployer != '' THEN EXCLUDED.deployer
+            ELSE registries.deployer
+          END          
         RETURNING 
           id,
           type,
