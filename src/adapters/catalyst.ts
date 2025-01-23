@@ -35,11 +35,16 @@ export async function createCatalystAdapter({
     return contentClientToReturn
   }
 
-  async function getEntityById(id: string, contentServerUrl?: string): Promise<Entity> {
-    const contentClient = getContentClientOrDefault(contentServerUrl)
-    log.debug('Fetching entity by id', { id })
-    const entity = await contentClient.fetchEntityById(id)
-    return entity
+  async function getEntityById(id: string, contentServerUrl?: string): Promise<Entity | null> {
+    try {
+      const contentClient = getContentClientOrDefault(contentServerUrl)
+      log.debug('Fetching entity by id', { id })
+      const entity = await contentClient.fetchEntityById(id)
+      return entity
+    } catch (error: any) {
+      log.error('Error fetching entity by id', { id, error: error?.message || 'Unknown error' })
+      return null
+    }
   }
 
   async function getEntityByPointers(pointers: string[]): Promise<Entity[]> {

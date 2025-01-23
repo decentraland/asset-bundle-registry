@@ -30,7 +30,7 @@ export async function createRegistryHandler(
 
   for (const entityId of uniqueEntityIds) {
     try {
-      const entityFromCatalyst: Entity = await catalyst.getEntityById(entityId)
+      const entityFromCatalyst: Entity | null = await catalyst.getEntityById(entityId)
 
       if (!entityFromCatalyst) {
         logger.warn('Entity not found in catalyst', { entityId })
