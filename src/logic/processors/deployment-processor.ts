@@ -35,7 +35,7 @@ export const createDeploymentProcessor = ({
       ...parsedResponse,
       id: event.entity.entityId,
       type: 'world',
-      pointers: parsedResponse.metadata.worldConfiguration.name
+      pointers: [parsedResponse.metadata.worldConfiguration.name]
     }
   }
 
