@@ -15,7 +15,7 @@ export const createDeploymentProcessor = ({
     return (
       !!event.contentServerUrls &&
       !!event.contentServerUrls[0] &&
-      event.contentServerUrls[0].includes('worlds-content-server.decentraland')
+      event.contentServerUrls[0].includes('worlds-content-server')
     )
   }
 
