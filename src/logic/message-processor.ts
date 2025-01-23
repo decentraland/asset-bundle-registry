@@ -18,7 +18,7 @@ export async function createMessageProcessorComponent({
 >): Promise<MessageProcessorComponent> {
   const log = logs.getLogger('message-processor')
   const processors: EventHandlerComponent[] = [
-    createDeploymentProcessor({ catalyst, logs, registryOrchestrator }),
+    createDeploymentProcessor({ catalyst, fetch, logs, registryOrchestrator }),
     createTexturesProcessor({ db, logs, catalyst, entityStatusFetcher, registryOrchestrator, memoryStorage }),
     await createStatusProcessor({ logs, config, fetch, memoryStorage })
   ]
