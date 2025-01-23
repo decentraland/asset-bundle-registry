@@ -31,7 +31,12 @@ export const createDeploymentProcessor = ({
 
     // real pointers for scene rendering are already stored in metadata
     // this override happens to store a proper lookable value at pointers column (world name)
-    return { ...parsedResponse, type: 'world', pointers: parsedResponse.metadata.worldConfiguration.name }
+    return {
+      ...parsedResponse,
+      id: event.entity.entityId,
+      type: 'world',
+      pointers: parsedResponse.metadata.worldConfiguration.name
+    }
   }
 
   return {
