@@ -42,7 +42,7 @@ export type MessageProcessorComponent = {
 }
 
 export type CatalystComponent = {
-  getEntityById(id: string, contentServerUrl?: string): Promise<Entity>
+  getEntityById(id: string, contentServerUrl?: string): Promise<Entity | null>
   getEntityByPointers(pointers: string[]): Promise<Entity[]>
   getContent(id: string): Promise<Entity | undefined>
 }
