@@ -4,6 +4,7 @@ import { Registry } from "../../../src/types"
 import { createCatalystMockComponent } from "../mocks/catalyst"
 import { createDbMockComponent } from "../mocks/db"
 import { createLogMockComponent } from "../mocks/logs"
+import { createWorldsMockComponent } from "../mocks/worlds"
 
 describe('textures-processor should', () => {
     const mockTexturesEvent = {
@@ -15,6 +16,7 @@ describe('textures-processor should', () => {
     const dbMock = createDbMockComponent()
     const logsMock = createLogMockComponent()
     const catalystMock = createCatalystMockComponent()
+    const worldsMock = createWorldsMockComponent()
     const entityStatusFetcherMock = {
         fetchBundleStatus: jest.fn(),
         fetchLODsStatus: jest.fn()
@@ -24,7 +26,7 @@ describe('textures-processor should', () => {
     }
     const memoryStorage = createInMemoryCacheComponent()
 
-    const sut = createTexturesProcessor({ logs: logsMock, db: dbMock, catalyst: catalystMock,entityStatusFetcher: entityStatusFetcherMock, registryOrchestrator: registryOrchestratorMock, memoryStorage })
+    const sut = createTexturesProcessor({ logs: logsMock, db: dbMock, catalyst: catalystMock, worlds: worldsMock, entityStatusFetcher: entityStatusFetcherMock, registryOrchestrator: registryOrchestratorMock, memoryStorage })
 
     afterEach(() => {
         jest.clearAllMocks()

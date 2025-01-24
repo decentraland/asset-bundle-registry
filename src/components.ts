@@ -22,6 +22,7 @@ import { createRegistryOrchestratorComponent } from './logic/registry-orchestrat
 import { createWorkerManagerComponent } from './logic/workers/worker-manager'
 import { createRedisComponent } from './adapters/redis'
 import { createInMemoryCacheComponent } from './adapters/memory-cache'
+import { createWorldsAdapter } from './adapters/worlds'
 
 // Initialize all the components of the app
 export async function initComponents(): Promise<AppComponents> {
@@ -86,10 +87,12 @@ export async function initComponents(): Promise<AppComponents> {
     : createInMemoryCacheComponent()
 
   const catalyst = await createCatalystAdapter({ logs, fetch, config })
+  const worlds = await createWorldsAdapter({ logs, config, fetch })
   const registryOrchestrator = createRegistryOrchestratorComponent({ logs, db, metrics })
   const entityStatusFetcher = await createEntityStatusFetcherComponent({ fetch, logs, config })
   const messageProcessor = await createMessageProcessorComponent({
     catalyst,
+    worlds,
     entityStatusFetcher,
     registryOrchestrator,
     db,
@@ -113,6 +116,7 @@ export async function initComponents(): Promise<AppComponents> {
     queue,
     messageProcessor,
     catalyst,
+    worlds,
     messageConsumer,
     registryOrchestrator,
     entityStatusFetcher,

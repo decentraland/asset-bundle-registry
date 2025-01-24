@@ -1,4 +1,4 @@
-import { AssetBundleConversionFinishedEvent } from '@dcl/schemas'
+import { AssetBundleConversionFinishedEvent, Entity } from '@dcl/schemas'
 import { AppComponents, EventHandlerComponent, ProcessorResult, Registry } from '../../types'
 import { generateCacheKey } from '../../utils/key-generator'
 
@@ -6,12 +6,13 @@ export const createTexturesProcessor = ({
   logs,
   db,
   catalyst,
+  worlds,
   entityStatusFetcher,
   registryOrchestrator,
   memoryStorage
 }: Pick<
   AppComponents,
-  'logs' | 'db' | 'catalyst' | 'entityStatusFetcher' | 'registryOrchestrator' | 'memoryStorage'
+  'logs' | 'db' | 'catalyst' | 'worlds' | 'entityStatusFetcher' | 'registryOrchestrator' | 'memoryStorage'
 >): EventHandlerComponent => {
   const logger = logs.getLogger('textures-processor')
 
@@ -22,7 +23,13 @@ export const createTexturesProcessor = ({
 
         if (!entity) {
           logger.info('Entity not found in the database, will create it', { entityId: event.metadata.entityId })
-          const fetchedEntity = await catalyst.getEntityById(event.metadata.entityId)
+          let fetchedEntity: Entity | null
+
+          if (event.metadata.isWorld) {
+            fetchedEntity = await worlds.getWorld(event.metadata.entityId)
+          } else {
+            fetchedEntity = await catalyst.getEntityById(event.metadata.entityId)
+          }
 
           if (!fetchedEntity) {
             logger.error('Entity not found', { event: JSON.stringify(event) })
