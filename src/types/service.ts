@@ -2,6 +2,7 @@ import { Message } from '@aws-sdk/client-sqs'
 import { IBaseComponent } from '@well-known-components/interfaces'
 import { Registry } from './types'
 import { Entity, EthAddress } from '@dcl/schemas'
+import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
 
 export type DbComponent = {
   getSortedRegistriesByOwner(owner: EthAddress): Promise<Registry.DbEntity[]>
@@ -45,6 +46,11 @@ export type CatalystComponent = {
   getEntityById(id: string, contentServerUrl?: string): Promise<Entity | null>
   getEntityByPointers(pointers: string[]): Promise<Entity[]>
   getContent(id: string): Promise<Entity | undefined>
+}
+
+export type WorldsComponent = {
+  getWorld(worldId: string, worldContentServerUrl?: string): Promise<Entity | null>
+  isWorldDeployment(event: DeploymentToSqs): boolean
 }
 
 export type EventHandlerComponent = {

@@ -5,6 +5,7 @@ import { createTexturesProcessor } from './processors/textures-processor'
 
 export async function createMessageProcessorComponent({
   catalyst,
+  worlds,
   entityStatusFetcher,
   registryOrchestrator,
   db,
@@ -14,12 +15,20 @@ export async function createMessageProcessorComponent({
   memoryStorage
 }: Pick<
   AppComponents,
-  'catalyst' | 'entityStatusFetcher' | 'registryOrchestrator' | 'db' | 'logs' | 'config' | 'fetch' | 'memoryStorage'
+  | 'catalyst'
+  | 'worlds'
+  | 'entityStatusFetcher'
+  | 'registryOrchestrator'
+  | 'db'
+  | 'logs'
+  | 'config'
+  | 'fetch'
+  | 'memoryStorage'
 >): Promise<MessageProcessorComponent> {
   const log = logs.getLogger('message-processor')
   const processors: EventHandlerComponent[] = [
-    createDeploymentProcessor({ catalyst, fetch, logs, registryOrchestrator }),
-    createTexturesProcessor({ db, logs, catalyst, entityStatusFetcher, registryOrchestrator, memoryStorage }),
+    createDeploymentProcessor({ catalyst, worlds, logs, registryOrchestrator }),
+    createTexturesProcessor({ db, logs, catalyst, worlds, entityStatusFetcher, registryOrchestrator, memoryStorage }),
     await createStatusProcessor({ logs, config, fetch, memoryStorage })
   ]
 

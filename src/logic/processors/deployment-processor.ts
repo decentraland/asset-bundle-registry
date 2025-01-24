@@ -6,45 +6,18 @@ import { Authenticator } from '@dcl/crypto'
 export const createDeploymentProcessor = ({
   registryOrchestrator,
   catalyst,
-  fetch,
+  worlds,
   logs
-}: Pick<AppComponents, 'registryOrchestrator' | 'catalyst' | 'fetch' | 'logs'>): EventHandlerComponent => {
+}: Pick<AppComponents, 'registryOrchestrator' | 'catalyst' | 'worlds' | 'logs'>): EventHandlerComponent => {
   const logger = logs.getLogger('deployment-processor')
-
-  function isWorldDeployment(event: DeploymentToSqs): boolean {
-    return (
-      !!event.contentServerUrls &&
-      !!event.contentServerUrls[0] &&
-      event.contentServerUrls[0].includes('worlds-content-server')
-    )
-  }
-
-  async function fetchEntityFromWorldContentServer(event: DeploymentToSqs): Promise<Entity | null> {
-    const url = `${event.contentServerUrls![0]}/contents/${event.entity.entityId}`
-    const response = await fetch.fetch(url)
-
-    if (!response.ok) {
-      return null
-    }
-
-    const parsedResponse = await response.json()
-
-    // real pointers for scene rendering are already stored in metadata
-    // this override happens to store a proper lookable value at pointers column (world name)
-    return {
-      ...parsedResponse,
-      id: event.entity.entityId,
-      type: 'world',
-      pointers: [parsedResponse.metadata.worldConfiguration.name]
-    }
-  }
 
   return {
     process: async (event: DeploymentToSqs): Promise<ProcessorResult> => {
       let entity: Entity | null
       try {
-        if (isWorldDeployment(event)) {
-          entity = await fetchEntityFromWorldContentServer(event)
+        if (worlds.isWorldDeployment(event)) {
+          const [worldContentServerUrl] = event.contentServerUrls!
+          entity = await worlds.getWorld(event.entity.entityId, worldContentServerUrl)
         } else {
           entity = await catalyst.getEntityById(
             event.entity.entityId,
