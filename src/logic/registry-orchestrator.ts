@@ -129,7 +129,7 @@ export function createRegistryOrchestratorComponent({
       )
     }
 
-    registryStatus === Registry.Status.COMPLETE && metrics.increment('registries_ready_count')
+    registryStatus === Registry.Status.COMPLETE && metrics.increment('registries_ready_count', {}, 1)
 
     return insertedRegistry
   }
