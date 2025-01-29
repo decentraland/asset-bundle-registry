@@ -9,7 +9,6 @@ export async function getActiveEntityHandler(context: HandlerContextWithPath<'db
   const pointers: string[] = body.pointers
 
   if (pointers?.length === 0) {
-    metrics.increment('registries_missmatch_count')
     return {
       status: 400,
       body: {
@@ -20,6 +19,12 @@ export async function getActiveEntityHandler(context: HandlerContextWithPath<'db
   }
 
   const entities = await db.getRegistriesByPointers(pointers)
+
+  if (entities.length === 0) {
+    pointers.forEach((pointer) => {
+      metrics.increment('registries_missmatch_count', { pointer }, 1)
+    })
+  }
 
   const groupByWholePointers = entities.reduce(
     (acc, entity) => {

@@ -27,7 +27,8 @@ export const metricDeclarations = {
   },
   registries_missmatch_count: {
     help: 'Count of registries that have a missmatch',
-    type: IMetricsComponent.CounterType
+    type: IMetricsComponent.CounterType,
+    labels: ['pointer']
   },
   registries_served_count: {
     help: 'Count of registries successfully served',
