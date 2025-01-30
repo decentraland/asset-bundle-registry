@@ -1,7 +1,7 @@
 import { createClient } from 'redis'
 import { AppComponents, ICacheStorage } from '../types'
 
-const TWENTY_FOUR_HOURS_IN_SECONDS = 60 * 60 * 24
+const SEVEN_DAYS_IN_SECONDS = 60 * 60 * 24 * 7
 
 export async function createRedisComponent(
   hostUrl: string,
@@ -40,10 +40,14 @@ export async function createRedisComponent(
     }
   }
 
-  async function get(pattern: string): Promise<string[]> {
+  async function get<T>(pattern: string): Promise<T[]> {
     try {
       const keys = await client.keys(pattern)
-      return keys.map((key) => key.split(':').pop()!)
+      if (keys.length === 0) {
+        return []
+      }
+      const values = (await client.mGet(keys)) || []
+      return values.map((value: any) => JSON.parse(value))
     } catch (err: any) {
       logger.error(`Error getting key "${pattern}"`, err)
       throw err
@@ -54,7 +58,7 @@ export async function createRedisComponent(
     try {
       const serializedValue = JSON.stringify(value)
       await client.set(key, serializedValue, {
-        EX: TWENTY_FOUR_HOURS_IN_SECONDS // expiration time (TTL)
+        EX: SEVEN_DAYS_IN_SECONDS // expiration time (TTL)
       })
       logger.debug(`Successfully set key "${key}"`)
     } catch (err: any) {

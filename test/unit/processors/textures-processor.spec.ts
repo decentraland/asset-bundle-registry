@@ -1,5 +1,6 @@
 import { createInMemoryCacheComponent } from "../../../src/adapters/memory-cache"
 import { createTexturesProcessor } from "../../../src/logic/processors/textures-processor"
+import { createQueuesStatusManagerComponent } from "../../../src/logic/queues-status-manager"
 import { Registry } from "../../../src/types"
 import { createCatalystMockComponent } from "../mocks/catalyst"
 import { createDbMockComponent } from "../mocks/db"
@@ -25,8 +26,9 @@ describe('textures-processor should', () => {
         persistAndRotateStates: jest.fn()
     }
     const memoryStorage = createInMemoryCacheComponent()
+    const queuesStatusManager = createQueuesStatusManagerComponent({ memoryStorage })
 
-    const sut = createTexturesProcessor({ logs: logsMock, db: dbMock, catalyst: catalystMock, worlds: worldsMock, entityStatusFetcher: entityStatusFetcherMock, registryOrchestrator: registryOrchestratorMock, memoryStorage })
+    const sut = createTexturesProcessor({ logs: logsMock, db: dbMock, catalyst: catalystMock, worlds: worldsMock, entityStatusFetcher: entityStatusFetcherMock, registryOrchestrator: registryOrchestratorMock, queuesStatusManager })
 
     afterEach(() => {
         jest.clearAllMocks()

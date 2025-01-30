@@ -10,26 +10,24 @@ export async function createMessageProcessorComponent({
   registryOrchestrator,
   db,
   logs,
-  config,
-  fetch,
-  memoryStorage
+  queuesStatusManager
 }: Pick<
   AppComponents,
-  | 'catalyst'
-  | 'worlds'
-  | 'entityStatusFetcher'
-  | 'registryOrchestrator'
-  | 'db'
-  | 'logs'
-  | 'config'
-  | 'fetch'
-  | 'memoryStorage'
+  'catalyst' | 'worlds' | 'entityStatusFetcher' | 'registryOrchestrator' | 'db' | 'logs' | 'queuesStatusManager'
 >): Promise<MessageProcessorComponent> {
   const log = logs.getLogger('message-processor')
   const processors: EventHandlerComponent[] = [
     createDeploymentProcessor({ catalyst, worlds, logs, registryOrchestrator }),
-    createTexturesProcessor({ db, logs, catalyst, worlds, entityStatusFetcher, registryOrchestrator, memoryStorage }),
-    await createStatusProcessor({ logs, config, fetch, memoryStorage })
+    createTexturesProcessor({
+      db,
+      logs,
+      catalyst,
+      worlds,
+      entityStatusFetcher,
+      registryOrchestrator,
+      queuesStatusManager
+    }),
+    createStatusProcessor({ logs, queuesStatusManager })
   ]
 
   async function process(message: any) {
