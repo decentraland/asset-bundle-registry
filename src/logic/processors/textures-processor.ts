@@ -55,6 +55,10 @@ export const createTexturesProcessor = ({
           })
         }
 
+        if (!event.metadata.isLods) {
+          await queuesStatusManager.markAsFinished(event.metadata.platform, event.metadata.entityId)
+        }
+
         const status: Registry.SimplifiedStatus = await entityStatusFetcher.fetchBundleStatus(
           event.metadata.entityId,
           event.metadata.platform
@@ -75,7 +79,6 @@ export const createTexturesProcessor = ({
         logger.info(`Bundle stored`, { entityId: event.metadata.entityId, bundles: JSON.stringify(registry.bundles) })
 
         await registryOrchestrator.persistAndRotateStates(registry)
-        await queuesStatusManager.markAsFinished(event.metadata.platform, event.metadata.entityId)
 
         return { ok: true }
       } catch (errors: any) {
