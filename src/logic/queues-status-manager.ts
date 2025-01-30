@@ -45,8 +45,7 @@ export function createQueuesStatusManagerComponent({
   }
 
   async function getAllPendingEntities(): Promise<EntityStatusInQueue[]> {
-    const entities = await memoryStorage.get('jobs:*')
-
+    const entities = await memoryStorage.get('jobs:*:*')
     return entities.filter((entity: any) => entity.status > 0)
   }
 

@@ -43,6 +43,9 @@ export async function createRedisComponent(
   async function get(pattern: string): Promise<any> {
     try {
       const keys = await client.keys(pattern)
+      if (keys.length === 0) {
+        return []
+      }
       const values = await client.mGet(keys)
       return values.map((value: any) => JSON.parse(value))
     } catch (err: any) {
