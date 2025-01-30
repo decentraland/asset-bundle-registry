@@ -39,7 +39,7 @@ export function createInMemoryCacheComponent(): ICacheStorage {
       cache.delete(pattern)
       return []
     }
-    return entry.value
+    return [entry.value]
   }
 
   async function set<T>(key: string, value: T): Promise<void> {
