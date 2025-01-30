@@ -46,7 +46,12 @@ export function createQueuesStatusManagerComponent({
 
   async function getAllPendingEntities(platform: 'windows' | 'mac' | 'webgl'): Promise<EntityStatusInQueue[]> {
     const entities = (await memoryStorage.get<EntityStatusInQueue>(`jobs:${platform}:*`)) || []
-    return entities.filter((entity: any) => entity.status > 0)
+    return entities
+      .filter((entity: any) => entity.status > 0)
+      .map((entity) => ({
+        ...entity,
+        status: Math.min(entity.status, 1)
+      }))
   }
 
   return {

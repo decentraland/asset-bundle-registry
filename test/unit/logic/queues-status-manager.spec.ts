@@ -53,6 +53,14 @@ describe('queues status manager', () => {
         expect(memoryStorage.set).toHaveBeenCalledWith(`jobs:${platform}:${entityId}`, { entityId, platform, status: EntityQueueStatusValue.STALE })
     })
 
+    it('should keep entity as pending when it was queued two times and bundled once', async () => {
+        await queuesStatusManager.markAsQueued(platform, entityId)
+        await queuesStatusManager.markAsQueued(platform, entityId)
+        await queuesStatusManager.markAsFinished(platform, entityId)
+        const result = await queuesStatusManager.getAllPendingEntities(platform)
+        expect(result).toEqual([{ entityId, platform, status: EntityQueueStatusValue.BUNDLE_PENDING }])
+    })
+
     describe('getAllPendingEntities', () => {
         it('should return pending entities', async () => {
             await queuesStatusManager.markAsQueued(platform, entityId)
@@ -96,6 +104,13 @@ describe('queues status manager', () => {
             expect(windowsResult).toContainEqual({ entityId, platform, status: EntityQueueStatusValue.BUNDLE_PENDING })
             expect(macResult).toContainEqual({ entityId, platform: 'mac', status: EntityQueueStatusValue.BUNDLE_PENDING })
             expect(macResult).toContainEqual({ entityId: entityId + 'c', platform: 'mac', status: EntityQueueStatusValue.BUNDLE_PENDING })
+        })
+
+        it('should return pending entity if it was queued two times', async () => {
+            await queuesStatusManager.markAsQueued(platform, entityId)
+            await queuesStatusManager.markAsQueued(platform, entityId)
+            const result = await queuesStatusManager.getAllPendingEntities(platform)
+            expect(result).toContainEqual({ entityId, platform, status: EntityQueueStatusValue.BUNDLE_PENDING })
         })
     })
 })
