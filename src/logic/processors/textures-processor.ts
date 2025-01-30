@@ -1,6 +1,5 @@
 import { AssetBundleConversionFinishedEvent, Entity } from '@dcl/schemas'
 import { AppComponents, EventHandlerComponent, ProcessorResult, Registry } from '../../types'
-import { generateCacheKey } from '../../utils/key-generator'
 
 export const createTexturesProcessor = ({
   logs,
@@ -9,10 +8,10 @@ export const createTexturesProcessor = ({
   worlds,
   entityStatusFetcher,
   registryOrchestrator,
-  memoryStorage
+  queuesStatusManager
 }: Pick<
   AppComponents,
-  'logs' | 'db' | 'catalyst' | 'worlds' | 'entityStatusFetcher' | 'registryOrchestrator' | 'memoryStorage'
+  'logs' | 'db' | 'catalyst' | 'worlds' | 'entityStatusFetcher' | 'registryOrchestrator' | 'queuesStatusManager'
 >): EventHandlerComponent => {
   const logger = logs.getLogger('textures-processor')
 
@@ -76,7 +75,7 @@ export const createTexturesProcessor = ({
         logger.info(`Bundle stored`, { entityId: event.metadata.entityId, bundles: JSON.stringify(registry.bundles) })
 
         await registryOrchestrator.persistAndRotateStates(registry)
-        await memoryStorage.purge(generateCacheKey(event.metadata.platform, event.metadata.entityId))
+        await queuesStatusManager.markAsFinished(event.metadata.platform, event.metadata.entityId)
 
         return { ok: true }
       } catch (errors: any) {

@@ -13,21 +13,33 @@ export function createInMemoryCacheComponent(): ICacheStorage {
 
   async function stop() {}
 
-  async function get(pattern: string): Promise<string[]> {
-    const regex = new RegExp(pattern.replace('*', '.*'))
-    const matchingKeys = [...cache.keys()].filter((key) => regex.test(key))
+  async function get(pattern: string): Promise<any> {
+    if (pattern.includes('*')) {
+      const regex = new RegExp(pattern.replace('*', '.*'))
+      const matchingKeys = [...cache.keys()].filter((key) => regex.test(key))
 
-    const validKeys = matchingKeys.filter((key) => {
-      const entry = cache.get(key)
-      if (entry && (!entry.expiresAt || entry.expiresAt > Date.now())) {
-        return true
-      } else {
-        cache.delete(key)
-        return false
-      }
-    })
+      const validKeys = matchingKeys.filter((key) => {
+        const entry = cache.get(key)
+        if (entry && (!entry.expiresAt || entry.expiresAt > Date.now())) {
+          return true
+        } else {
+          cache.delete(key)
+          return false
+        }
+      })
 
-    return validKeys.map((key) => key.split(':').pop()!)
+      return validKeys.map((key) => {
+        const entry = cache.get(key)
+        return entry?.value
+      })
+    }
+
+    const entry = cache.get(pattern)
+    if (!entry || (entry.expiresAt && entry.expiresAt <= Date.now())) {
+      cache.delete(pattern)
+      return undefined
+    }
+    return entry.value
   }
 
   async function set<T>(key: string, value: T): Promise<void> {

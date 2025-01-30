@@ -16,7 +16,8 @@ import {
   EntityStatusFetcher,
   RegistryOrchestratorComponent,
   ICacheStorage,
-  WorldsComponent
+  WorldsComponent,
+  QueuesStatusManagerComponent
 } from './service'
 import { metricDeclarations } from '../metrics'
 
@@ -35,7 +36,7 @@ export type BaseComponents = {
   catalyst: CatalystComponent
   entityStatusFetcher: EntityStatusFetcher
   registryOrchestrator: RegistryOrchestratorComponent
-  memoryStorage: ICacheStorage
+  queuesStatusManager: QueuesStatusManagerComponent
 }
 
 // components used in runtime
@@ -47,6 +48,7 @@ export type AppComponents = BaseComponents & {
   messageConsumer: MessageConsumerComponent
   workerManager: IBaseComponent
   worlds: WorldsComponent
+  memoryStorage: ICacheStorage
 }
 
 // components used in tests

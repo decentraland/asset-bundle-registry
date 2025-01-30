@@ -1,6 +1,6 @@
 import { Message } from '@aws-sdk/client-sqs'
 import { IBaseComponent } from '@well-known-components/interfaces'
-import { Registry } from './types'
+import { EntityStatusInQueue, Registry } from './types'
 import { Entity, EthAddress } from '@dcl/schemas'
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
 
@@ -77,4 +77,10 @@ export type ICacheStorage = IBaseComponent & {
   get(key: string): Promise<any>
   set(key: string, value: any): Promise<void>
   purge(key: string): Promise<void>
+}
+
+export type QueuesStatusManagerComponent = {
+  markAsQueued(platform: 'windows' | 'mac' | 'webgl', entityId: string): Promise<void>
+  markAsFinished(platform: 'windows' | 'mac' | 'webgl', entityId: string): Promise<void>
+  getAllPendingEntities(): Promise<EntityStatusInQueue[]>
 }

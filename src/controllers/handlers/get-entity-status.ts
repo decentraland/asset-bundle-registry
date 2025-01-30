@@ -90,16 +90,24 @@ export async function getEntitiesStatusHandler(
   }
 }
 
-export async function getQueuesStatuses(context: HandlerContextWithPath<'memoryStorage', '/queues/status'>) {
+export async function getQueuesStatuses(context: HandlerContextWithPath<'queuesStatusManager', '/queues/status'>) {
   const {
-    components: { memoryStorage }
+    components: { queuesStatusManager }
   } = context
 
-  const platforms: string[] = ['windows', 'mac', 'webgl']
+  const pendingJobs = await queuesStatusManager.getAllPendingEntities()
 
-  const [windowsPendingJobs, macPendingJobs, webglPendingJobs] = await Promise.all(
-    platforms.map(async (platform) => await memoryStorage.get(`jobs:${platform}:*`))
-  )
+  const windowsPendingJobs = pendingJobs
+    .filter((entity) => entity.platform === 'windows')
+    .map((pendingJob) => pendingJob.entityId)
+
+  const macPendingJobs = pendingJobs
+    .filter((entity) => entity.platform === 'mac')
+    .map((pendingJob) => pendingJob.entityId)
+
+  const webglPendingJobs = pendingJobs
+    .filter((entity) => entity.platform === 'webgl')
+    .map((pendingJob) => pendingJob.entityId)
 
   return {
     status: 200,

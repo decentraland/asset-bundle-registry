@@ -47,3 +47,15 @@ export type EntityStatus = {
   assetBundles: StatusByPlatform
   catalyst: Registry.SimplifiedStatus
 }
+
+export enum EntityQueueStatusValue {
+  STALE = 0,
+  BUNDLE_PENDING = 1,
+  BUNDLE_COMPLETE = -1
+}
+
+export type EntityStatusInQueue = {
+  entityId: string
+  platform: 'windows' | 'mac' | 'webgl'
+  status: EntityQueueStatusValue
+}
