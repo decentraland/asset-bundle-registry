@@ -8,11 +8,11 @@ export function createQueuesStatusManagerComponent({
   }
 
   async function getStatus(key: string): Promise<EntityStatusInQueue | undefined> {
-    const status = await memoryStorage.get(key)
+    const status = await memoryStorage.get<EntityStatusInQueue>(key)
 
-    if (!status) return undefined
+    if (!status.length) return undefined
 
-    return status
+    return status[0]
   }
 
   async function markAsQueued(platform: 'windows' | 'mac' | 'webgl', entityId: string): Promise<void> {
@@ -41,11 +41,11 @@ export function createQueuesStatusManagerComponent({
       return
     }
 
-    await memoryStorage.set(key, { ...currentValue, status: newStatus })
+    await memoryStorage.set<EntityStatusInQueue>(key, { ...currentValue, status: newStatus })
   }
 
-  async function getAllPendingEntities(): Promise<EntityStatusInQueue[]> {
-    const entities = await memoryStorage.get('jobs:*:*')
+  async function getAllPendingEntities(platform: 'windows' | 'mac' | 'webgl'): Promise<EntityStatusInQueue[]> {
+    const entities = (await memoryStorage.get<EntityStatusInQueue>(`jobs:${platform}:*`)) || []
     return entities.filter((entity: any) => entity.status > 0)
   }
 

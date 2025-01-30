@@ -40,13 +40,13 @@ export async function createRedisComponent(
     }
   }
 
-  async function get(pattern: string): Promise<any> {
+  async function get<T>(pattern: string): Promise<T[]> {
     try {
       const keys = await client.keys(pattern)
       if (keys.length === 0) {
         return []
       }
-      const values = await client.mGet(keys)
+      const values = (await client.mGet(keys)) || []
       return values.map((value: any) => JSON.parse(value))
     } catch (err: any) {
       logger.error(`Error getting key "${pattern}"`, err)

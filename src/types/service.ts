@@ -74,13 +74,13 @@ export type RegistryOrchestratorComponent = {
 }
 
 export type ICacheStorage = IBaseComponent & {
-  get(key: string): Promise<any>
-  set(key: string, value: any): Promise<void>
+  get<T>(key: string): Promise<T[]>
+  set<T>(key: string, value: T): Promise<void>
   purge(key: string): Promise<void>
 }
 
 export type QueuesStatusManagerComponent = {
   markAsQueued(platform: 'windows' | 'mac' | 'webgl', entityId: string): Promise<void>
   markAsFinished(platform: 'windows' | 'mac' | 'webgl', entityId: string): Promise<void>
-  getAllPendingEntities(): Promise<EntityStatusInQueue[]>
+  getAllPendingEntities(platform: 'windows' | 'mac' | 'webgl'): Promise<EntityStatusInQueue[]>
 }

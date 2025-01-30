@@ -13,7 +13,7 @@ export function createInMemoryCacheComponent(): ICacheStorage {
 
   async function stop() {}
 
-  async function get(pattern: string): Promise<any> {
+  async function get<T>(pattern: string): Promise<T[]> {
     if (pattern.includes('*')) {
       const regex = new RegExp(pattern.replace('*', '.*'))
       const matchingKeys = [...cache.keys()].filter((key) => regex.test(key))
@@ -37,7 +37,7 @@ export function createInMemoryCacheComponent(): ICacheStorage {
     const entry = cache.get(pattern)
     if (!entry || (entry.expiresAt && entry.expiresAt <= Date.now())) {
       cache.delete(pattern)
-      return undefined
+      return []
     }
     return entry.value
   }
