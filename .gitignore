@@ -10,3 +10,9 @@ yarn-error.log
 *.log
 api/src/migrations
 hide.*
+
+
+# scripts output files
+wearables.json
+emotes.json
+scenes-processor-missing-pointers.json

@@ -1,6 +1,6 @@
 import { Message } from '@aws-sdk/client-sqs'
 import { IBaseComponent } from '@well-known-components/interfaces'
-import { EntityStatusInQueue, Registry } from './types'
+import { CatalystFetchOptions, EntityStatusInQueue, Registry } from './types'
 import { Entity, EthAddress } from '@dcl/schemas'
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
 
@@ -43,7 +43,8 @@ export type MessageProcessorComponent = {
 }
 
 export type CatalystComponent = {
-  getEntityById(id: string, contentServerUrl?: string): Promise<Entity | null>
+  getEntityById(id: string, options?: CatalystFetchOptions): Promise<Entity | null>
+  getEntitiesByIds(ids: string[], options?: CatalystFetchOptions): Promise<Entity[]>
   getEntityByPointers(pointers: string[]): Promise<Entity[]>
   getContent(id: string): Promise<Entity | undefined>
 }

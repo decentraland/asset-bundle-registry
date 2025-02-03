@@ -60,3 +60,10 @@ export type EntityStatusInQueue = {
   platform: 'windows' | 'mac' | 'webgl'
   status: EntityQueueStatusValue
 }
+
+export type CatalystFetchOptions = {
+  parallelFetch?: {
+    catalystServers: string[]
+  }
+  overrideContentServerUrl?: string
+}

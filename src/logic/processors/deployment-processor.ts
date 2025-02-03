@@ -19,10 +19,9 @@ export const createDeploymentProcessor = ({
           const [worldContentServerUrl] = event.contentServerUrls!
           entity = await worlds.getWorld(event.entity.entityId, worldContentServerUrl)
         } else {
-          entity = await catalyst.getEntityById(
-            event.entity.entityId,
-            event.contentServerUrls?.length ? event.contentServerUrls[0] : undefined
-          )
+          entity = await catalyst.getEntityById(event.entity.entityId, {
+            overrideContentServerUrl: event.contentServerUrls?.length ? event.contentServerUrls[0] : undefined
+          })
         }
 
         if (!entity) {
