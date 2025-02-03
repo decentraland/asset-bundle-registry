@@ -3,6 +3,7 @@
   "parserOptions": {
     "project": [
       "tsconfig.json",
+      "tsconfig.scripts.json",
       "test/tsconfig.json"
     ]
   },
