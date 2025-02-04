@@ -12,20 +12,21 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
         registries
       WHERE 
         deployer = ${owner.toLocaleLowerCase()}
+      ORDER BY timestamp DESC
     `
 
     const result = await pg.query<Registry.DbEntity>(query)
     return result.rows
   }
 
-  async function getRegistriesByPointers(pointers: string[]): Promise<Registry.DbEntity[]> {
+  async function getSortedRegistriesByPointers(pointers: string[]): Promise<Registry.DbEntity[]> {
     const query = SQL`
       SELECT 
         id, type, timestamp, deployer, pointers, content, metadata, status, bundles
       FROM 
         registries
       WHERE 
-        pointers && ${pointers}::varchar(255)[] AND (status = ${Registry.Status.COMPLETE}::text OR status = ${Registry.Status.FALLBACK}::text)
+        pointers && ${pointers}::varchar(255)[]
       ORDER BY timestamp DESC
     `
 
@@ -273,7 +274,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
     updateRegistriesStatus,
     upsertRegistryBundle,
     getSortedRegistriesByOwner,
-    getRegistriesByPointers,
+    getSortedRegistriesByPointers,
     getRegistryById,
     getRelatedRegistries,
     deleteRegistries,

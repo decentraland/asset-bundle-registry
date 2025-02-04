@@ -7,6 +7,7 @@ function parseRegistryStatus(registry: Registry.DbEntity): EntityStatus {
     mac: registry.bundles.assets.mac || Registry.SimplifiedStatus.PENDING,
     windows: registry.bundles.assets.windows || Registry.SimplifiedStatus.PENDING
   }
+
   const lods = {
     mac: registry.bundles.lods.mac || Registry.SimplifiedStatus.PENDING,
     windows: registry.bundles.lods.windows || Registry.SimplifiedStatus.PENDING
@@ -21,29 +22,24 @@ function parseRegistryStatus(registry: Registry.DbEntity): EntityStatus {
     catalyst: Registry.SimplifiedStatus.COMPLETE, // if there is a registry, it was already uploaded to catalyst
     complete: isComplete,
     assetBundles,
-    lods
+    lods: registry.type === 'world' ? undefined : lods // worlds don't have lods
   }
 }
 
-function isOwnedBy(registry: Registry.DbEntity | null, userAddress: string): boolean {
-  return !!registry && registry.deployer.toLocaleLowerCase() === userAddress.toLocaleLowerCase()
-}
-
-export async function getEntityStatusHandler(
-  context: HandlerContextWithPath<'db', '/entities/status/:id'> & DecentralandSignatureContext<any>
-) {
+export async function getEntityStatusHandler(context: HandlerContextWithPath<'db', '/entities/status/:id'>) {
   const {
     params,
-    components: { db },
-    verification
+    components: { db }
   } = context
 
-  const entityId: string | undefined = params.id
-  const userAddress: EthAddress = verification!.auth
+  const idOrPointer: string | undefined = params.id
 
-  const entity = (await db.getRegistryById(entityId)) || (await db.getHistoricalRegistryById(entityId))
+  const entity =
+    (await db.getRegistryById(idOrPointer)) ||
+    (await db.getHistoricalRegistryById(idOrPointer)) ||
+    (await db.getSortedRegistriesByPointers([idOrPointer]))[0] // if found, we kept the most recent registry ([0])
 
-  if (entity && isOwnedBy(entity, userAddress)) {
+  if (entity) {
     const entityStatus = parseRegistryStatus(entity)
     return {
       body: JSON.stringify(entityStatus),
@@ -57,7 +53,7 @@ export async function getEntityStatusHandler(
     status: 404,
     body: {
       ok: false,
-      message: 'No active entity found for the provided id'
+      message: 'No active entity found for the provided id or pointer'
     },
     headers: {
       'Content-Type': 'application/json'

@@ -22,7 +22,7 @@ export async function setupRouter(globalContext: GlobalContext): Promise<Router<
 
   router.get('/status', getStatusHandler)
   router.post('/entities/active', getActiveEntityHandler)
-  router.get('/entities/status/:id', signedFetchMiddleware, getEntityStatusHandler)
+  router.get('/entities/status/:id', getEntityStatusHandler)
   router.get('/entities/status', signedFetchMiddleware, getEntitiesStatusHandler)
   router.get('/queues/status', getQueuesStatuses)
 
