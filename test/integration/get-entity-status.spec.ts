@@ -78,7 +78,9 @@ test('GET /entities/status/:id', function ({ components, stubComponents }) {
     it('should return 404 when entity is not found', async function () {
         const entityId = 'bafkreig6666666666666666666666666666666666666666666666666666666666666666'
         const completeUrl = `${endpointPath}${entityId}`
-        stubComponents.db.getRegistryById.resolves(null)
+        stubComponents.db.getRegistryById.resolves(undefined)
+        stubComponents.db.getHistoricalRegistryById.resolves(undefined)
+        stubComponents.db.getSortedRegistriesByPointers.resolves([])
 
         const response = await makeRequest('GET', completeUrl, identity)
 
@@ -86,24 +88,25 @@ test('GET /entities/status/:id', function ({ components, stubComponents }) {
         expect(response.status).toBe(404)
         expect(parsedResponse).toMatchObject({
             ok: false,
-            message: 'No active entity found for the provided id'
+            message: 'No active entity found for the provided id or pointer'
         })
     })
 
-    it('should return 404 when entity is owned by different user', async function () {
+    it('should not return LODs status when fetching a world', async function () {
         const entityId = 'bafkreig6666666666666666666666666666666666666666666666666666666666666666'
         const completeUrl = `${endpointPath}${entityId}`
         const differentOwner = '0x1234567890123456789012345678901234567890'
         const registry = createRegistry(differentOwner, Registry.Status.COMPLETE, Registry.SimplifiedStatus.COMPLETE)
-        stubComponents.db.getRegistryById.resolves(registry)
+        stubComponents.db.getRegistryById.resolves({ ...registry, type: 'world' })
 
         const response = await makeRequest('GET', completeUrl, identity)
 
         const parsedResponse = await response.json()
-        expect(response.status).toBe(404)
+        expect(response.status).toBe(200)
         expect(parsedResponse).toMatchObject({
-            ok: false,
-            message: 'No active entity found for the provided id'
+            assetBundles: { mac: 'complete', windows: 'complete' },
+            catalyst: 'complete',
+            complete: true
         })
     })
 

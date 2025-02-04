@@ -1,4 +1,4 @@
-import { Entity } from '@dcl/schemas'
+import { Entity, EntityType } from '@dcl/schemas'
 
 export namespace Registry {
   export enum SimplifiedStatus {
@@ -20,8 +20,9 @@ export namespace Registry {
     }
   }
 
-  export type DbEntity = Omit<Entity, 'version'> & { deployer: string; bundles: Bundles } & {
+  export type DbEntity = Omit<Entity, 'version' | 'type'> & { deployer: string; bundles: Bundles } & {
     status: Status
+    type: EntityType | 'world'
   }
 
   export type PartialDbEntity = Pick<DbEntity, 'id' | 'pointers' | 'timestamp' | 'status' | 'bundles'>
@@ -43,7 +44,7 @@ type StatusByPlatform = {
 export type EntityStatus = {
   entityId: string
   complete: boolean
-  lods: StatusByPlatform
+  lods?: StatusByPlatform
   assetBundles: StatusByPlatform
   catalyst: Registry.SimplifiedStatus
 }

@@ -2,7 +2,7 @@ import { DbComponent } from "../../../src/types";
 
 export function createDbMockComponent(): DbComponent {
     return {
-        getRegistriesByPointers: jest.fn(),
+        getSortedRegistriesByPointers: jest.fn(),
         getRegistryById: jest.fn(),
         insertRegistry: jest.fn(),
         upsertRegistryBundle: jest.fn(),
