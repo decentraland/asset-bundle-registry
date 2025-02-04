@@ -17,13 +17,13 @@
     "skipLibCheck": true,
     "noUnusedLocals": true
   },
+  "include": [
+    "src/scripts",
+    "src/scripts/**/*"
+  ],
   "exclude": [
     "node_modules",
     "**/node_modules/*",
-    "**/dist/*",
-    "src/scripts"
-  ],
-  "include": [
-    "src"
+    "**/dist/*"
   ]
-}
+} 

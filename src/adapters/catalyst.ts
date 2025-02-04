@@ -1,8 +1,6 @@
 import { Entity } from '@dcl/schemas'
-// import { ContractNetwork, Entity } from '@dcl/schemas'
-// import { getCatalystServersFromCache } from 'dcl-catalyst-client/dist/contracts-snapshots'
 
-import { AppComponents, CatalystComponent } from '../types'
+import { AppComponents, CatalystComponent, CatalystFetchOptions } from '../types'
 import { ContentClient, createContentClient } from 'dcl-catalyst-client'
 
 export async function createCatalystAdapter({
@@ -13,11 +11,6 @@ export async function createCatalystAdapter({
   const log = logs.getLogger('catalyst-client')
   const catalystLoadBalancer = await config.requireString('CATALYST_LOADBALANCER_HOST')
 
-  // TODO: implement rotation
-  //const loadBalancer = await config.requireString('CATALYST_LOADBALANCER_HOST')
-  //const contractNetwork = (await config.getString('ENV')) === 'prod' ? ContractNetwork.MAINNET : ContractNetwork.SEPOLIA
-
-  //const catalystServers: string[] = getCatalystServersFromCache(contractNetwork).map((server) => server.address)
   const defaultContentClient = createContentClient({ fetcher: fetch, url: ensureContentUrl(catalystLoadBalancer) })
 
   function ensureContentUrl(url: string): string {
@@ -35,15 +28,51 @@ export async function createCatalystAdapter({
     return contentClientToReturn
   }
 
-  async function getEntityById(id: string, contentServerUrl?: string): Promise<Entity | null> {
+  async function getEntityById(id: string, options?: CatalystFetchOptions): Promise<Entity | null> {
     try {
-      const contentClient = getContentClientOrDefault(contentServerUrl)
-      log.debug('Fetching entity by id', { id })
-      const entity = await contentClient.fetchEntityById(id)
-      return entity
+      const contentClient = getContentClientOrDefault(options?.overrideContentServerUrl)
+      if (options?.parallelFetch && options?.parallelFetch.catalystServers.length > 0) {
+        log.debug('Fetching entity by id in parallel', {
+          id,
+          servers: options.parallelFetch.catalystServers.join(', ')
+        })
+        const result = await contentClient.fetchEntityById(id, {
+          parallel: {
+            urls: options.parallelFetch.catalystServers.map((server) => ensureContentUrl(server))
+          }
+        })
+        return result
+      } else {
+        log.debug('Fetching entity by id', { id })
+        return await contentClient.fetchEntityById(id)
+      }
     } catch (error: any) {
       log.error('Error fetching entity by id', { id, error: error?.message || 'Unknown error' })
       return null
+    }
+  }
+
+  async function getEntitiesByIds(ids: string[], options?: CatalystFetchOptions): Promise<Entity[]> {
+    try {
+      const contentClient = getContentClientOrDefault(options?.overrideContentServerUrl)
+      if (options?.parallelFetch && options?.parallelFetch.catalystServers.length > 0) {
+        log.debug('Fetching entities by ids in parallel', {
+          ids: ids.join(', '),
+          servers: options.parallelFetch.catalystServers.join(', ')
+        })
+        const result = await contentClient.fetchEntitiesByIds(ids, {
+          parallel: {
+            urls: options.parallelFetch.catalystServers.map((server) => ensureContentUrl(server))
+          }
+        })
+        return result
+      } else {
+        log.debug('Fetching entities by ids', { ids: ids.join(', ') })
+        return await contentClient.fetchEntitiesByIds(ids)
+      }
+    } catch (error: any) {
+      log.error('Error fetching entities by ids', { ids: ids.join(', '), error: error?.message || 'Unknown error' })
+      return []
     }
   }
 
@@ -63,5 +92,5 @@ export async function createCatalystAdapter({
     return contentJson as Entity
   }
 
-  return { getEntityById, getEntityByPointers, getContent }
+  return { getEntityById, getEntitiesByIds, getEntityByPointers, getContent }
 }

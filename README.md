@@ -137,3 +137,47 @@ Required environment variables:
 To start a new, fresh database, run the following command:
 
 `docker-compose up`
+
+## Scripts
+
+The `/src/scripts` directory contains utility scripts for populating the Asset Bundle Registry with entities. These scripts run locally but interact with remote Asset Bundle Registry instances.
+
+Available scripts:
+- `yarn scripts:populate-items`: Process wearables/emotes from a CSV file
+- `yarn scripts:populate-scenes`: Process scenes from World Manifest
+
+For detailed information about script usage, environment variables, and file formats, see [Scripts Documentation](src/scripts/README.md).
+
+## Development
+
+### Environment Variables
+
+Copy `.env.default` to `.env` and set the required variables:
+
+```bash
+cp .env.default .env
+```
+
+### Install
+
+```bash
+yarn
+```
+
+### Build
+
+```bash
+yarn build
+```
+
+### Start
+
+```bash
+yarn start
+```
+
+### Test
+
+```bash
+yarn test
+```
