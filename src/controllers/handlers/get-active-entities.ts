@@ -8,7 +8,7 @@ export async function getActiveEntityHandler(context: HandlerContextWithPath<'db
   const body = await context.request.json()
   const pointers: string[] = body.pointers
 
-  if (pointers?.length === 0) {
+  if (!pointers || pointers?.length === 0) {
     return {
       status: 400,
       body: {
