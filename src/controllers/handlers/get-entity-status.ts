@@ -22,7 +22,7 @@ function parseRegistryStatus(registry: Registry.DbEntity): EntityStatus {
     catalyst: Registry.SimplifiedStatus.COMPLETE, // if there is a registry, it was already uploaded to catalyst
     complete: isComplete,
     assetBundles,
-    lods: registry.type === 'world' ? undefined : lods // worlds don't have lods
+    lods: lods
   }
 }
 
