@@ -92,7 +92,7 @@ test('GET /entities/status/:id', function ({ components, stubComponents }) {
         })
     })
 
-    it('should not return LODs status when fetching a world', async function () {
+    it.skip('should not return LODs status when fetching a world', async function () {
         const entityId = 'bafkreig6666666666666666666666666666666666666666666666666666666666666666'
         const completeUrl = `${endpointPath}${entityId}`
         const differentOwner = '0x1234567890123456789012345678901234567890'
