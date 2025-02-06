@@ -143,16 +143,7 @@ To start a new, fresh database, run the following command:
 The `/src/scripts` directory contains utility scripts for populating the Asset Bundle Registry with entities. These scripts run locally but interact with remote Asset Bundle Registry instances.
 
 Available scripts:
-- `yarn scripts:populate-items <csv_file_path>`: Process wearables/emotes from a CSV file
-  - Automatically generates `{filename}-failures.csv` for any failed entities
-  - The failures file maintains the same CSV format as the input
-  - To retry failed entities, run the script again with the failures file:
-    ```bash
-    # First attempt with original file
-    yarn scripts:populate-items wearables.csv
-    # Retry any failures
-    yarn scripts:populate-items wearables-failures.csv
-    ```
+- `yarn scripts:populate-items`: Process wearables/emotes from a CSV file
 - `yarn scripts:populate-scenes`: Process scenes from World Manifest
 
 For detailed information about script usage, environment variables, and file formats, see [Scripts Documentation](src/scripts/README.md).
