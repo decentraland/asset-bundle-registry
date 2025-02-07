@@ -15,7 +15,7 @@ export const metricDeclarations = {
   worker_run_duration_seconds: {
     help: 'Histogram of events processing duration in seconds',
     type: IMetricsComponent.HistogramType,
-    buckets: [1, 5, 10, 30, 60, 90, 120, 180, 240, 300, 360, 420, 480, 540, 600]
+    buckets: [10, 30, 60, 120, 300, 600]
   },
   registries_ready_count: {
     help: 'Count of registries marked as ready to be returned',
@@ -27,8 +27,7 @@ export const metricDeclarations = {
   },
   registries_missmatch_count: {
     help: 'Count of registries that have a missmatch',
-    type: IMetricsComponent.CounterType,
-    labelNames: ['pointer']
+    type: IMetricsComponent.CounterType
   },
   registries_served_count: {
     help: 'Count of registries successfully served',
