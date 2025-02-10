@@ -21,8 +21,8 @@ export async function getActiveEntityHandler(context: HandlerContextWithPath<'db
   const entities = await db.getSortedRegistriesByPointers(pointers)
 
   if (entities.length === 0) {
-    pointers.forEach((pointer) => {
-      metrics.increment('registries_missmatch_count', { pointer }, 1)
+    pointers.forEach((_pointer) => {
+      metrics.increment('registries_missmatch_count', {}, 1)
     })
   }
 
