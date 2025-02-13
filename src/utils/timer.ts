@@ -5,7 +5,7 @@ export async function sleep(ms: number) {
 }
 
 export async function withRetry<T>(
-  operation: () => Promise<T>,
+  operation: (isLastAttempt: boolean) => Promise<T>,
   options?: {
     logger?: ILoggerComponent.ILogger
     maxRetries?: number
@@ -15,10 +15,10 @@ export async function withRetry<T>(
   const { logger = undefined, maxRetries = 5, baseDelay = 100 } = options || {}
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
+    const isLastAttempt = attempt === maxRetries - 1
     try {
-      return await operation()
+      return await operation(isLastAttempt)
     } catch (error: any) {
-      const isLastAttempt = attempt === maxRetries - 1
       if (isLastAttempt) throw error
 
       const delay = baseDelay * Math.pow(2, attempt)

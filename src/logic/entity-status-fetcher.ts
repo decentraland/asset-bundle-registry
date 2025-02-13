@@ -38,14 +38,14 @@ export async function createEntityStatusFetcherComponent({
 
   async function fetchBundleStatus(entityId: string, platform: string): Promise<Registry.SimplifiedStatus> {
     return withRetry(
-      async () => {
+      async (isLastAttempt: boolean) => {
         const manifestName = platform !== 'webgl' ? `${entityId}_${platform}` : entityId
-        const manifestUrl = `${ASSET_BUNDLE_CDN_URL}manifest/${manifestName}.json`
+        const manifestUrl = `${ASSET_BUNDLE_CDN_URL}manifest/${manifestName}.json?byPassCache=${isLastAttempt}`
 
         const response = await fetch.fetch(manifestUrl)
 
         if (!response.ok) {
-          if (response.status === 404) {
+          if (response.status === 404 && isLastAttempt) {
             logger.warn('Manifest not found', { entityId, platform, manifestUrl })
             return Registry.SimplifiedStatus.PENDING
           } else {
@@ -72,7 +72,7 @@ export async function createEntityStatusFetcherComponent({
           return Registry.SimplifiedStatus.FAILED
         }
       },
-      { maxRetries: MAX_RETRIES, logger }
+      { maxRetries: MAX_RETRIES, baseDelay: 5000, logger }
     )
   }
 
@@ -89,7 +89,7 @@ export async function createEntityStatusFetcherComponent({
         const allExist = allResponses.every((response) => response.ok)
         return allExist ? Registry.SimplifiedStatus.COMPLETE : Registry.SimplifiedStatus.FAILED
       },
-      { maxRetries: MAX_RETRIES, logger }
+      { maxRetries: MAX_RETRIES, baseDelay: 5000, logger }
     )
   }
 
