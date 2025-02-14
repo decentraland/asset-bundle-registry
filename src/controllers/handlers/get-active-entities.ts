@@ -38,8 +38,14 @@ export async function getActiveEntityHandler(context: HandlerContextWithPath<'db
     {} as Record<string, Registry.DbEntity[]>
   )
 
-  // get first element of each group
-  const entitiesByPointers = Object.values(groupByWholePointers).map((group) => (group.length ? group[0] : undefined))
+  // Get first element of each group, filtering out entities with status "pending"
+  const entitiesByPointers = Object.values(groupByWholePointers)
+    .map((group) => {
+      const filteredGroup = group.filter((entity) => entity.status !== 'pending') // Remove "pending" entities
+      return filteredGroup.length ? filteredGroup[0] : undefined // Return first valid entity
+    })
+    .filter(Boolean) // Remove undefined values
+
   metrics.increment('registries_served_count', {}, entitiesByPointers.length)
 
   return {
