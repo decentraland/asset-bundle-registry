@@ -1,4 +1,3 @@
-
 export function createMessageConsumerMock() {
   return {
     process: jest.fn(),

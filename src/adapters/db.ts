@@ -11,7 +11,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
       FROM 
         registries
       WHERE 
-        deployer = ${owner.toLocaleLowerCase()}
+        LOWER(deployer) = ${owner.toLocaleLowerCase()}
       ORDER BY timestamp DESC
     `
 
@@ -165,6 +165,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
         DELETE FROM registries
         WHERE LOWER(id) = ANY(${parsedIdsChunk}::varchar(255)[])
       `
+
       await pg.query(query)
     }
   }
@@ -248,7 +249,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
       FROM 
         historical_registries
       WHERE 
-        deployer = ${owner.toLocaleLowerCase()}
+        LOWER(deployer) = ${owner.toLocaleLowerCase()}
     `
 
     const result = await pg.query<Registry.DbEntity>(query)

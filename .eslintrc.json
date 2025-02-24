@@ -7,7 +7,7 @@
       "test/tsconfig.json"
     ]
   },
-  "ignorePatterns": ["dist/", "test/", "*.js", "*.d.ts", "*.json", "src/index.ts", "coverage/"],
+  "ignorePatterns": ["dist/", "*.js", "*.d.ts", "*.json", "src/index.ts", "coverage/"],
   "rules": {
     "prettier/prettier": ["error", {
       "printWidth": 120,

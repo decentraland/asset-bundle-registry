@@ -1,8 +1,8 @@
-import { WorldsComponent } from "../../../src/types";
+import { WorldsComponent } from '../../../src/types'
 
 export function createWorldsMockComponent(): WorldsComponent {
-    return {
-        getWorld: jest.fn(),
-        isWorldDeployment: jest.fn()
-    }
+  return {
+    getWorld: jest.fn(),
+    isWorldDeployment: jest.fn()
+  }
 }
