@@ -168,4 +168,90 @@ test('POST /entities/active', async function ({ components }) {
 
     expect(parsedResponse).toMatchObject(parseResponse([registryA]))
   })
+
+  it('should return 400 when no pointers are provided', async function () {
+    const response = await fetchLocally('POST', '/entities/active', undefined, { pointers: [] })
+    expect(response.status).toBe(400)
+    const parsedResponse = await response.json()
+    expect(parsedResponse).toMatchObject({
+      ok: false,
+      message: 'No pointers provided'
+    })
+  })
+
+  it('should return 400 when pointers is null', async function () {
+    const response = await fetchLocally('POST', '/entities/active', undefined, { pointers: null })
+    expect(response.status).toBe(400)
+    const parsedResponse = await response.json()
+    expect(parsedResponse).toMatchObject({
+      ok: false,
+      message: 'No pointers provided'
+    })
+  })
+
+  it('should handle mix of existing and non-existing pointers', async function () {
+    const registry = createRegistryEntity(
+      identity.realAccount.address,
+      Registry.Status.COMPLETE,
+      Registry.SimplifiedStatus.COMPLETE
+    )
+    await createRegistryOnDatabase(registry)
+
+    const response = await fetchLocally('POST', '/entities/active', undefined, {
+      pointers: [registry.pointers[0], 'non-existent-pointer']
+    })
+    const parsedResponse = await response.json()
+
+    expect(parsedResponse).toMatchObject(parseResponse([registry]))
+  })
+
+  it('should handle duplicate pointers in request', async function () {
+    const registry = createRegistryEntity(
+      identity.realAccount.address,
+      Registry.Status.COMPLETE,
+      Registry.SimplifiedStatus.COMPLETE
+    )
+    await createRegistryOnDatabase(registry)
+
+    const response = await fetchLocally('POST', '/entities/active', undefined, {
+      pointers: [registry.pointers[0], registry.pointers[0]]
+    })
+    const parsedResponse = await response.json()
+
+    expect(parsedResponse).toMatchObject(parseResponse([registry]))
+  })
+
+  it('should return most recent COMPLETE entity when multiple status exist', async function () {
+    const registryA = createRegistryEntity(
+      identity.realAccount.address,
+      Registry.Status.COMPLETE,
+      Registry.SimplifiedStatus.COMPLETE,
+      { timestamp: 1000 }
+    )
+
+    const registryB = createRegistryEntity(
+      identity.realAccount.address,
+      Registry.Status.FAILED,
+      Registry.SimplifiedStatus.FAILED,
+      { id: 'registryB', pointers: ['1000,1000'], timestamp: 2000 }
+    )
+
+    const registryC = createRegistryEntity(
+      identity.realAccount.address,
+      Registry.Status.COMPLETE,
+      Registry.SimplifiedStatus.COMPLETE,
+      { id: 'registryC', pointers: ['1000,1000'], timestamp: 3000 }
+    )
+
+    await createRegistryOnDatabase(registryA)
+    await createRegistryOnDatabase(registryB)
+    await createRegistryOnDatabase(registryC)
+
+    const response = await fetchLocally('POST', '/entities/active', undefined, {
+      pointers: [registryA.pointers[0]]
+    })
+    const parsedResponse = await response.json()
+
+    expect(parsedResponse).toMatchObject(parseResponse([registryC]))
+  })
 })
