@@ -19,7 +19,10 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
     return result.rows
   }
 
-  async function getSortedRegistriesByPointers(pointers: string[]): Promise<Registry.DbEntity[]> {
+  async function getSortedRegistriesByPointers(
+    pointers: string[],
+    statuses?: Registry.Status[]
+  ): Promise<Registry.DbEntity[]> {
     const query = SQL`
       SELECT 
         id, type, timestamp, deployer, pointers, content, metadata, status, bundles
@@ -27,8 +30,17 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
         registries
       WHERE 
         pointers && ${pointers}::varchar(255)[]
-      ORDER BY timestamp DESC
     `
+
+    if (statuses) {
+      query.append(SQL`
+        AND status = ANY(${statuses}::varchar(255)[])
+      `)
+    }
+
+    query.append(SQL`
+      ORDER BY timestamp DESC
+    `)
 
     const result = await pg.query<Registry.DbEntity>(query)
     return result.rows

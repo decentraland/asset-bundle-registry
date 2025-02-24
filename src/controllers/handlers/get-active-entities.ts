@@ -18,7 +18,10 @@ export async function getActiveEntityHandler(context: HandlerContextWithPath<'db
     }
   }
 
-  const entities = await db.getSortedRegistriesByPointers(pointers)
+  const entities = await db.getSortedRegistriesByPointers(pointers, [
+    Registry.Status.COMPLETE,
+    Registry.Status.FALLBACK
+  ])
 
   if (entities.length === 0) {
     pointers.forEach((_pointer) => {

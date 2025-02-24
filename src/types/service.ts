@@ -6,7 +6,7 @@ import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
 
 export type DbComponent = {
   getSortedRegistriesByOwner(owner: EthAddress): Promise<Registry.DbEntity[]>
-  getSortedRegistriesByPointers(pointers: string[]): Promise<Registry.DbEntity[]>
+  getSortedRegistriesByPointers(pointers: string[], statuses?: Registry.Status[]): Promise<Registry.DbEntity[]>
   getRegistryById(id: string): Promise<Registry.DbEntity | null>
   insertRegistry(registry: Registry.DbEntity): Promise<Registry.DbEntity>
   updateRegistriesStatus(ids: string[], status: Registry.Status): Promise<Registry.DbEntity[]>
