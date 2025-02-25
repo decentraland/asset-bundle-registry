@@ -33,6 +33,7 @@ export async function createEntityStatusFetcherComponent({
 }: Pick<AppComponents, 'fetch' | 'logs' | 'config'>): Promise<EntityStatusFetcher> {
   const ASSET_BUNDLE_CDN_URL = (await config.requireString('ASSET_BUNDLE_CDN_URL')).replace(/\/?$/, '/')
   const MAX_RETRIES = (await config.getNumber('MAX_RETRIES')) || 5
+  const FAIL_ON_PURPOSE = (await config.getString('ENV')) === 'dev'
   const logger = logs.getLogger('entity-status-fetcher')
   const LEVEL_OF_DETAILS = ['0', '1', '2']
 
@@ -40,6 +41,12 @@ export async function createEntityStatusFetcherComponent({
     return withRetry(
       async () => {
         const manifestName = platform !== 'webgl' ? `${entityId}_${platform}` : entityId
+
+        if (platform === 'windows' && FAIL_ON_PURPOSE) {
+          logger.error('Failing on purpose')
+          throw new Error('Testing failure')
+        }
+
         const manifestUrl = `${ASSET_BUNDLE_CDN_URL}manifest/${manifestName}.json`
 
         const response = await fetch.fetch(manifestUrl)

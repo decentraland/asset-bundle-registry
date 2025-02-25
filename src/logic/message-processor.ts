@@ -63,10 +63,12 @@ export async function createMessageProcessorComponent({
 
     log.debug('Processing', { message })
 
-    const handlers: EventHandlerComponent[] | undefined = processors.filter(
-      (p) =>
+    const handlers: EventHandlerComponent[] | undefined = processors.filter((p) => {
+      console.log(p.name)
+      return (
         p.canHandle(message) && (retryData.failedHandlers.length === 0 || retryData.failedHandlers.includes(p.name))
-    )
+      )
+    })
 
     if (!handlers || handlers.length === 0) {
       log.warn('No handler found for the message, will not retry', { message })
