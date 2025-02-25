@@ -95,7 +95,7 @@ describe('entity status fetcher', () => {
       expect(status).toBe(Registry.SimplifiedStatus.FAILED)
     })
 
-    it('should return PENDING when manifest is not found (404)', async () => {
+    it('should throw error when manifest is not found (404)', async () => {
       const sut: EntityStatusFetcher = await createEntityStatusFetcherComponent({ fetch: mockFetch, logs, config })
 
       mockFetch.fetch.mockResolvedValue({
@@ -103,8 +103,7 @@ describe('entity status fetcher', () => {
         status: 404
       })
 
-      const status = await sut.fetchBundleStatus(ENTITY_ID, 'webgl')
-      expect(status).toBe(Registry.SimplifiedStatus.PENDING)
+      await expect(sut.fetchBundleStatus(ENTITY_ID, 'webgl')).rejects.toThrow('Failed to fetch bundle status')
     })
 
     it('should throw error for non-404 fetch failures', async () => {

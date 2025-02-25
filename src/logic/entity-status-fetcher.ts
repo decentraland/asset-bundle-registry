@@ -45,19 +45,14 @@ export async function createEntityStatusFetcherComponent({
         const response = await fetch.fetch(manifestUrl)
 
         if (!response.ok) {
-          if (response.status === 404) {
-            logger.warn('Manifest not found', { entityId, platform, manifestUrl })
-            return Registry.SimplifiedStatus.PENDING
-          } else {
-            logger.error('Failed to fetch bundle status', {
-              entityId,
-              platform,
-              status: response.status,
-              manifestUrl
-            })
+          logger.error('Failed to fetch bundle status', {
+            entityId,
+            platform,
+            status: response.status,
+            manifestUrl
+          })
 
-            throw new Error('Failed to fetch bundle status')
-          }
+          throw new Error('Failed to fetch bundle status')
         }
 
         const parsedManifest: Manifest = await response.json()
