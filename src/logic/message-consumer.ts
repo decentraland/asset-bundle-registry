@@ -1,4 +1,4 @@
-import { AppComponents, MessageConsumerComponent } from '../types'
+import { AppComponents, MessageConsumerComponent, MessageProcessorResult } from '../types'
 import { sleep } from '../utils/timer'
 
 export function createMessagesConsumerComponent({
@@ -49,8 +49,23 @@ export function createMessagesConsumerComponent({
         }
 
         try {
-          await messageProcessor.process(parsedMessage)
+          const result: MessageProcessorResult = await messageProcessor.process(parsedMessage)
           await removeMessageFromQueue(ReceiptHandle!)
+
+          if (!result.ok) {
+            const messageToRequeue = {
+              ...parsedMessage,
+              retry: {
+                attempt: (parsedMessage.retry?.attempt || 0) + 1,
+                failedHandlers: result.failedHandlers
+              }
+            }
+
+            await queue.send({
+              MessageBody: JSON.stringify(messageToRequeue),
+              DelaySeconds: 0
+            })
+          }
         } catch (error: any) {
           logger.error('Failed while processing message from queue', {
             messageHandle: ReceiptHandle!,

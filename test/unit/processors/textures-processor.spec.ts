@@ -1,7 +1,7 @@
 import { createInMemoryCacheComponent } from '../../../src/adapters/memory-cache'
-import { createTexturesProcessor } from '../../../src/logic/processors/textures-processor'
+import { createTexturesEventHandler } from '../../../src/logic/handlers/textures-handler'
 import { createQueuesStatusManagerComponent } from '../../../src/logic/queues-status-manager'
-import { Registry } from '../../../src/types'
+import { Registry, EventHandlerName } from '../../../src/types'
 import { createCatalystMockComponent } from '../mocks/catalyst'
 import { createDbMockComponent } from '../mocks/db'
 import { createLogMockComponent } from '../mocks/logs'
@@ -28,7 +28,7 @@ describe('textures-processor should', () => {
   const memoryStorage = createInMemoryCacheComponent()
   const queuesStatusManager = createQueuesStatusManagerComponent({ memoryStorage })
 
-  const sut = createTexturesProcessor({
+  const sut = createTexturesEventHandler({
     logs: logsMock,
     db: dbMock,
     catalyst: catalystMock,
@@ -45,12 +45,13 @@ describe('textures-processor should', () => {
   it('return an error when the entity is not found in the database', async () => {
     dbMock.getRegistryById = jest.fn().mockResolvedValue(null)
 
-    const result = await sut.process(mockTexturesEvent)
+    const result = await sut.handle(mockTexturesEvent)
 
     expect(dbMock.getRegistryById).toHaveBeenCalledWith(mockTexturesEvent.metadata.entityId)
     expect(result).toEqual({
       ok: false,
-      errors: [`Entity with id ${mockTexturesEvent.metadata.entityId} was not found`]
+      errors: [`Entity with id ${mockTexturesEvent.metadata.entityId} was not found`],
+      handlerName: EventHandlerName.TEXTURES
     })
   })
 
@@ -59,14 +60,18 @@ describe('textures-processor should', () => {
     entityStatusFetcherMock.fetchBundleStatus.mockResolvedValue(Registry.Status.COMPLETE)
     dbMock.upsertRegistryBundle = jest.fn().mockResolvedValue(null)
 
-    const result = await sut.process(mockTexturesEvent)
+    const result = await sut.handle(mockTexturesEvent)
 
     expect(dbMock.getRegistryById).toHaveBeenCalledWith(mockTexturesEvent.metadata.entityId)
     expect(entityStatusFetcherMock.fetchBundleStatus).toHaveBeenCalledWith(
       mockTexturesEvent.metadata.entityId,
       mockTexturesEvent.metadata.platform
     )
-    expect(result).toEqual({ ok: false, errors: ['Error storing bundle'] })
+    expect(result).toEqual({
+      ok: false,
+      errors: ['Error storing bundle'],
+      handlerName: EventHandlerName.TEXTURES
+    })
   })
 
   it('process successfully when entity is found and bundle is stored', async () => {
@@ -82,7 +87,7 @@ describe('textures-processor should', () => {
       bundles: {}
     })
 
-    const result = await sut.process(mockTexturesEvent)
+    const result = await sut.handle(mockTexturesEvent)
 
     expect(dbMock.getRegistryById).toHaveBeenCalledWith(mockTexturesEvent.metadata.entityId)
     expect(entityStatusFetcherMock.fetchBundleStatus).toHaveBeenCalledWith(
@@ -96,7 +101,7 @@ describe('textures-processor should', () => {
       Registry.Status.COMPLETE
     )
     expect(registryOrchestratorMock.persistAndRotateStates).toHaveBeenCalled()
-    expect(result).toEqual({ ok: true })
+    expect(result).toEqual({ ok: true, handlerName: EventHandlerName.TEXTURES })
   })
 
   it('process with error status when bundle status is error', async () => {
@@ -112,7 +117,7 @@ describe('textures-processor should', () => {
       bundles: {}
     })
 
-    const result = await sut.process(mockTexturesEvent)
+    const result = await sut.handle(mockTexturesEvent)
 
     expect(dbMock.getRegistryById).toHaveBeenCalledWith(mockTexturesEvent.metadata.entityId)
     expect(entityStatusFetcherMock.fetchBundleStatus).toHaveBeenCalledWith(
@@ -126,7 +131,7 @@ describe('textures-processor should', () => {
       Registry.SimplifiedStatus.FAILED
     )
     expect(registryOrchestratorMock.persistAndRotateStates).toHaveBeenCalled()
-    expect(result).toEqual({ ok: true })
+    expect(result).toEqual({ ok: true, handlerName: EventHandlerName.TEXTURES })
   })
 
   it('should fetch and create entity from Catalyst when not found in database', async () => {
@@ -160,7 +165,7 @@ describe('textures-processor should', () => {
       }
     })
 
-    const result = await sut.process(mockTexturesEvent)
+    const result = await sut.handle(mockTexturesEvent)
 
     expect(dbMock.getRegistryById).toHaveBeenCalledWith(mockTexturesEvent.metadata.entityId)
     expect(catalystMock.getEntityById).toHaveBeenCalledWith(mockTexturesEvent.metadata.entityId)
@@ -181,20 +186,21 @@ describe('textures-processor should', () => {
       }
     })
 
-    expect(result).toEqual({ ok: true })
+    expect(result).toEqual({ ok: true, handlerName: EventHandlerName.TEXTURES })
   })
 
   it('should return error when entity is not found in database nor Catalyst', async () => {
     dbMock.getRegistryById = jest.fn().mockResolvedValue(null)
     catalystMock.getEntityById = jest.fn().mockResolvedValue(null)
 
-    const result = await sut.process(mockTexturesEvent)
+    const result = await sut.handle(mockTexturesEvent)
 
     expect(dbMock.getRegistryById).toHaveBeenCalledWith(mockTexturesEvent.metadata.entityId)
     expect(catalystMock.getEntityById).toHaveBeenCalledWith(mockTexturesEvent.metadata.entityId)
     expect(result).toEqual({
       ok: false,
-      errors: [`Entity with id ${mockTexturesEvent.metadata.entityId} was not found`]
+      errors: [`Entity with id ${mockTexturesEvent.metadata.entityId} was not found`],
+      handlerName: EventHandlerName.TEXTURES
     })
   })
 })

@@ -1,7 +1,7 @@
 import { AssetBundleConversionFinishedEvent, Entity } from '@dcl/schemas'
-import { AppComponents, EventHandlerComponent, ProcessorResult, Registry } from '../../types'
+import { AppComponents, EventHandlerComponent, EventHandlerName, EventHandlerResult, Registry } from '../../types'
 
-export const createTexturesProcessor = ({
+export const createTexturesEventHandler = ({
   logs,
   db,
   catalyst,
@@ -13,10 +13,11 @@ export const createTexturesProcessor = ({
   AppComponents,
   'logs' | 'db' | 'catalyst' | 'worlds' | 'entityStatusFetcher' | 'registryOrchestrator' | 'queuesStatusManager'
 >): EventHandlerComponent => {
-  const logger = logs.getLogger('textures-processor')
+  const HANDLER_NAME = EventHandlerName.TEXTURES
+  const logger = logs.getLogger('textures-handler')
 
   return {
-    process: async (event: AssetBundleConversionFinishedEvent): Promise<ProcessorResult> => {
+    handle: async (event: AssetBundleConversionFinishedEvent): Promise<EventHandlerResult> => {
       try {
         let entity: Registry.DbEntity | null = await db.getRegistryById(event.metadata.entityId)
 
@@ -32,7 +33,11 @@ export const createTexturesProcessor = ({
 
           if (!fetchedEntity) {
             logger.error('Entity not found', { event: JSON.stringify(event) })
-            return { ok: false, errors: [`Entity with id ${event.metadata.entityId} was not found`] }
+            return {
+              ok: false,
+              errors: [`Entity with id ${event.metadata.entityId} was not found`],
+              handlerName: HANDLER_NAME
+            }
           }
 
           const defaultBundles: Registry.Bundles = {
@@ -73,28 +78,28 @@ export const createTexturesProcessor = ({
 
         if (!registry) {
           logger.error('Error storing bundle', { entityId: event.metadata.entityId, platform: event.metadata.platform })
-          return { ok: false, errors: ['Error storing bundle'] }
+          return { ok: false, errors: ['Error storing bundle'], handlerName: HANDLER_NAME }
         }
 
         logger.info(`Bundle stored`, { entityId: event.metadata.entityId, bundles: JSON.stringify(registry.bundles) })
 
         await registryOrchestrator.persistAndRotateStates(registry)
 
-        return { ok: true }
+        return { ok: true, handlerName: HANDLER_NAME }
       } catch (errors: any) {
         logger.error('Failed to process', {
           error: errors?.message || 'Unexpected processor failure',
           stack: JSON.stringify(errors?.stack)
         })
 
-        return { ok: false, errors: [errors?.message || 'Unexpected processor failure'] }
+        return { ok: false, errors: [errors?.message || 'Unexpected processor failure'], handlerName: HANDLER_NAME }
       }
     },
-    canProcess: (event: any): boolean => {
+    canHandle: (event: any): boolean => {
       AssetBundleConversionFinishedEvent.validate(event)
 
       return !AssetBundleConversionFinishedEvent.validate.errors?.length
     },
-    name: 'Textures Processor'
+    name: HANDLER_NAME
   }
 }
