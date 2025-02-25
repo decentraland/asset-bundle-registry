@@ -61,10 +61,7 @@ export function createMessagesConsumerComponent({
               }
             }
 
-            await queue.send({
-              MessageBody: JSON.stringify(messageToRequeue),
-              DelaySeconds: 0
-            })
+            await queue.send(messageToRequeue)
           }
         } catch (error: any) {
           logger.error('Failed while processing message from queue', {
