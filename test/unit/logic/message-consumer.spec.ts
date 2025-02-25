@@ -77,14 +77,11 @@ describe('message consumer', () => {
       expect(messageProcessor.process).toHaveBeenCalledWith(message)
       expect(queue.deleteMessage).toHaveBeenCalledWith('receipt-123')
       expect(queue.send).toHaveBeenCalledWith({
-        MessageBody: JSON.stringify({
-          ...message,
-          retry: {
-            attempt: 1,
-            failedHandlers: ['TexturesHandler']
-          }
-        }),
-        DelaySeconds: 0
+        ...message,
+        retry: {
+          attempt: 1,
+          failedHandlers: ['TexturesHandler']
+        }
       })
     })
 
@@ -177,14 +174,11 @@ describe('message consumer', () => {
       await processPromise
 
       expect(queue.send).toHaveBeenCalledWith({
-        MessageBody: JSON.stringify({
-          ...message,
-          retry: {
-            attempt: 2,
-            failedHandlers: ['TexturesHandler']
-          }
-        }),
-        DelaySeconds: 0
+        ...message,
+        retry: {
+          attempt: 2,
+          failedHandlers: ['TexturesHandler']
+        }
       })
     })
   })
