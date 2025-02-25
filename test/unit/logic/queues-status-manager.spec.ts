@@ -8,11 +8,11 @@ describe('queues status manager', () => {
   const entityId = 'baf1'
   const platform = 'windows'
 
-  afterEach(() => {
+  afterEach(async () => {
     jest.clearAllMocks()
-    memoryStorage.purge(`jobs:${platform}:${entityId}`)
-    memoryStorage.purge(`jobs:mac:${entityId}`)
-    memoryStorage.purge(`jobs:webgl:${entityId}`)
+    await memoryStorage.purge(`jobs:${platform}:${entityId}`)
+    await memoryStorage.purge(`jobs:mac:${entityId}`)
+    await memoryStorage.purge(`jobs:webgl:${entityId}`)
   })
 
   it('should return empty for pending entities when there are no pending entities', async () => {

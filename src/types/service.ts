@@ -1,6 +1,13 @@
 import { Message } from '@aws-sdk/client-sqs'
 import { IBaseComponent } from '@well-known-components/interfaces'
-import { CatalystFetchOptions, EntityStatusInQueue, EventHandlerName, MessageProcessorResult, EventHandlerResult, Registry } from './types'
+import {
+  CatalystFetchOptions,
+  EntityStatusInQueue,
+  EventHandlerName,
+  MessageProcessorResult,
+  EventHandlerResult,
+  Registry
+} from './types'
 import { Entity, EthAddress } from '@dcl/schemas'
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
 
