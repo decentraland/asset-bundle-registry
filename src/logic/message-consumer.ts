@@ -5,7 +5,7 @@ export function createMessagesConsumerComponent({
   logs,
   queue,
   messageProcessor
-}: Pick<AppComponents, 'logs' | 'metrics' | 'queue' | 'messageProcessor'>): MessageConsumerComponent {
+}: Pick<AppComponents, 'logs' | 'queue' | 'messageProcessor'>): MessageConsumerComponent {
   const logger = logs.getLogger('messages-consumer')
   const intervalToWaitInSeconds = 5 // wait time when no messages are found in the queue
   let isRunning = false

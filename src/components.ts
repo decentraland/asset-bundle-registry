@@ -102,7 +102,7 @@ export async function initComponents(): Promise<AppComponents> {
     logs,
     config
   })
-  const messageConsumer = createMessagesConsumerComponent({ logs, queue, messageProcessor, metrics })
+  const messageConsumer = createMessagesConsumerComponent({ logs, queue, messageProcessor })
   const workerManager = createWorkerManagerComponent({ metrics, logs })
 
   return {

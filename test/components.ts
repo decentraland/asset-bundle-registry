@@ -11,8 +11,8 @@ import { metricDeclarations } from '../src/metrics'
 import { TestComponents } from '../src/types'
 import { main } from '../src/service'
 import { createDbAdapter } from '../src/adapters/db'
-import { createMessageConsumerMock } from './unit/mocks/message-consumer'
 import { extendDbComponent } from './db'
+import { createMessageConsumerMockComponent } from './unit/mocks/message-consumer'
 
 /**
  * Behaves like Jest "describe" function, used to describe a test for a
@@ -45,7 +45,7 @@ async function initComponents(): Promise<TestComponents> {
 
   const db = createDbAdapter({ pg })
 
-  const messageConsumer = createMessageConsumerMock()
+  const messageConsumer = createMessageConsumerMockComponent()
 
   return {
     ...components,
