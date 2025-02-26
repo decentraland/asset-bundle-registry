@@ -14,7 +14,6 @@ import { createTexturesEventHandler } from './handlers/textures-handler'
 export async function createMessageProcessorComponent({
   catalyst,
   worlds,
-  entityStatusFetcher,
   registryOrchestrator,
   queuesStatusManager,
   db,
@@ -22,14 +21,7 @@ export async function createMessageProcessorComponent({
   config
 }: Pick<
   AppComponents,
-  | 'catalyst'
-  | 'worlds'
-  | 'entityStatusFetcher'
-  | 'registryOrchestrator'
-  | 'queuesStatusManager'
-  | 'db'
-  | 'logs'
-  | 'config'
+  'catalyst' | 'worlds' | 'registryOrchestrator' | 'queuesStatusManager' | 'db' | 'logs' | 'config'
 >): Promise<MessageProcessorComponent> {
   const MAX_RETRIES: number = (await config.getNumber('MAX_RETRIES')) || 3
   const log = logs.getLogger('message-processor')

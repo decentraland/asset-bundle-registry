@@ -23,7 +23,7 @@ export const createDeploymentEventHandler = ({
         const registryAlreadyExists = await db.getRegistryById(event.entity.entityId)
 
         if (registryAlreadyExists) {
-          logger.error('Registry already exists, will not process deployment', { event: JSON.stringify(event) })
+          logger.warn('Registry already exists, will not process deployment', { event: JSON.stringify(event) })
           return {
             ok: true,
             handlerName: HANDLER_NAME
