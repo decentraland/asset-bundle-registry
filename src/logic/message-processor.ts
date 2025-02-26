@@ -40,7 +40,6 @@ export async function createMessageProcessorComponent({
       logs,
       catalyst,
       worlds,
-      entityStatusFetcher,
       registryOrchestrator,
       queuesStatusManager
     }),
