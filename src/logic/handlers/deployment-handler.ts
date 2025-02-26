@@ -1,18 +1,19 @@
 import { Entity } from '@dcl/schemas'
-import { AppComponents, EventHandlerComponent, ProcessorResult, Registry } from '../../types'
+import { AppComponents, EventHandlerComponent, EventHandlerName, EventHandlerResult, Registry } from '../../types'
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
 import { Authenticator } from '@dcl/crypto'
 
-export const createDeploymentProcessor = ({
+export const createDeploymentEventHandler = ({
   registryOrchestrator,
   catalyst,
   worlds,
   logs
 }: Pick<AppComponents, 'registryOrchestrator' | 'catalyst' | 'worlds' | 'logs'>): EventHandlerComponent => {
-  const logger = logs.getLogger('deployment-processor')
+  const HANDLER_NAME = EventHandlerName.DEPLOYMENT
+  const logger = logs.getLogger('deployment-handler')
 
   return {
-    process: async (event: DeploymentToSqs): Promise<ProcessorResult> => {
+    handle: async (event: DeploymentToSqs): Promise<EventHandlerResult> => {
       let entity: Entity | null
       try {
         if (worlds.isWorldDeployment(event)) {
@@ -26,7 +27,11 @@ export const createDeploymentProcessor = ({
 
         if (!entity) {
           logger.error('Entity not found', { event: JSON.stringify(event) })
-          return { ok: false, errors: [`Entity with id ${event.entity.entityId} was not found`] }
+          return {
+            ok: false,
+            errors: [`Entity with id ${event.entity.entityId} was not found`],
+            handlerName: HANDLER_NAME
+          }
         }
 
         const defaultBundles: Registry.Bundles = {
@@ -49,21 +54,21 @@ export const createDeploymentProcessor = ({
           bundles: defaultBundles
         })
 
-        return { ok: true }
+        return { ok: true, handlerName: HANDLER_NAME }
       } catch (error: any) {
         logger.error('Failed to process', {
           error: error?.message || 'Unexpected processor failure',
           stack: JSON.stringify(error?.stack)
         })
 
-        return { ok: false, errors: [error?.message || 'Unexpected processor failure'] }
+        return { ok: false, errors: [error?.message || 'Unexpected processor failure'], handlerName: HANDLER_NAME }
       }
     },
-    canProcess: (event: any): boolean => {
+    canHandle: (event: any): boolean => {
       DeploymentToSqs.validate(event)
 
       return !DeploymentToSqs.validate.errors?.length
     },
-    name: 'Deployment Processor'
+    name: HANDLER_NAME
   }
 }

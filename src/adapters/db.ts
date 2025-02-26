@@ -11,7 +11,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
       FROM 
         registries
       WHERE 
-        deployer = ${owner.toLocaleLowerCase()}
+        LOWER(deployer) = ${owner.toLocaleLowerCase()}
       ORDER BY timestamp DESC
     `
 
@@ -19,7 +19,10 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
     return result.rows
   }
 
-  async function getSortedRegistriesByPointers(pointers: string[]): Promise<Registry.DbEntity[]> {
+  async function getSortedRegistriesByPointers(
+    pointers: string[],
+    statuses?: Registry.Status[]
+  ): Promise<Registry.DbEntity[]> {
     const query = SQL`
       SELECT 
         id, type, timestamp, deployer, pointers, content, metadata, status, bundles
@@ -27,8 +30,17 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
         registries
       WHERE 
         pointers && ${pointers}::varchar(255)[]
-      ORDER BY timestamp DESC
     `
+
+    if (statuses) {
+      query.append(SQL`
+        AND status = ANY(${statuses}::varchar(255)[])
+      `)
+    }
+
+    query.append(SQL`
+      ORDER BY timestamp DESC
+    `)
 
     const result = await pg.query<Registry.DbEntity>(query)
     return result.rows
@@ -165,6 +177,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
         DELETE FROM registries
         WHERE LOWER(id) = ANY(${parsedIdsChunk}::varchar(255)[])
       `
+
       await pg.query(query)
     }
   }
@@ -248,7 +261,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
       FROM 
         historical_registries
       WHERE 
-        deployer = ${owner.toLocaleLowerCase()}
+        LOWER(deployer) = ${owner.toLocaleLowerCase()}
     `
 
     const result = await pg.query<Registry.DbEntity>(query)

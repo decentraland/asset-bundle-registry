@@ -1,7 +1,7 @@
+import { MessageConsumerComponent } from '../../../src/types'
 
-export function createMessageConsumerMock() {
+export function createMessageConsumerMockComponent(): MessageConsumerComponent {
   return {
-    process: jest.fn(),
     start: jest.fn(),
     stop: jest.fn()
   }

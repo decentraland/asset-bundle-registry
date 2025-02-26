@@ -67,3 +67,25 @@ export type CatalystFetchOptions = {
   }
   overrideContentServerUrl?: string
 }
+
+export type EventHandlerResult = {
+  ok: boolean
+  errors?: string[]
+  handlerName: EventHandlerName
+}
+
+export type RetryMessageData = {
+  attempt: number
+  failedHandlers: EventHandlerName[]
+}
+
+export enum EventHandlerName {
+  DEPLOYMENT = 'Deployment Handler',
+  TEXTURES = 'Textures Handler',
+  STATUS = 'Status Handler'
+}
+
+export type MessageProcessorResult = {
+  ok: boolean
+  failedHandlers: EventHandlerName[]
+}

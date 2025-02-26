@@ -56,6 +56,10 @@ export type TestComponents = BaseComponents & {
   // A fetch component that only hits the test server
   localFetch: IFetchComponent
   messageConsumer: MessageConsumerComponent
+  extendedDb: DbComponent & {
+    deleteHistoricalRegistries: (ids: string[]) => Promise<void>
+    close: () => Promise<void>
+  }
 }
 
 // this type simplifies the typings of http handlers

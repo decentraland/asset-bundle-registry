@@ -97,11 +97,12 @@ export async function initComponents(): Promise<AppComponents> {
     worlds,
     entityStatusFetcher,
     registryOrchestrator,
+    queuesStatusManager,
     db,
     logs,
-    queuesStatusManager
+    config
   })
-  const messageConsumer = createMessagesConsumerComponent({ logs, queue, messageProcessor, metrics })
+  const messageConsumer = createMessagesConsumerComponent({ logs, queue, messageProcessor })
   const workerManager = createWorkerManagerComponent({ metrics, logs })
 
   return {

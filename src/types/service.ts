@@ -1,12 +1,19 @@
 import { Message } from '@aws-sdk/client-sqs'
 import { IBaseComponent } from '@well-known-components/interfaces'
-import { CatalystFetchOptions, EntityStatusInQueue, Registry } from './types'
+import {
+  CatalystFetchOptions,
+  EntityStatusInQueue,
+  EventHandlerName,
+  MessageProcessorResult,
+  EventHandlerResult,
+  Registry
+} from './types'
 import { Entity, EthAddress } from '@dcl/schemas'
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
 
 export type DbComponent = {
   getSortedRegistriesByOwner(owner: EthAddress): Promise<Registry.DbEntity[]>
-  getSortedRegistriesByPointers(pointers: string[]): Promise<Registry.DbEntity[]>
+  getSortedRegistriesByPointers(pointers: string[], statuses?: Registry.Status[]): Promise<Registry.DbEntity[]>
   getRegistryById(id: string): Promise<Registry.DbEntity | null>
   insertRegistry(registry: Registry.DbEntity): Promise<Registry.DbEntity>
   updateRegistriesStatus(ids: string[], status: Registry.Status): Promise<Registry.DbEntity[]>
@@ -39,7 +46,7 @@ export type QueueComponent = {
 export type MessageConsumerComponent = IBaseComponent
 
 export type MessageProcessorComponent = {
-  process(message: any): Promise<void>
+  process(message: any): Promise<MessageProcessorResult>
 }
 
 export type CatalystComponent = {
@@ -55,14 +62,9 @@ export type WorldsComponent = {
 }
 
 export type EventHandlerComponent = {
-  process(event: any): Promise<ProcessorResult>
-  canProcess(event: any): boolean
-  name: string
-}
-
-export type ProcessorResult = {
-  ok: boolean
-  errors?: string[]
+  handle(event: any): Promise<EventHandlerResult>
+  canHandle(event: any): boolean
+  name: EventHandlerName
 }
 
 export type EntityStatusFetcher = {

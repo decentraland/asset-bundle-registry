@@ -18,7 +18,10 @@ export async function getActiveEntityHandler(context: HandlerContextWithPath<'db
     }
   }
 
-  const entities = await db.getSortedRegistriesByPointers(pointers)
+  const entities = await db.getSortedRegistriesByPointers(pointers, [
+    Registry.Status.COMPLETE,
+    Registry.Status.FALLBACK
+  ])
 
   if (entities.length === 0) {
     pointers.forEach((_pointer) => {
@@ -38,14 +41,8 @@ export async function getActiveEntityHandler(context: HandlerContextWithPath<'db
     {} as Record<string, Registry.DbEntity[]>
   )
 
-  // Get first element of each group, filtering out entities with status "pending"
-  const entitiesByPointers = Object.values(groupByWholePointers)
-    .map((group) => {
-      const filteredGroup = group.filter((entity) => entity.status !== 'pending') // Remove "pending" entities
-      return filteredGroup.length ? filteredGroup[0] : undefined // Return first valid entity
-    })
-    .filter(Boolean) // Remove undefined values
-
+  // get first element of each group
+  const entitiesByPointers = Object.values(groupByWholePointers).map((group) => (group.length ? group[0] : undefined))
   metrics.increment('registries_served_count', {}, entitiesByPointers.length)
 
   return {

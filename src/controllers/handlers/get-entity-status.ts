@@ -37,6 +37,7 @@ export async function getEntityStatusHandler(context: HandlerContextWithPath<'db
   const entity =
     (await db.getRegistryById(idOrPointer)) ||
     (await db.getHistoricalRegistryById(idOrPointer)) ||
+    // in case a pointer was provided:
     (await db.getSortedRegistriesByPointers([idOrPointer]))[0] // if found, we kept the most recent registry ([0])
 
   if (entity) {
@@ -71,15 +72,25 @@ export async function getEntitiesStatusHandler(
 
   const userAddress: EthAddress = verification!.auth
 
-  const entities = (await db.getSortedRegistriesByOwner(userAddress)) || []
-  const parsedEntitiesStatuses = await Promise.all(entities.map((entity) => parseRegistryStatus(entity)))
-  const historicalEntities = (await db.getSortedHistoricalRegistriesByOwner(userAddress)) || []
-  const parsedHistoricalEntitiesStatuses = await Promise.all(
-    historicalEntities.map((historicalEntity) => parseRegistryStatus(historicalEntity))
-  )
+  if (!EthAddress.validate(userAddress)) {
+    return {
+      status: 400,
+      body: { ok: false, message: 'Invalid user address' },
+      headers: { 'Content-Type': 'application/json' }
+    }
+  }
+
+  const parsedUserAddress = userAddress.toLocaleLowerCase()
+
+  const [entities, historicalEntities] = await Promise.all([
+    db.getSortedRegistriesByOwner(parsedUserAddress),
+    db.getSortedHistoricalRegistriesByOwner(parsedUserAddress)
+  ])
+
+  const parsedEntitiesStatuses = [...entities, ...historicalEntities].map((entity) => parseRegistryStatus(entity))
 
   return {
-    body: JSON.stringify([...parsedEntitiesStatuses, ...parsedHistoricalEntitiesStatuses]),
+    body: JSON.stringify(parsedEntitiesStatuses),
     headers: {
       'Content-Type': 'application/json'
     }
