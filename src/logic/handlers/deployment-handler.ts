@@ -7,8 +7,9 @@ export const createDeploymentEventHandler = ({
   registryOrchestrator,
   catalyst,
   worlds,
+  db,
   logs
-}: Pick<AppComponents, 'registryOrchestrator' | 'catalyst' | 'worlds' | 'logs'>): EventHandlerComponent => {
+}: Pick<AppComponents, 'registryOrchestrator' | 'catalyst' | 'worlds' | 'db' | 'logs'>): EventHandlerComponent => {
   const HANDLER_NAME = EventHandlerName.DEPLOYMENT
   const logger = logs.getLogger('deployment-handler')
 
@@ -16,6 +17,16 @@ export const createDeploymentEventHandler = ({
     handle: async (event: DeploymentToSqs): Promise<EventHandlerResult> => {
       let entity: Entity | null
       try {
+        const registryAlreadyExists = await db.getRegistryById(event.entity.entityId)
+
+        if (registryAlreadyExists) {
+          logger.error('Registry already exists, will not process deployment', { event: JSON.stringify(event) })
+          return {
+            ok: true,
+            handlerName: HANDLER_NAME
+          }
+        }
+
         if (worlds.isWorldDeployment(event)) {
           const [worldContentServerUrl] = event.contentServerUrls!
           entity = await worlds.getWorld(event.entity.entityId, worldContentServerUrl)
