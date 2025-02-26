@@ -33,7 +33,7 @@ export async function createMessageProcessorComponent({
 >): Promise<MessageProcessorComponent> {
   const MAX_RETRIES: number = (await config.getNumber('MAX_RETRIES')) || 3
   const log = logs.getLogger('message-processor')
-  const processors: EventHandlerComponent[] = [
+  const processors: EventHandlerComponent<any>[] = [
     createDeploymentEventHandler({ catalyst, worlds, registryOrchestrator, db, logs }),
     createTexturesEventHandler({
       db,
@@ -62,7 +62,7 @@ export async function createMessageProcessorComponent({
 
     log.debug('Processing', { message })
 
-    const handlers: EventHandlerComponent[] | undefined = processors.filter(
+    const handlers: EventHandlerComponent<any>[] | undefined = processors.filter(
       (p) =>
         p.canHandle(message) && (retryData.failedHandlers.length === 0 || retryData.failedHandlers.includes(p.name))
     )

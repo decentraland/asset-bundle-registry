@@ -5,7 +5,9 @@ import { AssetBundleConversionManuallyQueuedEvent, Events } from '@dcl/schemas'
 export const createStatusEventHandler = ({
   logs,
   queuesStatusManager
-}: Pick<AppComponents, 'logs' | 'queuesStatusManager'>): EventHandlerComponent => {
+}: Pick<AppComponents, 'logs' | 'queuesStatusManager'>): EventHandlerComponent<
+  DeploymentToSqs | AssetBundleConversionManuallyQueuedEvent
+> => {
   const HANDLER_NAME = EventHandlerName.STATUS
   const logger = logs.getLogger('status-handler')
 

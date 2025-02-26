@@ -12,7 +12,7 @@ export const createTexturesEventHandler = ({
 }: Pick<
   AppComponents,
   'logs' | 'db' | 'catalyst' | 'worlds' | 'registryOrchestrator' | 'queuesStatusManager'
->): EventHandlerComponent => {
+>): EventHandlerComponent<AssetBundleConversionFinishedEvent> => {
   const HANDLER_NAME = EventHandlerName.TEXTURES
   const logger = logs.getLogger('textures-handler')
 

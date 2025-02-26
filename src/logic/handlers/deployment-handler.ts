@@ -9,7 +9,10 @@ export const createDeploymentEventHandler = ({
   worlds,
   db,
   logs
-}: Pick<AppComponents, 'registryOrchestrator' | 'catalyst' | 'worlds' | 'db' | 'logs'>): EventHandlerComponent => {
+}: Pick<
+  AppComponents,
+  'registryOrchestrator' | 'catalyst' | 'worlds' | 'db' | 'logs'
+>): EventHandlerComponent<DeploymentToSqs> => {
   const HANDLER_NAME = EventHandlerName.DEPLOYMENT
   const logger = logs.getLogger('deployment-handler')
 
