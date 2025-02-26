@@ -34,7 +34,7 @@ export async function createMessageProcessorComponent({
   const MAX_RETRIES: number = (await config.getNumber('MAX_RETRIES')) || 3
   const log = logs.getLogger('message-processor')
   const processors: EventHandlerComponent[] = [
-    createDeploymentEventHandler({ catalyst, worlds, logs, registryOrchestrator }),
+    createDeploymentEventHandler({ catalyst, worlds, registryOrchestrator, db, logs }),
     createTexturesEventHandler({
       db,
       logs,
