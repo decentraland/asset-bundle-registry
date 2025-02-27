@@ -1,18 +1,18 @@
 import { AssetBundleConversionFinishedEvent, Entity } from '@dcl/schemas'
 import { AppComponents, EventHandlerComponent, EventHandlerName, EventHandlerResult, Registry } from '../../types'
+import { ManifestStatusCode } from '../entity-status-fetcher'
 
 export const createTexturesEventHandler = ({
   logs,
   db,
   catalyst,
   worlds,
-  entityStatusFetcher,
   registryOrchestrator,
   queuesStatusManager
 }: Pick<
   AppComponents,
-  'logs' | 'db' | 'catalyst' | 'worlds' | 'entityStatusFetcher' | 'registryOrchestrator' | 'queuesStatusManager'
->): EventHandlerComponent => {
+  'logs' | 'db' | 'catalyst' | 'worlds' | 'registryOrchestrator' | 'queuesStatusManager'
+>): EventHandlerComponent<AssetBundleConversionFinishedEvent> => {
   const HANDLER_NAME = EventHandlerName.TEXTURES
   const logger = logs.getLogger('textures-handler')
 
@@ -64,10 +64,12 @@ export const createTexturesEventHandler = ({
           await queuesStatusManager.markAsFinished(event.metadata.platform, event.metadata.entityId)
         }
 
-        const status: Registry.SimplifiedStatus = await entityStatusFetcher.fetchBundleStatus(
-          event.metadata.entityId,
-          event.metadata.platform
-        )
+        const status: Registry.SimplifiedStatus =
+          event.metadata.statusCode === ManifestStatusCode.SUCCESS ||
+          event.metadata.statusCode === ManifestStatusCode.CONVERSION_ERRORS_TOLERATED ||
+          event.metadata.statusCode === ManifestStatusCode.ALREADY_CONVERTED
+            ? Registry.SimplifiedStatus.COMPLETE
+            : Registry.SimplifiedStatus.FAILED
 
         const registry: Registry.DbEntity | null = await db.upsertRegistryBundle(
           event.metadata.entityId,

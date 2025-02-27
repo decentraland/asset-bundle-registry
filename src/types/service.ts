@@ -61,9 +61,9 @@ export type WorldsComponent = {
   isWorldDeployment(event: DeploymentToSqs): boolean
 }
 
-export type EventHandlerComponent = {
-  handle(event: any): Promise<EventHandlerResult>
-  canHandle(event: any): boolean
+export type EventHandlerComponent<T> = {
+  handle(event: T): Promise<EventHandlerResult>
+  canHandle(event: T): boolean
   name: EventHandlerName
 }
 

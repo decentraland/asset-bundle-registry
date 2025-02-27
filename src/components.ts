@@ -95,7 +95,6 @@ export async function initComponents(): Promise<AppComponents> {
   const messageProcessor = await createMessageProcessorComponent({
     catalyst,
     worlds,
-    entityStatusFetcher,
     registryOrchestrator,
     queuesStatusManager,
     db,

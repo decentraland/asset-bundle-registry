@@ -1,8 +1,8 @@
 import { AssetBundleConversionManuallyQueuedEvent, Events } from '@dcl/schemas'
-import { createInMemoryCacheComponent } from '../../../src/adapters/memory-cache'
-import { createStatusEventHandler } from '../../../src/logic/handlers/status-handler'
-import { createQueuesStatusManagerComponent } from '../../../src/logic/queues-status-manager'
-import { createLogMockComponent } from '../mocks/logs'
+import { createInMemoryCacheComponent } from '../../../../src/adapters/memory-cache'
+import { createStatusEventHandler } from '../../../../src/logic/handlers/status-handler'
+import { createQueuesStatusManagerComponent } from '../../../../src/logic/queues-status-manager'
+import { createLogMockComponent } from '../../mocks/logs'
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
 import { AuthLinkType } from '@dcl/crypto'
 

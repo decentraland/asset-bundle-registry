@@ -8,6 +8,8 @@ import { createTexturesEventHandler } from '../../../src/logic/handlers/textures
 import { createDbMockComponent } from '../mocks/db'
 import { createCatalystMockComponent } from '../mocks/catalyst'
 import { createWorldsMockComponent } from '../mocks/worlds'
+import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
+import { AssetBundleConversionFinishedEvent, AssetBundleConversionManuallyQueuedEvent } from '@dcl/schemas'
 
 // Mock the handler modules
 jest.mock('../../../src/logic/handlers/deployment-handler')
@@ -20,19 +22,19 @@ describe('message processor', () => {
   ;(config.getNumber as jest.Mock).mockResolvedValue(3) // MAX_RETRIES = 3
 
   // Create mock handlers
-  const deploymentHandler: EventHandlerComponent = {
+  const deploymentHandler: EventHandlerComponent<DeploymentToSqs> = {
     name: EventHandlerName.DEPLOYMENT,
     handle: jest.fn(),
     canHandle: jest.fn()
   }
 
-  const texturesHandler: EventHandlerComponent = {
+  const texturesHandler: EventHandlerComponent<AssetBundleConversionFinishedEvent> = {
     name: EventHandlerName.TEXTURES,
     handle: jest.fn(),
     canHandle: jest.fn()
   }
 
-  const statusHandler: EventHandlerComponent = {
+  const statusHandler: EventHandlerComponent<DeploymentToSqs | AssetBundleConversionManuallyQueuedEvent> = {
     name: EventHandlerName.STATUS,
     handle: jest.fn(),
     canHandle: jest.fn()
