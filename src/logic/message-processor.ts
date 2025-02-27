@@ -1,3 +1,4 @@
+import { AssetBundleConversionFinishedEvent, AssetBundleConversionManuallyQueuedEvent } from '@dcl/schemas'
 import {
   AppComponents,
   EventHandlerComponent,
@@ -10,6 +11,7 @@ import {
 import { createDeploymentEventHandler } from './handlers/deployment-handler'
 import { createStatusEventHandler } from './handlers/status-handler'
 import { createTexturesEventHandler } from './handlers/textures-handler'
+import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
 
 export async function createMessageProcessorComponent({
   catalyst,
@@ -25,7 +27,9 @@ export async function createMessageProcessorComponent({
 >): Promise<MessageProcessorComponent> {
   const MAX_RETRIES: number = (await config.getNumber('MAX_RETRIES')) || 3
   const log = logs.getLogger('message-processor')
-  const processors: EventHandlerComponent<any>[] = [
+  const processors: EventHandlerComponent<
+    DeploymentToSqs | AssetBundleConversionManuallyQueuedEvent | AssetBundleConversionFinishedEvent
+  >[] = [
     createDeploymentEventHandler({ catalyst, worlds, registryOrchestrator, db, logs }),
     createTexturesEventHandler({
       db,
@@ -54,7 +58,11 @@ export async function createMessageProcessorComponent({
 
     log.debug('Processing', { message })
 
-    const handlers: EventHandlerComponent<any>[] | undefined = processors.filter(
+    const handlers:
+      | EventHandlerComponent<
+          DeploymentToSqs | AssetBundleConversionManuallyQueuedEvent | AssetBundleConversionFinishedEvent
+        >[]
+      | undefined = processors.filter(
       (p) =>
         p.canHandle(message) && (retryData.failedHandlers.length === 0 || retryData.failedHandlers.includes(p.name))
     )
