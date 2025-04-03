@@ -81,10 +81,27 @@ export async function createRedisComponent(
     }
   }
 
+  async function flush(pattern: string): Promise<void> {
+    try {
+      const keys = await client.keys(pattern)
+      if (keys.length === 0) {
+        logger.debug(`No keys found matching pattern "${pattern}"`)
+        return
+      }
+
+      await client.del(keys)
+      logger.debug(`Successfully flushed ${keys.length} keys matching pattern "${pattern}"`)
+    } catch (err: any) {
+      logger.error(`Error flushing keys matching pattern "${pattern}"`, err)
+      throw err
+    }
+  }
+
   return {
     get,
     set,
     purge,
+    flush,
     start,
     stop
   }
