@@ -51,10 +51,23 @@ export function createInMemoryCacheComponent(): ICacheStorage {
     cache.delete(key)
   }
 
+  async function flush(pattern: string): Promise<void> {
+    if (pattern.includes('*')) {
+      const regex = new RegExp(pattern.replace('*', '.*'))
+      const matchingKeys = [...cache.keys()].filter((key) => regex.test(key))
+      matchingKeys.forEach((key) => {
+        cache.delete(key)
+      })
+    } else {
+      cache.delete(pattern)
+    }
+  }
+
   return {
     get,
     set,
     purge,
+    flush,
     start,
     stop
   }

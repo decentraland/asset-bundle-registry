@@ -80,6 +80,7 @@ export type ICacheStorage = IBaseComponent & {
   get<T>(key: string): Promise<T[]>
   set<T>(key: string, value: T): Promise<void>
   purge(key: string): Promise<void>
+  flush(pattern: string): Promise<void>
 }
 
 export type QueuesStatusManagerComponent = {

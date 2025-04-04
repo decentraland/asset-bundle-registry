@@ -6,6 +6,7 @@ import { wellKnownComponents } from '@dcl/platform-crypto-middleware'
 import { getEntityStatusHandler, getEntitiesStatusHandler, getQueuesStatuses } from './handlers/get-entity-status'
 import { bearerTokenMiddleware, errorHandler } from '@dcl/platform-server-commons'
 import { createRegistryHandler } from './handlers/post-registry'
+import { flushCacheHandler } from '../logic/handlers/flush-cache-handler'
 
 export async function setupRouter(globalContext: GlobalContext): Promise<Router<GlobalContext>> {
   const router = new Router<GlobalContext>()
@@ -30,6 +31,7 @@ export async function setupRouter(globalContext: GlobalContext): Promise<Router<
 
   if (!!adminToken) {
     router.post('/registry', bearerTokenMiddleware(adminToken), createRegistryHandler)
+    router.delete('/flush-cache', bearerTokenMiddleware(adminToken), flushCacheHandler)
   }
 
   return router
