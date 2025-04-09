@@ -90,10 +90,11 @@ async function main() {
   }
 
   try {
-    logger.info('Running ANALYZE before purging registries...')
-    await pg.query(SQL`ANALYZE`)
+    logger.info('Purging obsolete registries...')
     await purgeObsoleteRegistries()
-    await pg.query(SQL`VACUUM ANALYZE`)
+    logger.info('Running ANALYZE before purging registries...')
+    await pg.query(SQL`VACUUM ANALYZE registries`)
+    logger.info('Processes completed successfully.')
   } catch (error: any) {
     logger.error('Error during worker execution:', {
       message: error?.message || 'Unknown error',
