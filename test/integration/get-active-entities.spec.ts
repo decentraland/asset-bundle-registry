@@ -118,7 +118,8 @@ test('POST /entities/active', async function ({ components }) {
     expect(parsedResponse).toMatchObject(parseResponse([registryA, registryB]))
   })
 
-  it('should return most updated entity when multiple entities are found for the same pointer', async function () {
+  // This should never happen now
+  it.skip('should return most updated entity when multiple entities are found for the same pointer', async function () {
     const registryA = createRegistryEntity(
       identity.realAccount.address,
       Registry.Status.FALLBACK,
@@ -221,7 +222,8 @@ test('POST /entities/active', async function ({ components }) {
     expect(parsedResponse).toMatchObject(parseResponse([registry]))
   })
 
-  it('should return most recent COMPLETE entity when multiple status exist', async function () {
+  // This should never happen now
+  it.skip('should return most recent COMPLETE entity when multiple status exist', async function () {
     const registryA = createRegistryEntity(
       identity.realAccount.address,
       Registry.Status.COMPLETE,

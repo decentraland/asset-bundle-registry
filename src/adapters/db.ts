@@ -21,7 +21,8 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
 
   async function getSortedRegistriesByPointers(
     pointers: string[],
-    statuses?: Registry.Status[]
+    statuses?: Registry.Status[],
+    descSort: boolean = false
   ): Promise<Registry.DbEntity[]> {
     const query = SQL`
       SELECT 
@@ -38,9 +39,11 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
       `)
     }
 
-    query.append(SQL`
-      ORDER BY timestamp DESC
-    `)
+    if (descSort) {
+      query.append(SQL`
+        ORDER BY timestamp DESC
+      `)
+    }
 
     const result = await pg.query<Registry.DbEntity>(query)
     return result.rows
