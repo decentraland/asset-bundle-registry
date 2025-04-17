@@ -38,7 +38,7 @@ export async function getEntityStatusHandler(context: HandlerContextWithPath<'db
     (await db.getRegistryById(idOrPointer)) ||
     (await db.getHistoricalRegistryById(idOrPointer)) ||
     // in case a pointer was provided:
-    (await db.getSortedRegistriesByPointers([idOrPointer]))[0] // if found, we kept the most recent registry ([0])
+    (await db.getSortedRegistriesByPointers([idOrPointer], undefined, true))[0] // if found, we kept the most recent registry ([0])
 
   if (entity) {
     const entityStatus = parseRegistryStatus(entity)

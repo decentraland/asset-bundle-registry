@@ -32,6 +32,11 @@ export const metricDeclarations = {
   registries_served_count: {
     help: 'Count of registries successfully served',
     type: IMetricsComponent.CounterType
+  },
+  pointers_per_request: {
+    help: 'Histogram of pointers per request',
+    type: IMetricsComponent.HistogramType,
+    buckets: [1, 5, 10, 20, 50, 100]
   }
 }
 

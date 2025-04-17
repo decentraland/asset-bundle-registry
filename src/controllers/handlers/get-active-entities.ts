@@ -18,6 +18,9 @@ export async function getActiveEntityHandler(context: HandlerContextWithPath<'db
     }
   }
 
+  // Track the number of pointers in this request
+  metrics.observe('pointers_per_request', {}, pointers.length)
+
   const entities = await db.getSortedRegistriesByPointers(pointers, [
     Registry.Status.COMPLETE,
     Registry.Status.FALLBACK
