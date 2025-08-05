@@ -74,7 +74,8 @@ function createAssetBundleConversionManuallyQueuedEvent(
       entityId,
       platform,
       isLods: false,
-      isPriority: false
+      isPriority: false,
+      version: 'v1'
     }
   }
 }

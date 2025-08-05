@@ -28,7 +28,7 @@
     "@dcl/crypto": "^3.4.5",
     "@dcl/platform-crypto-middleware": "^1.1.0",
     "@dcl/platform-server-commons": "^0.0.4",
-    "@dcl/schemas": "^15.7.0",
+    "@dcl/schemas": "https://sdk-team-cdn.decentraland.org/@dcl/schemas/branch/feat/add-version-to-ab-events/dcl-schemas-17.2.1-16744594799.commit-8a01e1d.tgz",
     "@well-known-components/env-config-provider": "^1.2.0",
     "@well-known-components/fetch-component": "^3.0.0",
     "@well-known-components/http-server": "^2.1.0",

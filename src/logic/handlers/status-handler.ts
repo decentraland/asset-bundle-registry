@@ -17,11 +17,11 @@ export const createStatusEventHandler = ({
     const platforms: ('webgl' | 'windows' | 'mac')[] = []
 
     if (event.type === Events.Type.ASSET_BUNDLE && event.subType === Events.SubType.AssetBundle.MANUALLY_QUEUED) {
-      const manuallyQueuedEvent = event as AssetBundleConversionManuallyQueuedEvent
+      const { metadata } = event as AssetBundleConversionManuallyQueuedEvent
 
-      entityId = manuallyQueuedEvent.metadata.entityId
-      platforms.push(manuallyQueuedEvent.metadata.platform)
-      isLods = manuallyQueuedEvent.metadata.isLods
+      entityId = metadata.entityId
+      platforms.push(metadata.platform)
+      isLods = metadata.isLods
     } else {
       const deploymentEvent = event as DeploymentToSqs
 

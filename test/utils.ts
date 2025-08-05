@@ -114,6 +114,7 @@ export function createRegistryEntity(
     timestamp: 0,
     content: [],
     type: EntityType.SCENE,
+    version: null,
     ...overrideProperties
   }
 }

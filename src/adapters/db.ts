@@ -7,7 +7,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
   async function getSortedRegistriesByOwner(owner: EthAddress): Promise<Registry.DbEntity[]> {
     const query: SQLStatement = SQL`
       SELECT 
-        id, type, timestamp, deployer, pointers, content, metadata, status, bundles
+        id, type, timestamp, deployer, pointers, content, metadata, status, bundles, version
       FROM 
         registries
       WHERE 
@@ -26,7 +26,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
   ): Promise<Registry.DbEntity[]> {
     const query = SQL`
       SELECT 
-        id, type, timestamp, deployer, pointers, content, metadata, status, bundles
+        id, type, timestamp, deployer, pointers, content, metadata, status, bundles, version
       FROM 
         registries
       WHERE 
@@ -52,7 +52,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
   async function getRegistryById(id: string): Promise<Registry.DbEntity | null> {
     const query: SQLStatement = SQL`
       SELECT 
-        id, type, timestamp, deployer, pointers, content, metadata, status, bundles
+        id, type, timestamp, deployer, pointers, content, metadata, status, bundles, version
       FROM 
         registries
       WHERE 
@@ -66,7 +66,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
   async function insertRegistry(registry: Registry.DbEntity): Promise<Registry.DbEntity> {
     const query: SQLStatement = SQL`
         INSERT INTO registries (
-          id, type, timestamp, deployer, pointers, content, metadata, status, bundles
+          id, type, timestamp, deployer, pointers, content, metadata, status, bundles, version
         )
         VALUES (
           ${registry.id},
@@ -77,7 +77,8 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
           ${JSON.stringify(registry.content)}::jsonb,
           ${JSON.stringify(registry.metadata)}::jsonb,
           ${registry.status},
-          ${JSON.stringify(registry.bundles)}::jsonb
+          ${JSON.stringify(registry.bundles)}::jsonb,
+          ${registry.version}
         )
         ON CONFLICT (id) DO UPDATE 
         SET
@@ -91,7 +92,8 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
           deployer = CASE
             WHEN EXCLUDED.deployer != '' THEN EXCLUDED.deployer
             ELSE registries.deployer
-          END          
+          END,
+          version = EXCLUDED.version
         RETURNING 
           id,
           type,
@@ -101,7 +103,8 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
           content,
           metadata,
           status,
-          bundles
+          bundles,
+          version
       `
 
     const result = await pg.query<Registry.DbEntity>(query)
@@ -124,19 +127,15 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
           content,
           metadata,
           status,
-          bundles
+          bundles,
+          version
       `
 
     const result = await pg.query<Registry.DbEntity>(query)
     return result.rows || null
   }
 
-  async function upsertRegistryBundle(
-    id: string,
-    platform: string,
-    lods: boolean,
-    status: string
-  ): Promise<Registry.DbEntity | null> {
+  async function upsertRegistryBundle(id: string, platform: string, lods: boolean): Promise<Registry.DbEntity | null> {
     const bundleType = lods ? 'lods' : 'assets'
     const query: SQLStatement = SQL`
       UPDATE registries
@@ -159,7 +158,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
   ): Promise<Registry.PartialDbEntity[]> {
     const query: SQLStatement = SQL`
       SELECT 
-        id, pointers, timestamp, status, bundles
+        id, pointers, timestamp, status, bundles, version
       FROM 
         registries
       WHERE 
@@ -196,7 +195,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
 
     const baseQuery = SQL`
       SELECT 
-        id, type, timestamp, deployer, pointers, content, metadata, status, bundles
+        id, type, timestamp, deployer, pointers, content, metadata, status, bundles, version
       FROM 
         registries
       WHERE 
@@ -218,7 +217,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
   async function insertHistoricalRegistry(registry: Registry.DbEntity): Promise<Registry.DbEntity> {
     const query: SQLStatement = SQL`
         INSERT INTO historical_registries (
-          id, type, timestamp, deployer, pointers, content, metadata, status, bundles, migrated_at
+          id, type, timestamp, deployer, pointers, content, metadata, status, bundles, version, migrated_at
         )
         VALUES (
           ${registry.id},
@@ -230,6 +229,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
           ${JSON.stringify(registry.metadata)}::jsonb,
           ${registry.status},
           ${JSON.stringify(registry.bundles)}::jsonb,
+          ${registry.version},
           ${Date.now()}
         )
         ON CONFLICT (id) DO UPDATE 
@@ -240,7 +240,8 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
           content = EXCLUDED.content,
           metadata = EXCLUDED.metadata,
           status = EXCLUDED.status,
-          bundles = EXCLUDED.bundles
+          bundles = EXCLUDED.bundles,
+          version = EXCLUDED.version
         RETURNING 
           id,
           type,
@@ -250,7 +251,8 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
           content,
           metadata,
           status,
-          bundles
+          bundles,
+          version
       `
 
     const result = await pg.query<Registry.DbEntity>(query)
@@ -260,7 +262,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
   async function getSortedHistoricalRegistriesByOwner(owner: EthAddress): Promise<Registry.DbEntity[]> {
     const query: SQLStatement = SQL`
       SELECT 
-        id, type, timestamp, deployer, pointers, content, metadata, status, bundles
+        id, type, timestamp, deployer, pointers, content, metadata, status, bundles, version
       FROM 
         historical_registries
       WHERE 
@@ -274,7 +276,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
   async function getHistoricalRegistryById(id: string): Promise<Registry.DbEntity | null> {
     const query: SQLStatement = SQL`
       SELECT 
-        id, type, timestamp, deployer, pointers, content, metadata, status, bundles
+        id, type, timestamp, deployer, pointers, content, metadata, status, bundles, version
       FROM 
         historical_registries
       WHERE 
