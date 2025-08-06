@@ -23,6 +23,7 @@ export namespace Registry {
   export type DbEntity = Omit<Entity, 'version' | 'type'> & { deployer: string; bundles: Bundles } & {
     status: Status
     type: EntityType | 'world'
+    version: string | null
   }
 
   export type PartialDbEntity = Pick<DbEntity, 'id' | 'pointers' | 'timestamp' | 'status' | 'bundles'>

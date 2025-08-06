@@ -56,7 +56,8 @@ export const createTexturesEventHandler = ({
           entity = await registryOrchestrator.persistAndRotateStates({
             ...fetchedEntity,
             deployer: '', // cannot infer from textures event
-            bundles: defaultBundles
+            bundles: defaultBundles,
+            version: event.metadata.version
           })
         }
 

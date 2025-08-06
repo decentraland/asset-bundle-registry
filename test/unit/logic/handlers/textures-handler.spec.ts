@@ -30,6 +30,7 @@ describe('textures-handler', () => {
       statusCode: ManifestStatusCode.SUCCESS,
       isLods: false,
       isWorld: false,
+      version: 'v1',
       ...overrides.metadata
     },
     type: Events.Type.ASSET_BUNDLE,
@@ -142,7 +143,8 @@ describe('textures-handler', () => {
             platform: 'windows',
             statusCode: ManifestStatusCode.SUCCESS,
             isLods: false,
-            isWorld: true
+            isWorld: true,
+            version: 'v1'
           }
         })
         const entity = createEntity()
@@ -191,7 +193,8 @@ describe('textures-handler', () => {
             platform: 'windows',
             statusCode: ManifestStatusCode.SUCCESS,
             isLods: false,
-            isWorld: false
+            isWorld: false,
+            version: 'v1'
           }
         })
         const entity = createEntity()
@@ -225,7 +228,8 @@ describe('textures-handler', () => {
             platform: 'mac',
             statusCode: ManifestStatusCode.CONVERSION_ERRORS_TOLERATED,
             isLods: false,
-            isWorld: false
+            isWorld: false,
+            version: 'v1'
           }
         })
         const entity = createEntity()
@@ -259,7 +263,8 @@ describe('textures-handler', () => {
             platform: 'webgl',
             statusCode: ManifestStatusCode.ALREADY_CONVERTED,
             isLods: false,
-            isWorld: false
+            isWorld: false,
+            version: 'v1'
           }
         })
         const entity = createEntity()
@@ -293,7 +298,8 @@ describe('textures-handler', () => {
             platform: 'windows',
             statusCode: ManifestStatusCode.ASSET_BUNDLE_BUILD_FAIL,
             isLods: false,
-            isWorld: false
+            isWorld: false,
+            version: 'v1'
           }
         })
         const entity = createEntity()
@@ -327,7 +333,8 @@ describe('textures-handler', () => {
             platform: 'windows',
             statusCode: ManifestStatusCode.SUCCESS,
             isLods: true,
-            isWorld: false
+            isWorld: false,
+            version: 'v1'
           }
         })
         const entity = createEntity()
@@ -374,7 +381,8 @@ describe('textures-handler', () => {
             platform: 'windows',
             statusCode: ManifestStatusCode.SUCCESS,
             isLods: false,
-            isWorld: false
+            isWorld: false,
+            version: 'v1'
           }
         })
         const entity = createEntity()
@@ -408,7 +416,8 @@ describe('textures-handler', () => {
             platform: 'windows',
             statusCode: ManifestStatusCode.SUCCESS,
             isLods: true,
-            isWorld: false
+            isWorld: false,
+            version: 'v1'
           }
         })
         const entity = createEntity()

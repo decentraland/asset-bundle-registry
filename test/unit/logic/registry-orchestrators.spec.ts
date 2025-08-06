@@ -32,6 +32,7 @@ describe('registry orchestrator should', () => {
         webgl: Registry.SimplifiedStatus.PENDING
       }
     },
+    version: null,
     ...partial
   })
 
