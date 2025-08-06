@@ -9,10 +9,10 @@ const VERSION_COLUMN = 'version'
 
 export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.addColumn(REGISTRIES_TABLE, {
-    [VERSION_COLUMN]: { type: 'varchar(255)', notNull: false }
+    [VERSION_COLUMN]: { type: 'varchar(10)', notNull: false }
   })
   pgm.addColumn(HISTORICAL_REGISTRIES_TABLE, {
-    [VERSION_COLUMN]: { type: 'varchar(255)', notNull: false }
+    [VERSION_COLUMN]: { type: 'varchar(10)', notNull: false }
   })
 }
 
