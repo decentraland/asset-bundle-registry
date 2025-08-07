@@ -36,7 +36,10 @@ export async function createEntityStatusFetcherComponent({
   const logger = logs.getLogger('entity-status-fetcher')
   const LEVEL_OF_DETAILS = ['0', '1', '2']
 
-  async function fetchBundleStatus(entityId: string, platform: string): Promise<Registry.SimplifiedStatus> {
+  async function fetchBundleStatusAndVersion(
+    entityId: string,
+    platform: string
+  ): Promise<{ status: Registry.SimplifiedStatus; version: string }> {
     return withRetry(
       async () => {
         const manifestName = platform !== 'webgl' ? `${entityId}_${platform}` : entityId
@@ -56,16 +59,21 @@ export async function createEntityStatusFetcherComponent({
         }
 
         const parsedManifest: Manifest = await response.json()
+        const version = parsedManifest.version
+
+        let status: Registry.SimplifiedStatus = Registry.SimplifiedStatus.FAILED
 
         if (
           parsedManifest.exitCode === ManifestStatusCode.SUCCESS ||
           parsedManifest.exitCode === ManifestStatusCode.CONVERSION_ERRORS_TOLERATED ||
           parsedManifest.exitCode === ManifestStatusCode.ALREADY_CONVERTED
         ) {
-          return Registry.SimplifiedStatus.COMPLETE
+          status = Registry.SimplifiedStatus.COMPLETE
         } else {
-          return Registry.SimplifiedStatus.FAILED
+          status = Registry.SimplifiedStatus.FAILED
         }
+
+        return { status, version }
       },
       { maxRetries: MAX_RETRIES, logger }
     )
@@ -89,7 +97,7 @@ export async function createEntityStatusFetcherComponent({
   }
 
   return {
-    fetchBundleStatus,
+    fetchBundleStatusAndVersion,
     fetchLODsStatus
   }
 }

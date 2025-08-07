@@ -58,7 +58,7 @@ describe('message processor', () => {
     catalyst: createCatalystMockComponent(),
     worlds: createWorldsMockComponent(),
     entityStatusFetcher: {
-      fetchBundleStatus: jest.fn(),
+      fetchBundleStatusAndVersion: jest.fn(),
       fetchLODsStatus: jest.fn()
     },
     registryOrchestrator: {

@@ -49,7 +49,8 @@ test('POST /entities/active', async function ({ components }) {
     return response.map((entity: Registry.DbEntity) => ({
       ...entity,
       deployer: entity.deployer.toLocaleLowerCase(),
-      timestamp: entity.timestamp.toString()
+      timestamp: entity.timestamp.toString(),
+      versions: entity.versions
     }))
   }
 

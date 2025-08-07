@@ -61,11 +61,20 @@ export const createDeploymentEventHandler = ({
           }
         }
 
+        const defaultVersions: Registry.Versions = {
+          assets: {
+            windows: '',
+            mac: '',
+            webgl: ''
+          }
+        }
+
         const deployer = Authenticator.ownerAddress(event.entity.authChain)
         await registryOrchestrator.persistAndRotateStates({
           ...entity,
           deployer,
-          bundles: defaultBundles
+          bundles: defaultBundles,
+          versions: defaultVersions
         })
 
         return { ok: true, handlerName: HANDLER_NAME }

@@ -53,11 +53,19 @@ export const createTexturesEventHandler = ({
             }
           }
 
+          const defaultVersions: Registry.Versions = {
+            assets: {
+              windows: '',
+              mac: '',
+              webgl: ''
+            }
+          }
+
           entity = await registryOrchestrator.persistAndRotateStates({
             ...fetchedEntity,
             deployer: '', // cannot infer from textures event
             bundles: defaultBundles,
-            version: event.metadata.version
+            versions: defaultVersions
           })
         }
 
@@ -72,7 +80,7 @@ export const createTexturesEventHandler = ({
             ? Registry.SimplifiedStatus.COMPLETE
             : Registry.SimplifiedStatus.FAILED
 
-        const registry: Registry.DbEntity | null = await db.upsertRegistryBundle(
+        let registry: Registry.DbEntity | null = await db.upsertRegistryBundle(
           event.metadata.entityId,
           event.metadata.platform,
           !!event.metadata.isLods,
@@ -82,6 +90,21 @@ export const createTexturesEventHandler = ({
         if (!registry) {
           logger.error('Error storing bundle', { entityId: event.metadata.entityId, platform: event.metadata.platform })
           return { ok: false, errors: ['Error storing bundle'], handlerName: HANDLER_NAME }
+        }
+
+        // Update version separately
+        registry = await db.updateRegistryVersion(
+          event.metadata.entityId,
+          event.metadata.platform,
+          event.metadata.version
+        )
+
+        if (!registry) {
+          logger.error('Error updating version', {
+            entityId: event.metadata.entityId,
+            platform: event.metadata.platform
+          })
+          return { ok: false, errors: ['Error storing version'], handlerName: HANDLER_NAME }
         }
 
         logger.info(`Bundle stored`, { entityId: event.metadata.entityId, bundles: JSON.stringify(registry.bundles) })
