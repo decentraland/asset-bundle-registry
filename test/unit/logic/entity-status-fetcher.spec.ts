@@ -13,9 +13,13 @@ describe('entity status fetcher', () => {
     fetch: jest.fn()
   }
 
-  function createManifest(exitCode: ManifestStatusCode) {
+  function createManifest(exitCode: ManifestStatusCode, version: string = 'v1') {
     return {
-      exitCode
+      exitCode,
+      version,
+      files: [],
+      contentServerUrl: 'https://test.com',
+      date: '2023-01-01T00:00:00.000Z'
     }
   }
 
@@ -25,74 +29,79 @@ describe('entity status fetcher', () => {
 
   const ENTITY_ID = 'bafkreig4pgot2bf6iw3bfxgo4nn7ich35ztjfjhjdomz2yqmtmnagpxhjq'
 
-  describe('bundles status', () => {
-    it('should fetch COMPLETE bundle status for webgl platform', async () => {
+  describe('bundles status and version', () => {
+    it('should fetch COMPLETE bundle status and version for webgl platform', async () => {
       const sut: EntityStatusFetcher = await createEntityStatusFetcherComponent({ fetch: mockFetch, logs, config })
       const platform = 'webgl'
 
-      const manifest = createManifest(ManifestStatusCode.SUCCESS)
+      const manifest = createManifest(ManifestStatusCode.SUCCESS, 'v2')
       mockFetch.fetch.mockResolvedValue({
         ok: true,
         json: jest.fn().mockResolvedValue(manifest)
       })
 
-      const status = await sut.fetchBundleStatus(ENTITY_ID, platform)
-      expect(status).toBe(Registry.SimplifiedStatus.COMPLETE)
+      const result = await sut.fetchBundleStatusAndVersion(ENTITY_ID, platform)
+      expect(result.status).toBe(Registry.SimplifiedStatus.COMPLETE)
+      expect(result.version).toBe('v2')
       expect(mockFetch.fetch).toHaveBeenCalledWith(`${ASSET_BUNDLE_CDN_URL}manifest/${ENTITY_ID}.json`)
     })
 
-    it('should fetch COMPLETE bundle status for non-webgl platform', async () => {
+    it('should fetch COMPLETE bundle status and version for non-webgl platform', async () => {
       const sut: EntityStatusFetcher = await createEntityStatusFetcherComponent({ fetch: mockFetch, logs, config })
       const platform = 'android'
 
-      const manifest = createManifest(ManifestStatusCode.SUCCESS)
+      const manifest = createManifest(ManifestStatusCode.SUCCESS, 'v3')
       mockFetch.fetch.mockResolvedValue({
         ok: true,
         json: jest.fn().mockResolvedValue(manifest)
       })
 
-      const status = await sut.fetchBundleStatus(ENTITY_ID, platform)
-      expect(status).toBe(Registry.SimplifiedStatus.COMPLETE)
+      const result = await sut.fetchBundleStatusAndVersion(ENTITY_ID, platform)
+      expect(result.status).toBe(Registry.SimplifiedStatus.COMPLETE)
+      expect(result.version).toBe('v3')
       expect(mockFetch.fetch).toHaveBeenCalledWith(`${ASSET_BUNDLE_CDN_URL}manifest/${ENTITY_ID}_${platform}.json`)
     })
 
-    it('should return COMPLETE for manifest with CONVERSION_ERRORS_TOLERATED', async () => {
+    it('should return COMPLETE status and version for manifest with CONVERSION_ERRORS_TOLERATED', async () => {
       const sut: EntityStatusFetcher = await createEntityStatusFetcherComponent({ fetch: mockFetch, logs, config })
 
-      const manifest = createManifest(ManifestStatusCode.CONVERSION_ERRORS_TOLERATED)
+      const manifest = createManifest(ManifestStatusCode.CONVERSION_ERRORS_TOLERATED, 'v4')
       mockFetch.fetch.mockResolvedValue({
         ok: true,
         json: jest.fn().mockResolvedValue(manifest)
       })
 
-      const status = await sut.fetchBundleStatus(ENTITY_ID, 'webgl')
-      expect(status).toBe(Registry.SimplifiedStatus.COMPLETE)
+      const result = await sut.fetchBundleStatusAndVersion(ENTITY_ID, 'webgl')
+      expect(result.status).toBe(Registry.SimplifiedStatus.COMPLETE)
+      expect(result.version).toBe('v4')
     })
 
-    it('should return COMPLETE for manifest with ALREADY_CONVERTED', async () => {
+    it('should return COMPLETE status and version for manifest with ALREADY_CONVERTED', async () => {
       const sut: EntityStatusFetcher = await createEntityStatusFetcherComponent({ fetch: mockFetch, logs, config })
 
-      const manifest = createManifest(ManifestStatusCode.ALREADY_CONVERTED)
+      const manifest = createManifest(ManifestStatusCode.ALREADY_CONVERTED, 'v5')
       mockFetch.fetch.mockResolvedValue({
         ok: true,
         json: jest.fn().mockResolvedValue(manifest)
       })
 
-      const status = await sut.fetchBundleStatus(ENTITY_ID, 'webgl')
-      expect(status).toBe(Registry.SimplifiedStatus.COMPLETE)
+      const result = await sut.fetchBundleStatusAndVersion(ENTITY_ID, 'webgl')
+      expect(result.status).toBe(Registry.SimplifiedStatus.COMPLETE)
+      expect(result.version).toBe('v5')
     })
 
-    it('should return FAILED for manifest with error status', async () => {
+    it('should return FAILED status and version for manifest with error status', async () => {
       const sut: EntityStatusFetcher = await createEntityStatusFetcherComponent({ fetch: mockFetch, logs, config })
 
-      const manifest = createManifest(ManifestStatusCode.ASSET_BUNDLE_BUILD_FAIL)
+      const manifest = createManifest(ManifestStatusCode.ASSET_BUNDLE_BUILD_FAIL, 'v6')
       mockFetch.fetch.mockResolvedValue({
         ok: true,
         json: jest.fn().mockResolvedValue(manifest)
       })
 
-      const status = await sut.fetchBundleStatus(ENTITY_ID, 'webgl')
-      expect(status).toBe(Registry.SimplifiedStatus.FAILED)
+      const result = await sut.fetchBundleStatusAndVersion(ENTITY_ID, 'webgl')
+      expect(result.status).toBe(Registry.SimplifiedStatus.FAILED)
+      expect(result.version).toBe('v6')
     })
 
     it('should throw error when manifest is not found (404)', async () => {
@@ -103,7 +112,7 @@ describe('entity status fetcher', () => {
         status: 404
       })
 
-      await expect(sut.fetchBundleStatus(ENTITY_ID, 'webgl')).rejects.toThrow('Failed to fetch bundle status')
+      await expect(sut.fetchBundleStatusAndVersion(ENTITY_ID, 'webgl')).rejects.toThrow('Failed to fetch bundle status')
     })
 
     it('should throw error for non-404 fetch failures', async () => {
@@ -114,7 +123,7 @@ describe('entity status fetcher', () => {
         status: 500
       })
 
-      await expect(sut.fetchBundleStatus(ENTITY_ID, 'webgl')).rejects.toThrow('Failed to fetch bundle status')
+      await expect(sut.fetchBundleStatusAndVersion(ENTITY_ID, 'webgl')).rejects.toThrow('Failed to fetch bundle status')
     })
   })
 
@@ -144,14 +153,15 @@ describe('entity status fetcher', () => {
     it('should retry on network errors and succeed eventually', async () => {
       const sut: EntityStatusFetcher = await createEntityStatusFetcherComponent({ fetch: mockFetch, logs, config })
 
-      const manifest = createManifest(ManifestStatusCode.SUCCESS)
+      const manifest = createManifest(ManifestStatusCode.SUCCESS, 'v7')
       mockFetch.fetch.mockRejectedValueOnce(new Error('ECONNRESET')).mockResolvedValueOnce({
         ok: true,
         json: jest.fn().mockResolvedValue(manifest)
       })
 
-      const status = await sut.fetchBundleStatus(ENTITY_ID, 'webgl')
-      expect(status).toBe(Registry.SimplifiedStatus.COMPLETE)
+      const result = await sut.fetchBundleStatusAndVersion(ENTITY_ID, 'webgl')
+      expect(result.status).toBe(Registry.SimplifiedStatus.COMPLETE)
+      expect(result.version).toBe('v7')
       expect(mockFetch.fetch).toHaveBeenCalledTimes(2)
     })
 
@@ -160,7 +170,7 @@ describe('entity status fetcher', () => {
 
       mockFetch.fetch.mockRejectedValue(new Error('ECONNRESET'))
 
-      await expect(sut.fetchBundleStatus(ENTITY_ID, 'webgl')).rejects.toThrow('ECONNRESET')
+      await expect(sut.fetchBundleStatusAndVersion(ENTITY_ID, 'webgl')).rejects.toThrow('ECONNRESET')
       expect(mockFetch.fetch).toHaveBeenCalledTimes(2)
     })
 

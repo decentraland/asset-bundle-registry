@@ -41,12 +41,18 @@ export async function createRegistryHandler(
         continue
       }
 
-      const [macAssetsStatus, windowsAssetsStatus, webglAssetsStatus] = await Promise.all(
-        ['mac', 'windows', 'webgl'].map((platform) => entityStatusFetcher.fetchBundleStatus(entityId, platform))
+      const [macAssets, windowsAssets, webglAssets] = await Promise.all(
+        ['mac', 'windows', 'webgl'].map((platform) =>
+          entityStatusFetcher.fetchBundleStatusAndVersion(entityId, platform)
+        )
       )
       const [macLodsStatus, windowsLodsStatus, webglLodsStatus] = await Promise.all(
-        ['mac', 'windows', 'webgl'].map((platform) => entityStatusFetcher.fetchBundleStatus(entityId, platform))
+        ['mac', 'windows', 'webgl'].map((platform) => entityStatusFetcher.fetchLODsStatus(entityId, platform))
       )
+
+      const { status: macAssetsStatus, version: macAssetsVersion } = macAssets
+      const { status: windowsAssetsStatus, version: windowsAssetsVersion } = windowsAssets
+      const { status: webglAssetsStatus, version: webglAssetsVersion } = webglAssets
 
       const bundles: Registry.Bundles = {
         assets: {
@@ -61,10 +67,19 @@ export async function createRegistryHandler(
         }
       }
 
+      const versions: Registry.Versions = {
+        assets: {
+          windows: windowsAssetsVersion,
+          mac: macAssetsVersion,
+          webgl: webglAssetsVersion
+        }
+      }
+
       await registryOrchestrator.persistAndRotateStates({
         ...entityFromCatalyst,
         deployer: '', // filled manually so we cannot calculate owner address, won't be overwritten on db if already exists
-        bundles
+        bundles,
+        versions
       })
     } catch (error: any) {
       logger.error('Error persisting entity', { error, entityId })

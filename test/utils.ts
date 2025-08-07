@@ -114,7 +114,13 @@ export function createRegistryEntity(
     timestamp: 0,
     content: [],
     type: EntityType.SCENE,
-    version: null,
+    versions: {
+      assets: {
+        windows: '',
+        mac: '',
+        webgl: ''
+      }
+    },
     ...overrideProperties
   }
 }
