@@ -67,6 +67,13 @@ describe('textures-handler', () => {
         mac: Registry.SimplifiedStatus.PENDING,
         webgl: Registry.SimplifiedStatus.PENDING
       }
+    },
+    versions: {
+      assets: {
+        windows: '',
+        mac: '',
+        webgl: ''
+      }
     }
   })
 
@@ -112,6 +119,7 @@ describe('textures-handler', () => {
         const event = createEvent()
         const entity = createEntity()
         const dbEntity = createDbEntity(entity)
+
         db.getRegistryById = jest.fn().mockResolvedValue(null)
         catalyst.getEntityById = jest.fn().mockResolvedValue(entity)
         db.upsertRegistryBundle = jest.fn().mockResolvedValue({
@@ -129,11 +137,13 @@ describe('textures-handler', () => {
             }
           }
         })
+        db.updateRegistryVersion = jest.fn().mockResolvedValue(dbEntity)
 
         const result = await handler.handle(event)
 
         expect(result.ok).toBe(true)
         expect(registryOrchestrator.persistAndRotateStates).toHaveBeenCalledWith(dbEntity)
+        expect(db.updateRegistryVersion).toHaveBeenCalledWith('123', 'windows', 'v1')
       })
 
       it('should create entity with default bundle status when fetched from worlds', async () => {
@@ -166,11 +176,22 @@ describe('textures-handler', () => {
             }
           }
         })
+        db.updateRegistryVersion = jest.fn().mockResolvedValue({
+          ...dbEntity,
+          versions: {
+            assets: {
+              windows: 'v1',
+              mac: '',
+              webgl: ''
+            }
+          }
+        })
 
         const result = await handler.handle(event)
 
         expect(result.ok).toBe(true)
         expect(worlds.getWorld).toHaveBeenCalledWith(event.metadata.entityId)
+        expect(db.updateRegistryVersion).toHaveBeenCalledWith('123', 'windows', 'v1')
       })
 
       it('should return error when entity not found in catalyst or worlds', async () => {
@@ -215,10 +236,21 @@ describe('textures-handler', () => {
             }
           }
         })
+        db.updateRegistryVersion = jest.fn().mockResolvedValue({
+          ...dbEntity,
+          versions: {
+            assets: {
+              windows: 'v1',
+              mac: '',
+              webgl: ''
+            }
+          }
+        })
 
         const result = await handler.handle(event)
 
         expect(result.ok).toBe(true)
+        expect(db.updateRegistryVersion).toHaveBeenCalledWith('123', 'windows', 'v1')
       })
 
       it('should update bundle status for mac platform with tolerated errors', async () => {
@@ -250,10 +282,21 @@ describe('textures-handler', () => {
             }
           }
         })
+        db.updateRegistryVersion = jest.fn().mockResolvedValue({
+          ...dbEntity,
+          versions: {
+            assets: {
+              windows: '',
+              mac: 'v1',
+              webgl: ''
+            }
+          }
+        })
 
         const result = await handler.handle(event)
 
         expect(result.ok).toBe(true)
+        expect(db.updateRegistryVersion).toHaveBeenCalledWith('123', 'mac', 'v1')
       })
 
       it('should update bundle status for webgl platform with already converted status', async () => {
@@ -285,10 +328,21 @@ describe('textures-handler', () => {
             }
           }
         })
+        db.updateRegistryVersion = jest.fn().mockResolvedValue({
+          ...dbEntity,
+          versions: {
+            assets: {
+              windows: '',
+              mac: '',
+              webgl: 'v1'
+            }
+          }
+        })
 
         const result = await handler.handle(event)
 
         expect(result.ok).toBe(true)
+        expect(db.updateRegistryVersion).toHaveBeenCalledWith('123', 'webgl', 'v1')
       })
 
       it('should mark bundle as failed when conversion fails', async () => {
@@ -320,10 +374,21 @@ describe('textures-handler', () => {
             }
           }
         })
+        db.updateRegistryVersion = jest.fn().mockResolvedValue({
+          ...dbEntity,
+          versions: {
+            assets: {
+              windows: 'v1',
+              mac: '',
+              webgl: ''
+            }
+          }
+        })
 
         const result = await handler.handle(event)
 
         expect(result.ok).toBe(true)
+        expect(db.updateRegistryVersion).toHaveBeenCalledWith('123', 'windows', 'v1')
       })
 
       it('should update lods bundle status when isLods is true', async () => {
@@ -355,10 +420,21 @@ describe('textures-handler', () => {
             }
           }
         })
+        db.updateRegistryVersion = jest.fn().mockResolvedValue({
+          ...dbEntity,
+          versions: {
+            assets: {
+              windows: 'v1',
+              mac: '',
+              webgl: ''
+            }
+          }
+        })
 
         const result = await handler.handle(event)
 
         expect(result.ok).toBe(true)
+        expect(db.updateRegistryVersion).toHaveBeenCalledWith('123', 'windows', 'v1')
       })
 
       it('should return error when upsert fails', async () => {
@@ -372,6 +448,34 @@ describe('textures-handler', () => {
 
         expect(result.ok).toBe(false)
         expect(result.errors).toEqual(['Error storing bundle'])
+      })
+
+      it('should return error when updateRegistryVersion fails', async () => {
+        const event = createEvent()
+        const entity = createEntity()
+        const dbEntity = createDbEntity(entity)
+        db.getRegistryById = jest.fn().mockResolvedValue(dbEntity)
+        db.upsertRegistryBundle = jest.fn().mockResolvedValue({
+          ...dbEntity,
+          bundles: {
+            assets: {
+              windows: Registry.SimplifiedStatus.COMPLETE,
+              mac: Registry.SimplifiedStatus.PENDING,
+              webgl: Registry.SimplifiedStatus.PENDING
+            },
+            lods: {
+              windows: Registry.SimplifiedStatus.PENDING,
+              mac: Registry.SimplifiedStatus.PENDING,
+              webgl: Registry.SimplifiedStatus.PENDING
+            }
+          }
+        })
+        db.updateRegistryVersion = jest.fn().mockResolvedValue(null)
+
+        const result = await handler.handle(event)
+
+        expect(result.ok).toBe(false)
+        expect(result.errors).toEqual(['Error storing version'])
       })
 
       it('should update bundle status for assets', async () => {
@@ -403,10 +507,21 @@ describe('textures-handler', () => {
             }
           }
         })
+        ;(db.updateRegistryVersion as jest.Mock).mockResolvedValue({
+          ...dbEntity,
+          versions: {
+            assets: {
+              windows: 'v1',
+              mac: '',
+              webgl: ''
+            }
+          }
+        })
 
         const result = await handler.handle(event)
 
         expect(result.ok).toBe(true)
+        expect(db.updateRegistryVersion).toHaveBeenCalledWith('123', 'windows', 'v1')
       })
 
       it('should update bundle status for lods', async () => {
@@ -438,10 +553,21 @@ describe('textures-handler', () => {
             }
           }
         })
+        ;(db.updateRegistryVersion as jest.Mock).mockResolvedValue({
+          ...dbEntity,
+          versions: {
+            assets: {
+              windows: 'v1',
+              mac: '',
+              webgl: ''
+            }
+          }
+        })
 
         const result = await handler.handle(event)
 
         expect(result.ok).toBe(true)
+        expect(db.updateRegistryVersion).toHaveBeenCalledWith('123', 'windows', 'v1')
       })
     })
   })
