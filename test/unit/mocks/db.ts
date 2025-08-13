@@ -6,7 +6,7 @@ export function createDbMockComponent(): DbComponent {
     getRegistryById: jest.fn(),
     insertRegistry: jest.fn(),
     upsertRegistryBundle: jest.fn(),
-    updateRegistryVersion: jest.fn(),
+    updateRegistryVersionWithBuildDate: jest.fn(),
     getRelatedRegistries: jest.fn(),
     deleteRegistries: jest.fn(),
     getSortedRegistriesByOwner: jest.fn(),

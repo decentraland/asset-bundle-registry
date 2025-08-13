@@ -34,9 +34,9 @@ describe('registry orchestrator should', () => {
     },
     versions: {
       assets: {
-        windows: '',
-        mac: '',
-        webgl: ''
+        windows: { version: '', buildDate: '' },
+        mac: { version: '', buildDate: '' },
+        webgl: { version: '', buildDate: '' }
       }
     },
     ...partial

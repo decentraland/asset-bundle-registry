@@ -42,9 +42,7 @@ export async function createRegistryHandler(
       }
 
       const [macAssets, windowsAssets, webglAssets] = await Promise.all(
-        ['mac', 'windows', 'webgl'].map((platform) =>
-          entityStatusFetcher.fetchBundleStatusAndVersion(entityId, platform)
-        )
+        ['mac', 'windows', 'webgl'].map((platform) => entityStatusFetcher.fetchBundleManifestData(entityId, platform))
       )
       const [macLodsStatus, windowsLodsStatus, webglLodsStatus] = await Promise.all(
         ['mac', 'windows', 'webgl'].map((platform) => entityStatusFetcher.fetchLODsStatus(entityId, platform))
@@ -69,9 +67,9 @@ export async function createRegistryHandler(
 
       const versions: Registry.Versions = {
         assets: {
-          windows: windowsAssetsVersion,
-          mac: macAssetsVersion,
-          webgl: webglAssetsVersion
+          windows: { version: windowsAssetsVersion, buildDate: '' },
+          mac: { version: macAssetsVersion, buildDate: '' },
+          webgl: { version: webglAssetsVersion, buildDate: '' }
         }
       }
 

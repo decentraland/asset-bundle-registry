@@ -63,9 +63,9 @@ export const createDeploymentEventHandler = ({
 
         const defaultVersions: Registry.Versions = {
           assets: {
-            windows: '',
-            mac: '',
-            webgl: ''
+            windows: { version: '', buildDate: '' },
+            mac: { version: '', buildDate: '' },
+            webgl: { version: '', buildDate: '' }
           }
         }
 

@@ -159,19 +159,21 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
     return result.rows[0] || null
   }
 
-  async function updateRegistryVersion(
+  async function updateRegistryVersionWithBuildDate(
     id: string,
     platform: string,
-    version: string
+    version: string,
+    buildDate: string
   ): Promise<Registry.DbEntity | null> {
     const bundleType = 'assets'
+    const versionData = { version, buildDate }
     const query: SQLStatement = SQL`
       UPDATE registries
       SET 
         versions = jsonb_set(
           COALESCE(registries.versions, '{}'::jsonb),
           ARRAY[${bundleType}::text, ${platform}::text], 
-          to_jsonb(${version}::text)
+          to_jsonb(${versionData}::jsonb)
         )
       WHERE LOWER(registries.id) = ${id.toLocaleLowerCase()}
       RETURNING *
@@ -319,7 +321,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
     insertRegistry,
     updateRegistriesStatus,
     upsertRegistryBundle,
-    updateRegistryVersion,
+    updateRegistryVersionWithBuildDate,
     getSortedRegistriesByOwner,
     getSortedRegistriesByPointers,
     getRegistryById,
