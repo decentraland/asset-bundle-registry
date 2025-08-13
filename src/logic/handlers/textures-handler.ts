@@ -97,7 +97,7 @@ export const createTexturesEventHandler = ({
           event.metadata.entityId,
           event.metadata.platform,
           event.metadata.version,
-          event.metadata.buildDate
+          new Date(event.timestamp).toISOString()
         )
 
         if (!registry) {

@@ -31,7 +31,6 @@ describe('textures-handler', () => {
       isLods: false,
       isWorld: false,
       version: 'v1',
-      buildDate: '2024-01-01',
       ...overrides.metadata
     },
     type: Events.Type.ASSET_BUNDLE,
@@ -144,7 +143,12 @@ describe('textures-handler', () => {
 
         expect(result.ok).toBe(true)
         expect(registryOrchestrator.persistAndRotateStates).toHaveBeenCalledWith(dbEntity)
-        expect(db.updateRegistryVersionWithBuildDate).toHaveBeenCalledWith('123', 'windows', 'v1', '2024-01-01')
+        expect(db.updateRegistryVersionWithBuildDate).toHaveBeenCalledWith(
+          '123',
+          'windows',
+          'v1',
+          new Date(event.timestamp).toISOString()
+        )
       })
 
       it('should create entity with default bundle status when fetched from worlds', async () => {
@@ -155,8 +159,7 @@ describe('textures-handler', () => {
             statusCode: ManifestStatusCode.SUCCESS,
             isLods: false,
             isWorld: true,
-            version: 'v1',
-            buildDate: '2024-01-01'
+            version: 'v1'
           }
         })
         const entity = createEntity()
@@ -193,7 +196,12 @@ describe('textures-handler', () => {
 
         expect(result.ok).toBe(true)
         expect(worlds.getWorld).toHaveBeenCalledWith(event.metadata.entityId)
-        expect(db.updateRegistryVersionWithBuildDate).toHaveBeenCalledWith('123', 'windows', 'v1', '2024-01-01')
+        expect(db.updateRegistryVersionWithBuildDate).toHaveBeenCalledWith(
+          '123',
+          'windows',
+          'v1',
+          new Date(event.timestamp).toISOString()
+        )
       })
 
       it('should return error when entity not found in catalyst or worlds', async () => {
@@ -217,8 +225,7 @@ describe('textures-handler', () => {
             statusCode: ManifestStatusCode.SUCCESS,
             isLods: false,
             isWorld: false,
-            version: 'v1',
-            buildDate: '2024-01-01'
+            version: 'v1'
           }
         })
         const entity = createEntity()
@@ -253,7 +260,12 @@ describe('textures-handler', () => {
         const result = await handler.handle(event)
 
         expect(result.ok).toBe(true)
-        expect(db.updateRegistryVersionWithBuildDate).toHaveBeenCalledWith('123', 'windows', 'v1', '2024-01-01')
+        expect(db.updateRegistryVersionWithBuildDate).toHaveBeenCalledWith(
+          '123',
+          'windows',
+          'v1',
+          new Date(event.timestamp).toISOString()
+        )
       })
 
       it('should update bundle status for mac platform with tolerated errors', async () => {
@@ -264,8 +276,7 @@ describe('textures-handler', () => {
             statusCode: ManifestStatusCode.CONVERSION_ERRORS_TOLERATED,
             isLods: false,
             isWorld: false,
-            version: 'v1',
-            buildDate: '2024-01-01'
+            version: 'v1'
           }
         })
         const entity = createEntity()
@@ -300,7 +311,12 @@ describe('textures-handler', () => {
         const result = await handler.handle(event)
 
         expect(result.ok).toBe(true)
-        expect(db.updateRegistryVersionWithBuildDate).toHaveBeenCalledWith('123', 'mac', 'v1', '2024-01-01')
+        expect(db.updateRegistryVersionWithBuildDate).toHaveBeenCalledWith(
+          '123',
+          'mac',
+          'v1',
+          new Date(event.timestamp).toISOString()
+        )
       })
 
       it('should update bundle status for webgl platform with already converted status', async () => {
@@ -311,8 +327,7 @@ describe('textures-handler', () => {
             statusCode: ManifestStatusCode.ALREADY_CONVERTED,
             isLods: false,
             isWorld: false,
-            version: 'v1',
-            buildDate: '2024-01-01'
+            version: 'v1'
           }
         })
         const entity = createEntity()
@@ -347,7 +362,12 @@ describe('textures-handler', () => {
         const result = await handler.handle(event)
 
         expect(result.ok).toBe(true)
-        expect(db.updateRegistryVersionWithBuildDate).toHaveBeenCalledWith('123', 'webgl', 'v1', '2024-01-01')
+        expect(db.updateRegistryVersionWithBuildDate).toHaveBeenCalledWith(
+          '123',
+          'webgl',
+          'v1',
+          new Date(event.timestamp).toISOString()
+        )
       })
 
       it('should mark bundle as failed when conversion fails', async () => {
@@ -358,8 +378,7 @@ describe('textures-handler', () => {
             statusCode: ManifestStatusCode.ASSET_BUNDLE_BUILD_FAIL,
             isLods: false,
             isWorld: false,
-            version: 'v1',
-            buildDate: '2024-01-01'
+            version: 'v1'
           }
         })
         const entity = createEntity()
@@ -394,7 +413,12 @@ describe('textures-handler', () => {
         const result = await handler.handle(event)
 
         expect(result.ok).toBe(true)
-        expect(db.updateRegistryVersionWithBuildDate).toHaveBeenCalledWith('123', 'windows', 'v1', '2024-01-01')
+        expect(db.updateRegistryVersionWithBuildDate).toHaveBeenCalledWith(
+          '123',
+          'windows',
+          'v1',
+          new Date(event.timestamp).toISOString()
+        )
       })
 
       it('should update lods bundle status when isLods is true', async () => {
@@ -405,8 +429,7 @@ describe('textures-handler', () => {
             statusCode: ManifestStatusCode.SUCCESS,
             isLods: true,
             isWorld: false,
-            version: 'v1',
-            buildDate: '2024-01-01'
+            version: 'v1'
           }
         })
         const entity = createEntity()
@@ -441,7 +464,12 @@ describe('textures-handler', () => {
         const result = await handler.handle(event)
 
         expect(result.ok).toBe(true)
-        expect(db.updateRegistryVersionWithBuildDate).toHaveBeenCalledWith('123', 'windows', 'v1', '2024-01-01')
+        expect(db.updateRegistryVersionWithBuildDate).toHaveBeenCalledWith(
+          '123',
+          'windows',
+          'v1',
+          new Date(event.timestamp).toISOString()
+        )
       })
 
       it('should return error when upsert fails', async () => {
@@ -493,8 +521,7 @@ describe('textures-handler', () => {
             statusCode: ManifestStatusCode.SUCCESS,
             isLods: false,
             isWorld: false,
-            version: 'v1',
-            buildDate: '2024-01-01'
+            version: 'v1'
           }
         })
         const entity = createEntity()
@@ -529,7 +556,12 @@ describe('textures-handler', () => {
         const result = await handler.handle(event)
 
         expect(result.ok).toBe(true)
-        expect(db.updateRegistryVersionWithBuildDate).toHaveBeenCalledWith('123', 'windows', 'v1', '2024-01-01')
+        expect(db.updateRegistryVersionWithBuildDate).toHaveBeenCalledWith(
+          '123',
+          'windows',
+          'v1',
+          new Date(event.timestamp).toISOString()
+        )
       })
 
       it('should update bundle status for lods', async () => {
@@ -540,8 +572,7 @@ describe('textures-handler', () => {
             statusCode: ManifestStatusCode.SUCCESS,
             isLods: true,
             isWorld: false,
-            version: 'v1',
-            buildDate: '2024-01-01'
+            version: 'v1'
           }
         })
         const entity = createEntity()
@@ -566,7 +597,7 @@ describe('textures-handler', () => {
           ...dbEntity,
           versions: {
             assets: {
-              windows: { version: 'v1', buildDate: '2024-01-01' },
+              windows: { version: 'v1', buildDate: '' },
               mac: { version: '', buildDate: '' },
               webgl: { version: '', buildDate: '' }
             }
@@ -576,7 +607,12 @@ describe('textures-handler', () => {
         const result = await handler.handle(event)
 
         expect(result.ok).toBe(true)
-        expect(db.updateRegistryVersionWithBuildDate).toHaveBeenCalledWith('123', 'windows', 'v1', '2024-01-01')
+        expect(db.updateRegistryVersionWithBuildDate).toHaveBeenCalledWith(
+          '123',
+          'windows',
+          'v1',
+          new Date(event.timestamp).toISOString()
+        )
       })
     })
   })
