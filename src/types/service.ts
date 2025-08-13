@@ -81,7 +81,7 @@ export type EntityStatusFetcher = {
   fetchBundleManifestData(
     entityId: string,
     platform: string
-  ): Promise<{ status: Registry.SimplifiedStatus; version: string }>
+  ): Promise<{ status: Registry.SimplifiedStatus; version: string; buildDate: string }>
   fetchLODsStatus(entityId: string, platform: string): Promise<Registry.SimplifiedStatus>
 }
 

@@ -182,7 +182,7 @@ describe('textures-handler', () => {
           ...dbEntity,
           versions: {
             assets: {
-              windows: { version: 'v1', buildDate: '' },
+              windows: { version: 'v1', buildDate: '2024-01-01' },
               mac: { version: '', buildDate: '' },
               webgl: { version: '', buildDate: '' }
             }
@@ -243,7 +243,7 @@ describe('textures-handler', () => {
           ...dbEntity,
           versions: {
             assets: {
-              windows: { version: 'v1', buildDate: '' },
+              windows: { version: 'v1', buildDate: '2024-01-01' },
               mac: { version: '', buildDate: '' },
               webgl: { version: '', buildDate: '' }
             }
@@ -291,7 +291,7 @@ describe('textures-handler', () => {
           versions: {
             assets: {
               windows: { version: '', buildDate: '' },
-              mac: { version: 'v1', buildDate: '' },
+              mac: { version: 'v1', buildDate: '2024-01-01' },
               webgl: { version: '', buildDate: '' }
             }
           }
@@ -339,7 +339,7 @@ describe('textures-handler', () => {
             assets: {
               windows: { version: '', buildDate: '' },
               mac: { version: '', buildDate: '' },
-              webgl: { version: 'v1', buildDate: '' }
+              webgl: { version: 'v1', buildDate: '2024-01-01' }
             }
           }
         })
@@ -384,7 +384,7 @@ describe('textures-handler', () => {
           ...dbEntity,
           versions: {
             assets: {
-              windows: { version: 'v1', buildDate: '' },
+              windows: { version: 'v1', buildDate: '2024-01-01' },
               mac: { version: '', buildDate: '' },
               webgl: { version: '', buildDate: '' }
             }
@@ -431,7 +431,7 @@ describe('textures-handler', () => {
           ...dbEntity,
           versions: {
             assets: {
-              windows: { version: 'v1', buildDate: '' },
+              windows: { version: 'v1', buildDate: '2024-01-01' },
               mac: { version: '', buildDate: '' },
               webgl: { version: '', buildDate: '' }
             }
@@ -519,7 +519,7 @@ describe('textures-handler', () => {
           ...dbEntity,
           versions: {
             assets: {
-              windows: { version: 'v1', buildDate: '' },
+              windows: { version: 'v1', buildDate: '2024-01-01' },
               mac: { version: '', buildDate: '' },
               webgl: { version: '', buildDate: '' }
             }
@@ -566,7 +566,7 @@ describe('textures-handler', () => {
           ...dbEntity,
           versions: {
             assets: {
-              windows: { version: 'v1', buildDate: '' },
+              windows: { version: 'v1', buildDate: '2024-01-01' },
               mac: { version: '', buildDate: '' },
               webgl: { version: '', buildDate: '' }
             }

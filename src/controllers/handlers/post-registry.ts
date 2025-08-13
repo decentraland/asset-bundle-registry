@@ -48,9 +48,13 @@ export async function createRegistryHandler(
         ['mac', 'windows', 'webgl'].map((platform) => entityStatusFetcher.fetchLODsStatus(entityId, platform))
       )
 
-      const { status: macAssetsStatus, version: macAssetsVersion } = macAssets
-      const { status: windowsAssetsStatus, version: windowsAssetsVersion } = windowsAssets
-      const { status: webglAssetsStatus, version: webglAssetsVersion } = webglAssets
+      const { status: macAssetsStatus, version: macAssetsVersion, buildDate: macAssetsBuildDate } = macAssets
+      const {
+        status: windowsAssetsStatus,
+        version: windowsAssetsVersion,
+        buildDate: windowsAssetsBuildDate
+      } = windowsAssets
+      const { status: webglAssetsStatus, version: webglAssetsVersion, buildDate: webglAssetsBuildDate } = webglAssets
 
       const bundles: Registry.Bundles = {
         assets: {
@@ -67,9 +71,9 @@ export async function createRegistryHandler(
 
       const versions: Registry.Versions = {
         assets: {
-          windows: { version: windowsAssetsVersion, buildDate: '' },
-          mac: { version: macAssetsVersion, buildDate: '' },
-          webgl: { version: webglAssetsVersion, buildDate: '' }
+          windows: { version: windowsAssetsVersion, buildDate: windowsAssetsBuildDate },
+          mac: { version: macAssetsVersion, buildDate: macAssetsBuildDate },
+          webgl: { version: webglAssetsVersion, buildDate: webglAssetsBuildDate }
         }
       }
 
