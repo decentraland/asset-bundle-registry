@@ -22,9 +22,9 @@ export namespace Registry {
 
   export type Versions = {
     assets: {
-      windows: string
-      mac: string
-      webgl: string
+      windows: { version: string; buildDate: string }
+      mac: { version: string; buildDate: string }
+      webgl: { version: string; buildDate: string }
     }
   }
 

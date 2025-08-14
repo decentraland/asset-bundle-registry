@@ -55,9 +55,9 @@ export const createTexturesEventHandler = ({
 
           const defaultVersions: Registry.Versions = {
             assets: {
-              windows: '',
-              mac: '',
-              webgl: ''
+              windows: { version: '', buildDate: '' },
+              mac: { version: '', buildDate: '' },
+              webgl: { version: '', buildDate: '' }
             }
           }
 
@@ -93,10 +93,11 @@ export const createTexturesEventHandler = ({
         }
 
         // Update version separately
-        registry = await db.updateRegistryVersion(
+        registry = await db.updateRegistryVersionWithBuildDate(
           event.metadata.entityId,
           event.metadata.platform,
-          event.metadata.version
+          event.metadata.version,
+          new Date(event.timestamp).toISOString()
         )
 
         if (!registry) {

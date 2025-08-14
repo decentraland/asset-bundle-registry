@@ -116,9 +116,9 @@ export function createRegistryEntity(
     type: EntityType.SCENE,
     versions: {
       assets: {
-        windows: '',
-        mac: '',
-        webgl: ''
+        windows: { version: '', buildDate: '' },
+        mac: { version: '', buildDate: '' },
+        webgl: { version: '', buildDate: '' }
       }
     },
     ...overrideProperties

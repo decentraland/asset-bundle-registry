@@ -13,7 +13,8 @@
     "lint:fix": "eslint '**/*.{js,ts}' --fix",
     "migrate": "node-pg-migrate --tsconfig ./tsconfig.json --migrations-dir ./src/migrations",
     "scripts:populate-scenes": "yarn build:scripts && node --trace-warnings --abort-on-uncaught-exception --unhandled-rejections=strict dist/scripts/index.js scenes",
-    "scripts:populate-items": "yarn build:scripts && node --trace-warnings --abort-on-uncaught-exception --unhandled-rejections=strict dist/scripts/index.js items"
+    "scripts:populate-items": "yarn build:scripts && node --trace-warnings --abort-on-uncaught-exception --unhandled-rejections=strict dist/scripts/index.js items",
+    "scripts:backfill-versions": "yarn build:scripts && node --trace-warnings --abort-on-uncaught-exception --unhandled-rejections=strict dist/scripts/backfill-versions.js"
   },
   "devDependencies": {
     "@dcl/eslint-config": "^2.2.1",
@@ -28,7 +29,7 @@
     "@dcl/crypto": "^3.4.5",
     "@dcl/platform-crypto-middleware": "^1.1.0",
     "@dcl/platform-server-commons": "^0.0.4",
-    "@dcl/schemas": "^18.0.0",
+    "@dcl/schemas": "^18.1.0",
     "@well-known-components/env-config-provider": "^1.2.0",
     "@well-known-components/fetch-component": "^3.0.0",
     "@well-known-components/http-server": "^2.1.0",

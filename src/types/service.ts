@@ -27,7 +27,12 @@ export type DbComponent = {
     lods: boolean,
     status: Registry.SimplifiedStatus
   ): Promise<Registry.DbEntity | null>
-  updateRegistryVersion(id: string, platform: string, version: string): Promise<Registry.DbEntity | null>
+  updateRegistryVersionWithBuildDate(
+    id: string,
+    platform: string,
+    version: string,
+    buildDate: string
+  ): Promise<Registry.DbEntity | null>
   getRelatedRegistries(registry: Pick<Registry.DbEntity, 'pointers' | 'id'>): Promise<Registry.PartialDbEntity[]>
   deleteRegistries(entityIds: string[]): Promise<void>
   getBatchOfDeprecatedRegistriesOlderThan(
@@ -73,10 +78,10 @@ export type EventHandlerComponent<T> = {
 }
 
 export type EntityStatusFetcher = {
-  fetchBundleStatusAndVersion(
+  fetchBundleManifestData(
     entityId: string,
     platform: string
-  ): Promise<{ status: Registry.SimplifiedStatus; version: string }>
+  ): Promise<{ status: Registry.SimplifiedStatus; version: string; buildDate: string }>
   fetchLODsStatus(entityId: string, platform: string): Promise<Registry.SimplifiedStatus>
 }
 

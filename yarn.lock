@@ -1209,10 +1209,10 @@
     ajv-keywords "^5.1.0"
     mitt "^3.0.1"
 
-"@dcl/schemas@^18.0.0":
-  version "18.0.0"
-  resolved "https://registry.yarnpkg.com/@dcl/schemas/-/schemas-18.0.0.tgz#f4df29b31e998e4c8e51dfb2ec106b7b1e4a6581"
-  integrity sha512-RGG7TUjLslzpsej177CK79WlPKfaAH0SXtW3fYV2btNs93mB6ppGLAh8fx6GBy7kErVBflFRenQFWLJ1gsrNrQ==
+"@dcl/schemas@^18.1.0":
+  version "18.1.0"
+  resolved "https://registry.yarnpkg.com/@dcl/schemas/-/schemas-18.1.0.tgz#7c53ca5186684f5f686e7a023e42de283b9f872c"
+  integrity sha512-N2YHlhGIwE2R73hJ8qO9SvDBqibeZBSzOX90uVKXhGj3Bw5mfCVSRfjEX//9IocNKsQJb3rIOmNWAh3SAyAPhQ==
   dependencies:
     ajv "^8.11.0"
     ajv-errors "^3.0.0"
