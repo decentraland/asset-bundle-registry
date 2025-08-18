@@ -24,13 +24,14 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
     statuses?: Registry.Status[],
     descSort: boolean = false
   ): Promise<Registry.DbEntity[]> {
+    const lowerCasePointers = pointers.map((p) => p.toLowerCase())
     const query = SQL`
       SELECT 
         id, type, timestamp, deployer, pointers, content, metadata, status, bundles, versions
       FROM 
         registries
       WHERE 
-        pointers && ${pointers}::varchar(255)[]
+        pointers && ${lowerCasePointers}::varchar(255)[]
     `
 
     if (statuses) {
@@ -186,13 +187,14 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
   async function getRelatedRegistries(
     registry: Pick<Registry.DbEntity, 'pointers' | 'id'>
   ): Promise<Registry.PartialDbEntity[]> {
+    const lowerCasePointers = registry.pointers.map((p) => p.toLowerCase())
     const query: SQLStatement = SQL`
       SELECT 
         id, pointers, timestamp, status, bundles, versions
       FROM 
         registries
       WHERE 
-        pointers && ${registry.pointers}::varchar(255)[] AND LOWER(id) != ${registry.id.toLocaleLowerCase()} AND status != ${Registry.Status.OBSOLETE}
+        pointers && ${lowerCasePointers}::varchar(255)[] AND LOWER(id) != ${registry.id.toLocaleLowerCase()} AND status != ${Registry.Status.OBSOLETE}
       ORDER BY timestamp DESC
     `
 
