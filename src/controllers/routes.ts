@@ -18,7 +18,8 @@ export async function setupRouter(globalContext: GlobalContext): Promise<Router<
     onError: (err: any) => ({
       error: err.message,
       message: 'This endpoint requires a signed fetch request. See ADR-44.'
-    })
+    }),
+    metadataValidator: (metadata) => metadata?.signer !== 'decentraland-kernel-scene' // prevent requests from scenes
   })
 
   router.get('/status', getStatusHandler)
