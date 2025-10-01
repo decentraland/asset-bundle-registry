@@ -19,7 +19,7 @@ export function createMessagesConsumerComponent({
     logger.info('Starting to listen messages from queue')
     isRunning = true
     while (isRunning) {
-      const messages = await queue.receiveSingleMessage()
+      const messages = await queue.receiveMessages(10)
 
       if (!messages || messages.length === 0) {
         logger.info(`No messages found in queue, waiting ${intervalToWaitInSeconds} seconds to check again`)
@@ -32,7 +32,7 @@ export function createMessagesConsumerComponent({
         let parsedMessage: any | undefined
 
         try {
-          parsedMessage = JSON.parse(JSON.parse(Body!).Message)
+          parsedMessage = JSON.parse(Body!)
 
           if (!parsedMessage) {
             logger.warn('Message is not a valid event or could not be parsed', { parsedMessage })
