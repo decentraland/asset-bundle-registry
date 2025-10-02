@@ -49,7 +49,7 @@ export type QueueMessage = any
 
 export type QueueComponent = {
   send(message: QueueMessage): Promise<void>
-  receiveSingleMessage(): Promise<Message[]>
+  receiveMessages(amount: number): Promise<Message[]>
   deleteMessage(receiptHandle: string): Promise<void>
 }
 

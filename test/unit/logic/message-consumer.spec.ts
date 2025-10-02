@@ -34,11 +34,11 @@ describe('message consumer', () => {
   describe('when processing messages', () => {
     it('should process message successfully and remove it from queue', async () => {
       const message = { entityId: '123', type: 'deployment' }
-      queue.receiveSingleMessage = jest
+      queue.receiveMessages = jest
         .fn()
         .mockResolvedValueOnce([
           {
-            Body: JSON.stringify({ Message: JSON.stringify(message) }),
+            Body: JSON.stringify(message),
             ReceiptHandle: 'receipt-123'
           }
         ])
@@ -56,11 +56,11 @@ describe('message consumer', () => {
 
     it('should handle failed processing and requeue with retry data', async () => {
       const message = { entityId: '123', type: 'deployment' }
-      queue.receiveSingleMessage = jest
+      queue.receiveMessages = jest
         .fn()
         .mockResolvedValueOnce([
           {
-            Body: JSON.stringify({ Message: JSON.stringify(message) }),
+            Body: JSON.stringify(message),
             ReceiptHandle: 'receipt-123'
           }
         ])
@@ -86,7 +86,7 @@ describe('message consumer', () => {
     })
 
     it('should handle invalid message format and remove from queue', async () => {
-      queue.receiveSingleMessage = jest
+      queue.receiveMessages = jest
         .fn()
         .mockResolvedValueOnce([
           {
@@ -107,11 +107,11 @@ describe('message consumer', () => {
 
     it('should handle processor throwing error and remove message from queue', async () => {
       const message = { entityId: '123', type: 'deployment' }
-      queue.receiveSingleMessage = jest
+      queue.receiveMessages = jest
         .fn()
         .mockResolvedValueOnce([
           {
-            Body: JSON.stringify({ Message: JSON.stringify(message) }),
+            Body: JSON.stringify(message),
             ReceiptHandle: 'receipt-123'
           }
         ])
@@ -136,7 +136,7 @@ describe('message consumer', () => {
     })
 
     it('should wait when no messages are available', async () => {
-      queue.receiveSingleMessage = jest.fn().mockResolvedValue([])
+      queue.receiveMessages = jest.fn().mockResolvedValue([])
 
       const processPromise = sut.start(mockStartOptions)
       await sut.stop()
@@ -155,11 +155,11 @@ describe('message consumer', () => {
           failedHandlers: ['TexturesHandler']
         }
       }
-      queue.receiveSingleMessage = jest
+      queue.receiveMessages = jest
         .fn()
         .mockResolvedValueOnce([
           {
-            Body: JSON.stringify({ Message: JSON.stringify(message) }),
+            Body: JSON.stringify(message),
             ReceiptHandle: 'receipt-123'
           }
         ])
