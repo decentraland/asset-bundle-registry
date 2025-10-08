@@ -14,7 +14,7 @@ test('POST /entities endpoints', async function ({ components }) {
     {
       path: '/entities/active',
       name: 'active',
-      parseResponse: (response: Registry.DbEntity[]) => 
+      parseResponse: (response: Registry.DbEntity[]) =>
         response.map((entity: Registry.DbEntity) => ({
           ...entity,
           deployer: entity.deployer.toLocaleLowerCase(),
@@ -23,9 +23,9 @@ test('POST /entities endpoints', async function ({ components }) {
         }))
     },
     {
-      path: '/entities/versions', 
+      path: '/entities/versions',
       name: 'versions',
-      parseResponse: (response: Registry.DbEntity[]) => 
+      parseResponse: (response: Registry.DbEntity[]) =>
         response.map((entity: Registry.DbEntity) => ({
           status: entity.status,
           bundles: entity.bundles,
@@ -87,8 +87,8 @@ test('POST /entities endpoints', async function ({ components }) {
             })
 
             it('should return the entity with correct properties', async () => {
-              const response = await fetchLocally('POST', path, undefined, { 
-                pointers: [registry.pointers[0]] 
+              const response = await fetchLocally('POST', path, undefined, {
+                pointers: [registry.pointers[0]]
               })
               const parsedResponse = await response.json()
 
@@ -109,8 +109,8 @@ test('POST /entities endpoints', async function ({ components }) {
             })
 
             it('should return the entity with correct properties', async () => {
-              const response = await fetchLocally('POST', path, undefined, { 
-                pointers: [registry.pointers[0]] 
+              const response = await fetchLocally('POST', path, undefined, {
+                pointers: [registry.pointers[0]]
               })
               const parsedResponse = await response.json()
 
@@ -131,8 +131,8 @@ test('POST /entities endpoints', async function ({ components }) {
             })
 
             it('should return an empty array', async () => {
-              const response = await fetchLocally('POST', path, undefined, { 
-                pointers: [registry.pointers[0]] 
+              const response = await fetchLocally('POST', path, undefined, {
+                pointers: [registry.pointers[0]]
               })
               const parsedResponse = await response.json()
 
@@ -153,8 +153,8 @@ test('POST /entities endpoints', async function ({ components }) {
             })
 
             it('should return an empty array', async () => {
-              const response = await fetchLocally('POST', path, undefined, { 
-                pointers: [registry.pointers[0]] 
+              const response = await fetchLocally('POST', path, undefined, {
+                pointers: [registry.pointers[0]]
               })
               const parsedResponse = await response.json()
 
@@ -295,8 +295,8 @@ test('POST /entities endpoints', async function ({ components }) {
 
       describe('when no entities are found', () => {
         it('should return an empty array', async () => {
-          const response = await fetchLocally('POST', path, undefined, { 
-            pointers: ['1000,1000'] 
+          const response = await fetchLocally('POST', path, undefined, {
+            pointers: ['1000,1000']
           })
           const parsedResponse = await response.json()
 
@@ -307,8 +307,8 @@ test('POST /entities endpoints', async function ({ components }) {
       describe('when the request is invalid', () => {
         describe('and no pointers are provided', () => {
           it('should return 400 status with error message', async () => {
-            const response = await fetchLocally('POST', path, undefined, { 
-              pointers: [] 
+            const response = await fetchLocally('POST', path, undefined, {
+              pointers: []
             })
             expect(response.status).toBe(400)
             const parsedResponse = await response.json()
@@ -321,8 +321,8 @@ test('POST /entities endpoints', async function ({ components }) {
 
         describe('and pointers is null', () => {
           it('should return 400 status with error message', async () => {
-            const response = await fetchLocally('POST', path, undefined, { 
-              pointers: null 
+            const response = await fetchLocally('POST', path, undefined, {
+              pointers: null
             })
             expect(response.status).toBe(400)
             const parsedResponse = await response.json()
