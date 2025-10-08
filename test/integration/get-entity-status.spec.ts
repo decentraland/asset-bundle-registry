@@ -237,13 +237,14 @@ test('GET /entities/status', function ({ components }) {
         identity.realAccount.address,
         Registry.Status.COMPLETE,
         Registry.SimplifiedStatus.COMPLETE,
-        { id: 'registryA', pointers: ['1001,1002'] }
+        { id: 'registryA', pointers: ['1001,1002'], timestamp: 1000 }
       )
     }
     const registryB = createRegistryEntity(
       identity.realAccount.address,
       Registry.Status.COMPLETE,
-      Registry.SimplifiedStatus.COMPLETE
+      Registry.SimplifiedStatus.COMPLETE,
+      { timestamp: 2000 }
     )
     await createRegistryOnDatabase(registryA)
     await createRegistryOnDatabase(registryB)
@@ -253,14 +254,14 @@ test('GET /entities/status', function ({ components }) {
 
     expect(parsedResponse).toMatchObject([
       {
-        entityId: registryA.id,
+        entityId: registryB.id,
         catalyst: 'complete',
         complete: true,
         assetBundles: { mac: 'complete', windows: 'complete' },
         lods: { mac: 'complete', windows: 'complete' }
       },
       {
-        entityId: registryB.id,
+        entityId: registryA.id,
         catalyst: 'complete',
         complete: true,
         assetBundles: { mac: 'complete', windows: 'complete' },

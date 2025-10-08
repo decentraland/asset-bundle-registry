@@ -1,9 +1,9 @@
 import { getMostUpdatedRegistryByPointers } from '../../logic/registry-parser'
 import { HandlerContextWithPath, Registry } from '../../types'
 
-export async function getActiveEntityHandler(context: HandlerContextWithPath<'db' | 'metrics', '/entities/active'>) {
+export async function getEntityVersionsHandler(context: HandlerContextWithPath<'db', '/entities/versions'>) {
   const {
-    components: { db, metrics }
+    components: { db }
   } = context
 
   const body = await context.request.json()
@@ -19,22 +19,18 @@ export async function getActiveEntityHandler(context: HandlerContextWithPath<'db
     }
   }
 
-  // Track the number of pointers in this request
-  metrics.observe('pointers_per_request', {}, pointers.length)
-
   const entities = await db.getSortedRegistriesByPointers(pointers, [
     Registry.Status.COMPLETE,
     Registry.Status.FALLBACK
   ])
 
-  if (entities.length === 0) {
-    pointers.forEach((_pointer) => {
-      metrics.increment('registries_missmatch_count', {}, 1)
-    })
-  }
-
-  const entitiesByPointers = getMostUpdatedRegistryByPointers<Registry.DbEntity>(entities)
-  metrics.increment('registries_served_count', {}, entitiesByPointers.length)
+  const entitiesByPointers: Pick<Registry.DbEntity, 'pointers' | 'versions' | 'bundles'>[] =
+    getMostUpdatedRegistryByPointers(entities).map((entity) => ({
+      pointers: entity.pointers,
+      versions: entity.versions,
+      bundles: entity.bundles,
+      status: entity.status
+    }))
 
   return {
     body: entitiesByPointers,
