@@ -1,4 +1,4 @@
-import { getMostUpdatedRegistryByPointers } from '../../logic/entity-parser'
+import { getMostUpdatedRegistryByPointers } from '../../logic/registry-parser'
 import { HandlerContextWithPath, Registry } from '../../types'
 
 export async function getEntityVersionsHandler(context: HandlerContextWithPath<'db', '/entities/versions'>) {
@@ -24,7 +24,13 @@ export async function getEntityVersionsHandler(context: HandlerContextWithPath<'
     Registry.Status.FALLBACK
   ])
 
-  const entitiesByPointers = getMostUpdatedRegistryByPointers(entities)
+  const entitiesByPointers: Pick<Registry.DbEntity, 'pointers' | 'versions' | 'bundles'>[] =
+    getMostUpdatedRegistryByPointers(entities).map((entity) => ({
+      pointers: entity.pointers,
+      versions: entity.versions,
+      bundles: entity.bundles,
+      status: entity.status
+    }))
 
   return {
     body: JSON.stringify(entitiesByPointers),

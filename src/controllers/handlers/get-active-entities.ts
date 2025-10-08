@@ -1,4 +1,4 @@
-import { getMostUpdatedRegistryByPointers } from '../../logic/entity-parser'
+import { getMostUpdatedRegistryByPointers } from '../../logic/registry-parser'
 import { HandlerContextWithPath, Registry } from '../../types'
 
 export async function getActiveEntityHandler(context: HandlerContextWithPath<'db' | 'metrics', '/entities/active'>) {
@@ -33,7 +33,7 @@ export async function getActiveEntityHandler(context: HandlerContextWithPath<'db
     })
   }
 
-  const entitiesByPointers = getMostUpdatedRegistryByPointers(entities)
+  const entitiesByPointers = getMostUpdatedRegistryByPointers<Registry.DbEntity>(entities)
   metrics.increment('registries_served_count', {}, entitiesByPointers.length)
 
   return {
