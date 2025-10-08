@@ -7,6 +7,7 @@ import { getEntityStatusHandler, getEntitiesStatusHandler, getQueuesStatuses } f
 import { bearerTokenMiddleware, errorHandler } from '@dcl/platform-server-commons'
 import { createRegistryHandler } from './handlers/post-registry'
 import { flushCacheHandler } from '../logic/handlers/flush-cache-handler'
+import { getEntityVersionsHandler } from './handlers/get-entity-versions'
 
 export async function setupRouter(globalContext: GlobalContext): Promise<Router<GlobalContext>> {
   const router = new Router<GlobalContext>()
@@ -24,6 +25,7 @@ export async function setupRouter(globalContext: GlobalContext): Promise<Router<
 
   router.get('/status', getStatusHandler)
   router.post('/entities/active', getActiveEntityHandler)
+  router.post('/entities/versions', getEntityVersionsHandler)
   router.get('/entities/status/:id', getEntityStatusHandler)
   router.get('/entities/status', signedFetchMiddleware, getEntitiesStatusHandler)
   router.get('/queues/status', getQueuesStatuses)
