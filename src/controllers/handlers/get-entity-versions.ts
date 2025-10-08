@@ -33,7 +33,7 @@ export async function getEntityVersionsHandler(context: HandlerContextWithPath<'
     }))
 
   return {
-    body: JSON.stringify(entitiesByPointers),
+    body: entitiesByPointers,
     headers: {
       'Content-Type': 'application/json'
     }

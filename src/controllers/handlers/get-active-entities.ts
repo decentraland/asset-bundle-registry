@@ -37,7 +37,7 @@ export async function getActiveEntityHandler(context: HandlerContextWithPath<'db
   metrics.increment('registries_served_count', {}, entitiesByPointers.length)
 
   return {
-    body: JSON.stringify(entitiesByPointers),
+    body: entitiesByPointers,
     headers: {
       'Content-Type': 'application/json'
     }

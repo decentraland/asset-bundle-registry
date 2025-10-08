@@ -13,7 +13,6 @@ test('POST /entities endpoints', async function ({ components }) {
   const endpoints = [
     {
       path: '/entities/active',
-      name: 'active',
       parseResponse: (response: Registry.DbEntity[]) =>
         response.map((entity: Registry.DbEntity) => ({
           ...entity,
@@ -24,7 +23,6 @@ test('POST /entities endpoints', async function ({ components }) {
     },
     {
       path: '/entities/versions',
-      name: 'versions',
       parseResponse: (response: Registry.DbEntity[]) =>
         response.map((entity: Registry.DbEntity) => ({
           status: entity.status,
@@ -70,7 +68,7 @@ test('POST /entities endpoints', async function ({ components }) {
     }
   }
 
-  endpoints.forEach(({ path, name, parseResponse }) => {
+  endpoints.forEach(({ path, parseResponse }) => {
     describe(`POST ${path}`, () => {
       describe('when the request is valid', () => {
         describe('and a single entity exists', () => {
