@@ -6,16 +6,21 @@ info:
   contact:
     name: Decentraland
     url: https://decentraland.org
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
   x-api-id: asset-bundle-registry-api
 servers:
   - url: /
     description: Service root
+security: []
 paths:
   /status:
     get:
       summary: Get service health status
       description: Returns health status of the service
       operationId: getStatus
+      security: []
       responses:
         '200':
           description: Service health status
@@ -23,11 +28,24 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Status'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /entities/active:
     post:
       summary: Get active entities by pointers
       description: Returns active entities for the given pointers
       operationId: getActiveEntities
+      security: []
       requestBody:
         required: true
         content:
@@ -54,6 +72,7 @@ paths:
       summary: Get entity status by ID
       description: Returns status of a specific entity
       operationId: getEntityStatus
+      security: []
       parameters:
         - name: id
           in: path
@@ -116,6 +135,7 @@ paths:
       summary: Get queue status information
       description: Returns status of processing queues
       operationId: getQueuesStatus
+      security: []
       responses:
         '200':
           description: Queue status information
@@ -123,6 +143,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/QueueStatus'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 components:
   securitySchemes:
     SignedFetch:
