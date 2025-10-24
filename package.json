@@ -14,13 +14,9 @@
     "migrate": "node-pg-migrate --tsconfig ./tsconfig.json --migrations-dir ./src/migrations",
     "scripts:populate-scenes": "yarn build:scripts && node --trace-warnings --abort-on-uncaught-exception --unhandled-rejections=strict dist/scripts/index.js scenes",
     "scripts:populate-items": "yarn build:scripts && node --trace-warnings --abort-on-uncaught-exception --unhandled-rejections=strict dist/scripts/index.js items",
-    "docs:build": "yarn redocly build-docs ./docs/openapi.yaml -o ./docs/index.html",
-    "predocs:preview": "yarn docs:build",
-    "docs:preview": "yarn redocly preview-docs ./docs/openapi.yaml"
   },
   "devDependencies": {
     "@dcl/eslint-config": "^2.2.1",
-    "@redocly/cli": "^2.8.0",
     "@types/node": "^22.9.0",
     "@well-known-components/test-helpers": "^1.5.8",
     "ts-node": "^10.9.2",
