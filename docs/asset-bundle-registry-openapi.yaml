@@ -1,0 +1,266 @@
+openapi: 3.1.0
+info:
+  title: Asset Bundle Registry API
+  description: API for asset bundle registry service providing entity management and status information
+  version: 1.0.0
+  contact:
+    name: Decentraland
+    url: https://decentraland.org
+  x-api-id: asset-bundle-registry-api
+servers:
+  - url: /
+    description: Service root
+paths:
+  /status:
+    get:
+      summary: Get service health status
+      description: Returns health status of the service
+      operationId: getStatus
+      responses:
+        '200':
+          description: Service health status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Status'
+  /entities/active:
+    post:
+      summary: Get active entities by pointers
+      description: Returns active entities for the given pointers
+      operationId: getActiveEntities
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActiveEntitiesRequest'
+      responses:
+        '200':
+          description: List of active entities
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DbEntity'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /entities/status/{id}:
+    get:
+      summary: Get entity status by ID
+      description: Returns status of a specific entity
+      operationId: getEntityStatus
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Entity ID
+      responses:
+        '200':
+          description: Entity status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EntityStatus'
+        '404':
+          description: Entity not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /entities/status:
+    get:
+      summary: Get multiple entities status
+      description: Returns status of multiple entities (requires signed fetch)
+      operationId: getEntitiesStatus
+      security:
+        - SignedFetch: []
+      parameters:
+        - name: ids
+          in: query
+          required: true
+          schema:
+            type: array
+            items:
+              type: string
+          description: Comma-separated list of entity IDs
+      responses:
+        '200':
+          description: List of entity statuses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EntityStatus'
+        '401':
+          description: Unauthorized - invalid signed fetch
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - invalid metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /queues/status:
+    get:
+      summary: Get queue status information
+      description: Returns status of processing queues
+      operationId: getQueuesStatus
+      responses:
+        '200':
+          description: Queue status information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueStatus'
+components:
+  securitySchemes:
+    SignedFetch:
+      type: http
+      scheme: bearer
+      description: |
+        Signed fetch authentication using @dcl/platform-crypto-middleware (ADR-44l). 
+        Requires auth chain headers (x-identity, x-signature, x-timestamp) for signature validation. 
+        See http://adr.decentraland.org/adr/ADR-44l for details.
+  schemas:
+    Status:
+      type: object
+      properties:
+        status:
+          type: string
+          description: Service health status
+        timestamp:
+          type: string
+          format: date-time
+          description: Status timestamp
+      required:
+        - status
+    ActiveEntitiesRequest:
+      type: object
+      properties:
+        pointers:
+          type: array
+          items:
+            type: string
+          description: List of pointers to query
+      required:
+        - pointers
+    DbEntity:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Entity ID
+        type:
+          type: string
+          description: Entity type
+        pointers:
+          type: array
+          items:
+            type: string
+          description: Entity pointers
+        timestamp:
+          type: number
+          description: Entity timestamp
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Content'
+          description: Entity content
+        metadata:
+          type: object
+          additionalProperties: true
+          description: |
+            Entity metadata (TODO: align with precise source types)
+      required:
+        - id
+        - type
+        - pointers
+        - timestamp
+    Content:
+      type: object
+      properties:
+        file:
+          type: string
+          description: Content file path
+        hash:
+          type: string
+          description: Content hash
+      required:
+        - file
+        - hash
+    EntityStatus:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Entity ID
+        status:
+          type: string
+          enum: [active, inactive, processing]
+          description: Entity status
+        lastUpdate:
+          type: string
+          format: date-time
+          description: Last update timestamp
+      required:
+        - id
+        - status
+    QueueStatus:
+      type: object
+      properties:
+        queues:
+          type: array
+          items:
+            $ref: '#/components/schemas/Queue'
+          description: List of queue statuses
+        totalProcessed:
+          type: number
+          description: Total processed items
+      required:
+        - queues
+    Queue:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Queue name
+        pending:
+          type: number
+          description: Pending items count
+        processing:
+          type: number
+          description: Processing items count
+        completed:
+          type: number
+          description: Completed items count
+        failed:
+          type: number
+          description: Failed items count
+      required:
+        - name
+        - pending
+        - processing
+        - completed
+        - failed
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+        code:
+          type: string
+          description: Error code
+      required:
+        - error
