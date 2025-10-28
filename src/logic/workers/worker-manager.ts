@@ -74,7 +74,7 @@ export function createWorkerManagerComponent(components: Pick<AppComponents, 'lo
         async () => {
           await scheduleDailyWorker(databasePurgerWorker)
         },
-        24 * 60 * 60 * 1000
+        4 * 60 * 60 * 1000
       )
 
       scheduledJobs.add(dailyInterval)
