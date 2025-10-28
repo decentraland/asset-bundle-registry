@@ -1,7 +1,35 @@
 openapi: 3.1.0
 info:
   title: Asset Bundle Registry API
-  description: API for asset bundle registry service providing entity management and status information
+  description: |
+    # Asset Bundle Registry Service
+    
+    The Asset Bundle Registry is a proxy service that manages the availability of converted Unity Asset Bundles for Decentraland content.
+    
+    ## What are Unity Asset Bundles?
+    
+    Unity Asset Bundles are optimized, pre-compiled packages of 3D assets used in Decentraland to improve performance in OS builds. Instead of loading raw GLTF models at runtime, scenes and wearables are converted into Asset Bundles by the Asset Bundle Converter service, which loads scene assets, re-imports GLTF models, and packages them into optimized bundles stored on a CDN.
+    
+    ## How the Registry Works
+    
+    The Asset Bundle Registry acts as an intelligent proxy between clients and the Catalyst content servers:
+    
+    1. **Content Upload**: When new content (scenes, wearables, etc.) is uploaded to a Catalyst server, it triggers the Asset Bundle Converter to process the assets.
+    
+    2. **Availability Management**: While the new content is being converted (which can take time), the registry continues to serve the **previous version** of the asset bundle for that pointer.
+    
+    3. **Seamless Transitions**: This ensures that when clients request a scene or wearable, there is always something to display in-world, preventing broken experiences during content updates.
+    
+    4. **Pointer-based Queries**: Clients query the registry by pointers (e.g., scene coordinates like "-53,71" or wearable URNs) to get the latest **available** and **ready** asset bundle, not necessarily the latest uploaded content.
+    
+    ## Key Features
+    
+    - **Always Available**: Returns the most recent successfully converted asset bundle
+    - **Processing Status**: Track conversion progress of new content
+    - **Multi-version Support**: Handles different Asset Bundle versions (v4, v5, etc.) based on Unity version and material changes
+    - **Queue Monitoring**: Provides visibility into conversion queue status
+    
+    The registry works in conjunction with the Asset Bundle Converter service and the Catalyst content servers to provide a reliable, performant content delivery system for Decentraland.
   version: 1.0.0
   contact:
     name: Decentraland
@@ -18,7 +46,9 @@ paths:
   /status:
     get:
       summary: Get service health status
-      description: Returns health status of the service
+      description: |
+        Returns the health status of the Asset Bundle Registry service, including connectivity to dependent services 
+        (database, cache, queues) and overall system readiness.
       operationId: getStatus
       security: []
       responses:
@@ -43,7 +73,17 @@ paths:
   /entities/active:
     post:
       summary: Get active entities by pointers
-      description: Returns active entities for the given pointers
+      description: |
+        Returns the currently active (ready-to-use) entities for the given pointers. This is the primary endpoint 
+        for clients to query which asset bundles are available for display.
+        
+        **Pointers** are unique identifiers for content locations:
+        - For scenes: coordinates like "-53,71" or "-100,-50"
+        - For wearables: URNs like "urn:decentraland:matic:collections-v2:0x..."
+        
+        The response includes entities with their associated asset bundle content that are **ready for use**. 
+        If new content is currently being processed for a pointer, this endpoint will return the previous 
+        successfully converted version, ensuring clients always have something to render.
       operationId: getActiveEntities
       security: []
       requestBody:
@@ -70,7 +110,16 @@ paths:
   /entities/status/{id}:
     get:
       summary: Get entity status by ID
-      description: Returns status of a specific entity
+      description: |
+        Returns the current processing status of a specific entity by its ID (typically a content identifier/CID).
+        
+        Use this endpoint to check whether an entity has been successfully converted to an asset bundle, 
+        is currently being processed, or is inactive.
+        
+        **Status values:**
+        - `active`: Entity has been successfully converted and is ready for use
+        - `processing`: Entity is currently being converted by the Asset Bundle Converter
+        - `inactive`: Entity conversion failed or the entity is no longer active
       operationId: getEntityStatus
       security: []
       parameters:
@@ -79,7 +128,7 @@ paths:
           required: true
           schema:
             type: string
-          description: Entity ID
+          description: Entity ID (content identifier/CID)
       responses:
         '200':
           description: Entity status
@@ -96,7 +145,12 @@ paths:
   /entities/status:
     get:
       summary: Get multiple entities status
-      description: Returns status of multiple entities (requires signed fetch)
+      description: |
+        Returns the processing status of multiple entities in a single request. This endpoint requires 
+        authenticated access via Decentraland's signed fetch mechanism.
+        
+        Useful for batch checking the conversion status of multiple pieces of content (scenes, wearables, etc.) 
+        to determine which are ready for use and which are still being processed.
       operationId: getEntitiesStatus
       security:
         - SignedFetch: []
@@ -108,7 +162,7 @@ paths:
             type: array
             items:
               type: string
-          description: Comma-separated list of entity IDs
+          description: Comma-separated list of entity IDs (content identifiers/CIDs)
       responses:
         '200':
           description: List of entity statuses
@@ -133,7 +187,16 @@ paths:
   /queues/status:
     get:
       summary: Get queue status information
-      description: Returns status of processing queues
+      description: |
+        Returns status information about the internal processing queues that handle asset bundle conversion requests.
+        
+        This endpoint provides visibility into:
+        - Number of entities pending conversion
+        - Number of entities currently being processed
+        - Number of successfully completed conversions
+        - Number of failed conversions
+        
+        Useful for monitoring system load and identifying potential bottlenecks in the asset bundle conversion pipeline.
       operationId: getQueuesStatus
       security: []
       responses:
@@ -167,14 +230,17 @@ components:
   schemas:
     Status:
       type: object
+      description: Health status response indicating the operational state of the service and its dependencies
       properties:
         status:
           type: string
-          description: Service health status
+          description: |
+            Overall health status of the service (e.g., "ok", "healthy", "degraded"). 
+            This indicates whether the service is operational and able to serve asset bundle requests.
         timestamp:
           type: string
           format: date-time
-          description: Status timestamp
+          description: ISO 8601 timestamp when the status was checked
       required:
         - status
     ActiveEntitiesRequest:
@@ -184,36 +250,53 @@ components:
           type: array
           items:
             type: string
-          description: List of pointers to query
+          description: |
+            List of pointers to query for active entities. Pointers are unique identifiers for content locations:
+            - Scene coordinates (e.g., "-53,71", "0,0")
+            - Wearable URNs (e.g., "urn:decentraland:matic:collections-v2:0xabc...")
       required:
         - pointers
     DbEntity:
       type: object
+      description: |
+        Represents a Decentraland entity (scene, wearable, etc.) with its converted asset bundle information. 
+        This is the primary data structure returned when querying for active entities.
       properties:
         id:
           type: string
-          description: Entity ID
+          description: Unique entity identifier (content identifier/CID from Catalyst)
         type:
           type: string
-          description: Entity type
+          description: |
+            Entity type indicating the kind of content:
+            - `scene`: A Decentraland scene/parcel
+            - `wearable`: An avatar wearable item
+            - `profile`: A user profile
+            - `emote`: An avatar emote/animation
         pointers:
           type: array
           items:
             type: string
-          description: Entity pointers
+          description: |
+            List of pointers where this entity is active. For scenes, these are coordinates (e.g., "-53,71"). 
+            For wearables, these are URNs identifying the item.
         timestamp:
           type: number
-          description: Entity timestamp
+          description: Unix timestamp (milliseconds) indicating when this entity was deployed to Catalyst
         content:
           type: array
           items:
             $ref: '#/components/schemas/Content'
-          description: Entity content
+          description: |
+            Array of content files associated with this entity, including the converted asset bundle files. 
+            Each content item includes the file path and its hash for retrieval from the CDN.
         metadata:
           type: object
           additionalProperties: true
           description: |
-            Entity metadata (TODO: align with precise source types)
+            Entity-specific metadata (structure varies by entity type):
+            - For scenes: includes display name, spawn points, parcels, etc.
+            - For wearables: includes name, description, category, rarity, etc.
       required:
         - id
         - type
@@ -221,64 +304,76 @@ components:
         - timestamp
     Content:
       type: object
+      description: Represents a content file associated with an entity, including converted asset bundles
       properties:
         file:
           type: string
-          description: Content file path
+          description: |
+            Relative file path of the content within the entity (e.g., "scene.json", "thumbnail.png", 
+            or converted asset bundle file names)
         hash:
           type: string
-          description: Content hash
+          description: |
+            Content identifier (CID) hash of the file, used to retrieve the actual file from the Catalyst 
+            content server or Asset Bundle CDN
       required:
         - file
         - hash
     EntityStatus:
       type: object
+      description: Represents the current processing and availability status of an entity's asset bundle conversion
       properties:
         id:
           type: string
-          description: Entity ID
+          description: Unique entity identifier (content identifier/CID)
         status:
           type: string
           enum: [active, inactive, processing]
-          description: Entity status
+          description: |
+            Current status of the entity's asset bundle:
+            - `active`: Successfully converted and ready for client use
+            - `processing`: Currently being converted by the Asset Bundle Converter service
+            - `inactive`: Conversion failed, not yet started, or entity is no longer available
         lastUpdate:
           type: string
           format: date-time
-          description: Last update timestamp
+          description: Timestamp of the last status change or conversion attempt
       required:
         - id
         - status
     QueueStatus:
       type: object
+      description: Overall status of the asset bundle conversion processing queues
       properties:
         queues:
           type: array
           items:
             $ref: '#/components/schemas/Queue'
-          description: List of queue statuses
+          description: Array of individual queue statuses (may include different priority queues or entity type queues)
         totalProcessed:
           type: number
-          description: Total processed items
+          description: Total number of entities successfully processed since service startup
       required:
         - queues
     Queue:
       type: object
+      description: Status information for a specific processing queue handling asset bundle conversions
       properties:
         name:
           type: string
-          description: Queue name
+          description: Identifier for the queue (e.g., "main", "priority", "scenes", "wearables")
         pending:
           type: number
-          description: Pending items count
+          description: Number of entities waiting to be processed (in queue but not yet started)
         processing:
           type: number
-          description: Processing items count
+          description: Number of entities currently being converted by the Asset Bundle Converter
         completed:
           type: number
-          description: Completed items count
+          description: Number of entities successfully converted to asset bundles
         failed:
           type: number
-          description: Failed items count
+          description: Number of entities that failed conversion (may be retried or require manual intervention)
       required:
         - name
         - pending
