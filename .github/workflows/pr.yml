@@ -4,8 +4,11 @@ on:
   pull_request:
 
 jobs:
-  pr:
-    uses: decentraland/platform-actions/.github/workflows/apps-pr.yml@main
+  asset-bundle-registry-deployment:
+    uses: decentraland/platform-actions/.github/workflows/apps-docker-next.yml@main
     with:
-      service-name: asset-bundle-registry
+      service-name: asset-bundle-registry-test
+      image-name: asset-bundle-registry
+      deployment-environment: dev
+      docker-tag: http2-test
     secrets: inherit
