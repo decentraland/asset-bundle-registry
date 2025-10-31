@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: Asset Bundle Registry API
   description: |
-    # Asset Bundle Registry Service
+    ## Asset Bundle Registry Service
     
     The Asset Bundle Registry is a proxy service that manages the availability of converted Unity Asset Bundles for Decentraland content. Acts as an intermediary between the Unity Client and the content network hosted in the Catalyst servers.
     
