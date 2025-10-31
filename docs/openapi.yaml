@@ -2,14 +2,15 @@ openapi: 3.1.0
 info:
   title: Asset Bundle Registry API
   description: |
-    ## Overview    
-    The Asset Bundle Registry is a proxy service that manages the availability of converted Unity Asset Bundles for Decentraland content. Acts as an intermediary between the Unity Client and the content network hosted in the Catalyst servers.
+    ## Overview
     
-    - What are Unity Asset Bundles?
+    The Asset Bundle Registry is a proxy service that manages the availability of converted Unity Asset Bundles for Decentraland content. It acts as an intermediary between the Unity Client and the content network hosted in the Catalyst servers.
     
-    Unity Asset Bundles are optimized, pre-compiled packages of 3D assets used in Decentraland to improve performance in OS builds. Instead of loading raw GLTF models at runtime, scenes and wearables are converted into Asset Bundles by the Asset Bundle Converter service, which loads scene assets, re-imports GLTF models, and packages them into optimized bundles stored on a CDN.
+    ## What are Unity Asset Bundles?
     
-    - How the Registry Works
+    Unity Asset Bundles are optimized, pre-compiled packages of 3D assets used in Decentraland to improve performance in WebGL builds. Instead of loading raw GLTF models at runtime, scenes and wearables are converted into Asset Bundles by the Asset Bundle Converter service, which loads scene assets, re-imports GLTF models, and packages them into optimized bundles stored on a CDN.
+    
+    ## How the Registry Works
     
     The Asset Bundle Registry acts as an intelligent proxy between clients and the Catalyst content servers:
     
@@ -21,12 +22,12 @@ info:
     
     4. **Pointer-based Queries**: Clients query the registry by pointers (e.g., scene coordinates like "-53,71" or wearable URNs) to get the latest **available** and **ready** asset bundle, not necessarily the latest uploaded content.
     
-    - Key Features:
+    ## Key Features
     
-    **Always Available**: Returns the most recent successfully converted asset bundle
-    **Processing Status**: Track conversion progress of new content
-    **Multi-version Support**: Handles different Asset Bundle versions (v4, v5, etc.) based on Unity version and material changes
-    **Queue Monitoring**: Provides visibility into conversion queue status
+    - **Always Available**: Returns the most recent successfully converted asset bundle
+    - **Processing Status**: Track conversion progress of new content
+    - **Multi-version Support**: Handles different Asset Bundle versions (v4, v5, etc.) based on Unity version and material changes
+    - **Queue Monitoring**: Provides visibility into conversion queue status
     
     The registry works in conjunction with the Asset Bundle Converter service and the Catalyst content servers to provide a reliable, performant content delivery system for Decentraland.
   version: 1.0.0
