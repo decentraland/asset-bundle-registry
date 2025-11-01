@@ -11,7 +11,7 @@ import { metricDeclarations } from './metrics'
 import { AppComponents, GlobalContext } from './types'
 import { createPgComponent } from '@well-known-components/pg-component'
 import { createDbAdapter } from './adapters/db'
-import { createSqsAdapter } from './adapters/sqs'
+// import { createSqsAdapter } from './adapters/sqs'
 import { createMemoryQueueAdapter } from './adapters/memory-queue'
 import { createMessageProcessorComponent } from './logic/message-processor'
 import { createCatalystAdapter } from './adapters/catalyst'
@@ -20,7 +20,7 @@ import path from 'path'
 import { createEntityStatusFetcherComponent } from './logic/entity-status-fetcher'
 import { createRegistryOrchestratorComponent } from './logic/registry-orchestrator'
 import { createWorkerManagerComponent } from './logic/workers/worker-manager'
-import { createRedisComponent } from './adapters/redis'
+// import { createRedisComponent } from './adapters/redis'
 import { createInMemoryCacheComponent } from './adapters/memory-cache'
 import { createWorldsAdapter } from './adapters/worlds'
 import { createQueuesStatusManagerComponent } from './logic/queues-status-manager'
@@ -79,13 +79,11 @@ export async function initComponents(): Promise<AppComponents> {
 
   const db = createDbAdapter({ pg })
 
-  const sqsEndpoint = await config.getString('AWS_SQS_ENDPOINT')
-  const queue = sqsEndpoint ? await createSqsAdapter(sqsEndpoint) : createMemoryQueueAdapter()
+  // const sqsEndpoint = await config.getString('AWS_SQS_ENDPOINT')
+  const queue = createMemoryQueueAdapter()
 
-  const redisHostUrl = await config.getString('REDIS_HOST')
-  const memoryStorage = redisHostUrl
-    ? await createRedisComponent(redisHostUrl, { logs })
-    : createInMemoryCacheComponent()
+  // const redisHostUrl = await config.getString('REDIS_HOST')
+  const memoryStorage = createInMemoryCacheComponent()
 
   const catalyst = await createCatalystAdapter({ logs, fetch, config })
   const worlds = await createWorldsAdapter({ logs, config, fetch })
