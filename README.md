@@ -191,7 +191,7 @@ yarn start
 yarn test
 ```
 
-## 🤖 AI Agent Context
+## AI Agent Context
 
 **Service Purpose:** Orchestrates and tracks the availability of optimized Unity Asset Bundles and LODs for Decentraland content. Acts as a state management service that coordinates between entity deployments, optimization services (Asset Bundle Converter, LODs Generator), and client requests, ensuring optimized content is always available.
 
