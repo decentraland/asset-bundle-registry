@@ -506,6 +506,7 @@ export async function createSynchronizerComponent(
         },
         PRIMARY_CATALYST + '/content'
       )
+      logger.debug('Syncing from pointer changes')
 
       for await (const deployedEntity of stream) {
         if (!running) break
