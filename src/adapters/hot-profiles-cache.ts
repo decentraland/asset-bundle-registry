@@ -1,20 +1,16 @@
-import { LRUCache } from 'lru-cache'
 import { IHotProfilesCacheComponent, Sync } from '../types'
 import { Entity } from '@dcl/schemas'
+import { SimpleLRUCache } from './simple-lru-cache'
 
-const DEFAULT_MAX_ITEMS = 10000 // Increased for bootstrap phase
 /**
  * Rapid access in-memory cache (LRU) for most frequently accessed profiles.
+ * Wraps an LRU cache with timestamp-based comparison logic.
  *
  * @export
- * @param {number} [maxItems=DEFAULT_MAX_ITEMS]
+ * @param {SimpleLRUCache<Sync.CacheEntry>} cache - The underlying LRU cache instance
  * @return {*}  {IHotProfilesCacheComponent}
  */
-export function createHotProfilesCacheComponent(maxItems: number = DEFAULT_MAX_ITEMS): IHotProfilesCacheComponent {
-  const cache = new LRUCache<string, Sync.CacheEntry>({
-    max: maxItems
-  })
-
+export function createHotProfilesCacheComponent(cache: SimpleLRUCache<Sync.CacheEntry>): IHotProfilesCacheComponent {
   function get(pointer: string): Entity | undefined {
     const entry = cache.get(pointer.toLowerCase())
     return entry?.profile

@@ -19,8 +19,7 @@ import {
   WorldsComponent,
   QueuesStatusManagerComponent,
   IHotProfilesCacheComponent,
-  IDeploymentCacheDeduperComponent,
-  IEntityBloomFilterComponent,
+  IEntityTrackerComponent,
   IEntityPersistentComponent,
   ISynchronizerComponent,
   IProfileRetrieverComponent,
@@ -58,8 +57,7 @@ export type AppComponents = BaseComponents & {
   workerManager: IBaseComponent
   worlds: WorldsComponent
   hotProfilesCache: IHotProfilesCacheComponent
-  deploymentCacheDeduper: IDeploymentCacheDeduperComponent
-  entityBloomFilter: IEntityBloomFilterComponent
+  entityTracker: IEntityTrackerComponent
   entityPersistent: IEntityPersistentComponent
   synchronizer: ISynchronizerComponent & IBaseComponent
   snapshotContentStorage: SnapshotContentStorageComponent

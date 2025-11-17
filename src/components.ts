@@ -25,14 +25,15 @@ import { createInMemoryCacheComponent } from './adapters/memory-cache'
 import { createWorldsAdapter } from './adapters/worlds'
 import { createQueuesStatusManagerComponent } from './logic/queues-status-manager'
 import { createHotProfilesCacheComponent } from './adapters/hot-profiles-cache'
-import { createDeploymentCacheDeduperComponent } from './adapters/deployment-cache-deduper'
+import { createSimpleLRUCache } from './adapters/simple-lru-cache'
 import { createSnapshotContentStorage } from './adapters/snapshot-content-storage'
 import {
   createEntityPersistentComponent,
-  createEntityBloomFilterComponent,
+  createEntityTrackerComponent,
   createSynchronizerComponent
 } from './logic/sync'
 import { createProfileRetriever } from './logic/profile-retriever'
+import { Sync } from './types'
 
 // Initialize all the components of the app
 export async function initComponents(): Promise<AppComponents> {
@@ -114,16 +115,16 @@ export async function initComponents(): Promise<AppComponents> {
   const workerManager = createWorkerManagerComponent({ metrics, logs })
 
   // Profile sync components
-  const hotProfilesCache = createHotProfilesCacheComponent()
-  const deploymentCacheDeduper = createDeploymentCacheDeduperComponent()
-  const entityBloomFilter = createEntityBloomFilterComponent({ logs })
+  const hotProfilesCacheLRU = createSimpleLRUCache<Sync.CacheEntry>({ maxItems: 10000 })
+  const hotProfilesCache = createHotProfilesCacheComponent(hotProfilesCacheLRU)
+  const entityTrackerDedupCacheLRU = createSimpleLRUCache<boolean>({ maxItems: 10000, ttlMs: 60000 })
+  const entityTracker = createEntityTrackerComponent({ logs }, entityTrackerDedupCacheLRU)
   const snapshotContentStorage = await createSnapshotContentStorage({ logs })
   const entityPersistent = createEntityPersistentComponent({
     logs,
     db,
     hotProfilesCache,
-    deploymentCacheDeduper,
-    entityBloomFilter
+    entityTracker
   })
   const synchronizer = await createSynchronizerComponent({
     logs,
@@ -164,8 +165,7 @@ export async function initComponents(): Promise<AppComponents> {
     memoryStorage,
     queuesStatusManager,
     hotProfilesCache,
-    deploymentCacheDeduper,
-    entityBloomFilter,
+    entityTracker,
     entityPersistent,
     synchronizer,
     profileRetriever,

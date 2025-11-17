@@ -703,11 +703,32 @@ export async function createSynchronizerComponent(
     await runPointerChangesLoop()
   }
 
+  async function waitForDatabaseReady(): Promise<void> {
+    const maxRetries = 30
+    const retryDelayMs = 1000
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        // Try to query the profiles table - this will fail if migrations haven't run
+        await db.getLatestProfileTimestamp()
+        logger.info('Database is ready, profiles table exists')
+        return
+      } catch (error: any) {
+        if (attempt === maxRetries) {
+          throw new Error(`Database not ready after ${maxRetries} attempts: ${error.message}`)
+        }
+        logger.info(`Waiting for database migrations to complete`, { attempt, maxRetries })
+        await new Promise((resolve) => setTimeout(resolve, retryDelayMs))
+      }
+    }
+  }
+
   async function start(): Promise<void> {
     logger.info('Starting profile synchronizer')
     running = true
 
     await loadPersistedState()
+    await waitForDatabaseReady()
 
     runSyncWorkflow().catch((error) => {
       logger.error('Sync workflow failed', { error: error.message })

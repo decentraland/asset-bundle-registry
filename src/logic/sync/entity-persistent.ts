@@ -7,19 +7,19 @@ const DB_PERSISTENCE_CONCURRENCY = 30
 
 /**
  * Component in charge of persisting entities to the different data stores (caches and database).
- * Handles persistence of entities in the hot cache, dedup cache, bloom filter and database.
+ * Handles persistence of entities in the hot cache, entity tracker and database.
  *
  * @export
  * @param {(Pick<
  *     AppComponents,
- *     'logs' | 'profilesDb' | 'hotProfilesCache' | 'deploymentCacheDeduper' | 'entityBloomFilter'
+ *     'logs' | 'db' | 'hotProfilesCache' | 'entityTracker'
  *   >)} components
  * @return {*}  {IEntityPersistentComponent}
  */
 export function createEntityPersistentComponent(
-  components: Pick<AppComponents, 'logs' | 'db' | 'hotProfilesCache' | 'deploymentCacheDeduper' | 'entityBloomFilter'>
+  components: Pick<AppComponents, 'logs' | 'db' | 'hotProfilesCache' | 'entityTracker'>
 ): IEntityPersistentComponent {
-  const { logs, db, hotProfilesCache, deploymentCacheDeduper, entityBloomFilter } = components
+  const { logs, db, hotProfilesCache, entityTracker } = components
   const logger = logs.getLogger('entity-persistent')
 
   let bootstrapComplete = false
@@ -27,18 +27,14 @@ export function createEntityPersistentComponent(
   const dbPersistenceQueue = new PQueue({ concurrency: DB_PERSISTENCE_CONCURRENCY })
 
   async function persistEntity(entity: Entity): Promise<void> {
-    // prevent race-condition duplicates
-    if (deploymentCacheDeduper.isDuplicate(entity.id)) {
+    // prevent race-condition duplicates and already processed entities
+    if (entityTracker.tryMarkDuplicate(entity.id)) {
       return
-    } else {
-      deploymentCacheDeduper.markAsSeen(entity.id)
     }
 
-    // prevent persisting entities that have already been processed
-    if (entityBloomFilter.has(entity.id)) {
+    // check if entity has been processed before (bloom filter check)
+    if (entityTracker.hasBeenProcessed(entity.id)) {
       return
-    } else {
-      entityBloomFilter.add(entity.id)
     }
 
     // update profile in hot cache if newer, otherwise return
@@ -46,6 +42,9 @@ export function createEntityPersistentComponent(
     if (!cacheUpdated) {
       return
     }
+
+    // mark as processed after successful cache update
+    entityTracker.markAsProcessed(entity.id)
 
     const dbEntity: Sync.ProfileDbEntity = {
       ...entity,

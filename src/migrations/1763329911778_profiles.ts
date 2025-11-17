@@ -10,7 +10,6 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     timestamp: { type: 'bigint', notNull: true },
     content: { type: 'jsonb', notNull: true },
     metadata: { type: 'jsonb', notNull: true },
-    auth_chain: { type: 'jsonb', notNull: true },
     local_timestamp: { type: 'bigint', notNull: true }
   })
 

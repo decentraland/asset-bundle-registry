@@ -8,9 +8,9 @@ services:
       - postgres_volume:/var/lib/postgresql/data
     environment:
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=pass1234
-      - POSTGRES_DB=asset-bundle-registry
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres
     ports:
-      - '5450:5432'
+      - '5432:5432'
 volumes:
   postgres_volume:

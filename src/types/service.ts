@@ -121,14 +121,10 @@ export interface IHotProfilesCacheComponent {
   has(pointer: string): boolean
 }
 
-export interface IDeploymentCacheDeduperComponent {
-  isDuplicate(entityId: string): boolean
-  markAsSeen(entityId: string): void
-}
-
-export interface IEntityBloomFilterComponent {
-  add(entityId: string): void
-  has(entityId: string): boolean
+export interface IEntityTrackerComponent {
+  hasBeenProcessed(entityId: string): boolean
+  markAsProcessed(entityId: string): void
+  tryMarkDuplicate(entityId: string): boolean
 }
 
 export interface IEntityPersistentComponent {
