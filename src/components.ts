@@ -124,7 +124,8 @@ export async function initComponents(): Promise<AppComponents> {
     logs,
     db,
     hotProfilesCache,
-    entityTracker
+    entityTracker,
+    memoryStorage
   })
   const synchronizer = await createSynchronizerComponent({
     logs,

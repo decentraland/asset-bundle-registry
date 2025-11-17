@@ -2,8 +2,7 @@ import { AppComponents, IProfileRetrieverComponent } from '../types'
 import { Entity, EntityType } from '@dcl/schemas'
 
 const REDIS_PROFILE_PREFIX = 'profile:'
-// Note: TTL is managed by Redis/memory storage configuration, not per-key
-// const REDIS_PROFILE_TTL_SECONDS = 3600 // 1 hour TTL for Redis cache
+const FOUR_HOURS_IN_SECONDS = 4 * 60 * 60 // 4 hours TTL for Redis cache
 
 export function createProfileRetriever(
   components: Pick<AppComponents, 'logs' | 'hotProfilesCache' | 'memoryStorage' | 'db' | 'catalyst'>
@@ -30,8 +29,7 @@ export function createProfileRetriever(
     try {
       const key = `${REDIS_PROFILE_PREFIX}${profile.pointers[0].toLowerCase()}`
       const profileJson = JSON.stringify(profile)
-      await memoryStorage.purge(key)
-      await memoryStorage.set<string>(key, profileJson)
+      await memoryStorage.set<string>(key, profileJson, FOUR_HOURS_IN_SECONDS)
       logger.debug('Profile cached in Redis', { pointer: profile.pointers[0] })
     } catch (error: any) {
       logger.warn('Failed to cache profile in Redis', { pointer: profile.pointers[0], error: error.message })
@@ -204,7 +202,7 @@ export function createProfileRetriever(
           key: `${REDIS_PROFILE_PREFIX}${profile.pointers[0].toLowerCase()}`,
           value: JSON.stringify(profile)
         }))
-        await memoryStorage.setMany(redisEntries)
+        await memoryStorage.setMany(redisEntries, FOUR_HOURS_IN_SECONDS)
         logger.debug('Profiles found in database correctly added to L1 and L2 caches', { count: dbProfiles.length })
       }
     } catch (error: any) {
@@ -239,7 +237,7 @@ export function createProfileRetriever(
           key: `${REDIS_PROFILE_PREFIX}${profile.pointers[0].toLowerCase()}`,
           value: JSON.stringify(profile)
         }))
-        await memoryStorage.setMany(redisEntries)
+        await memoryStorage.setMany(redisEntries, FOUR_HOURS_IN_SECONDS)
         logger.debug('Profiles found in Catalyst', { count: profileEntities.length })
       }
     } catch (error: any) {

@@ -1,5 +1,7 @@
 import { AppComponents, EntityStatusInQueue, QueuesStatusManagerComponent } from '../types'
 
+const FOUR_HOURS_IN_SECONDS = 4 * 60 * 60 // 4 hours TTL for job queue status
+
 export function createQueuesStatusManagerComponent({
   memoryStorage
 }: Pick<AppComponents, 'memoryStorage'>): QueuesStatusManagerComponent {
@@ -23,7 +25,7 @@ export function createQueuesStatusManagerComponent({
       status: 0
     }
 
-    await memoryStorage.set(key, { ...currentValue, status: currentValue.status + 1 })
+    await memoryStorage.set(key, { ...currentValue, status: currentValue.status + 1 }, FOUR_HOURS_IN_SECONDS)
   }
 
   async function markAsFinished(platform: 'windows' | 'mac' | 'webgl', entityId: string): Promise<void> {
@@ -41,7 +43,7 @@ export function createQueuesStatusManagerComponent({
       return
     }
 
-    await memoryStorage.set<EntityStatusInQueue>(key, { ...currentValue, status: newStatus })
+    await memoryStorage.set<EntityStatusInQueue>(key, { ...currentValue, status: newStatus }, FOUR_HOURS_IN_SECONDS)
   }
 
   async function getAllPendingEntities(platform: 'windows' | 'mac' | 'webgl'): Promise<EntityStatusInQueue[]> {

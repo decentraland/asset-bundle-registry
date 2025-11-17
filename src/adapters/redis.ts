@@ -54,11 +54,11 @@ export async function createRedisComponent(
     }
   }
 
-  async function set<T>(key: string, value: T): Promise<void> {
+  async function set<T>(key: string, value: T, ttlSeconds?: number): Promise<void> {
     try {
       const serializedValue = JSON.stringify(value)
       await client.set(key, serializedValue, {
-        EX: SEVEN_DAYS_IN_SECONDS // expiration time (TTL)
+        EX: ttlSeconds ?? SEVEN_DAYS_IN_SECONDS // expiration time (TTL)
       })
       logger.debug(`Successfully set key "${key}"`)
     } catch (err: any) {
@@ -93,16 +93,17 @@ export async function createRedisComponent(
     }
   }
 
-  async function setMany<T>(entries: Array<{ key: string; value: T }>): Promise<void> {
+  async function setMany<T>(entries: Array<{ key: string; value: T }>, ttlSeconds?: number): Promise<void> {
     if (entries.length === 0) {
       return
     }
 
     try {
       const pipeline = client.multi()
+      const effectiveTtl = ttlSeconds ?? SEVEN_DAYS_IN_SECONDS
       for (const { key, value } of entries) {
         const serializedValue = JSON.stringify(value)
-        pipeline.set(key, serializedValue, { EX: SEVEN_DAYS_IN_SECONDS })
+        pipeline.set(key, serializedValue, { EX: effectiveTtl })
       }
       await pipeline.exec()
       logger.debug(`Successfully set ${entries.length} keys in batch`)

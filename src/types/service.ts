@@ -100,9 +100,9 @@ export type RegistryOrchestratorComponent = {
 
 export type ICacheStorage = IBaseComponent & {
   get<T>(key: string): Promise<T[]>
-  set<T>(key: string, value: T): Promise<void>
+  set<T>(key: string, value: T, ttlSeconds?: number): Promise<void>
   getMany<T>(keys: string[]): Promise<Map<string, T>>
-  setMany<T>(entries: Array<{ key: string; value: T }>): Promise<void>
+  setMany<T>(entries: Array<{ key: string; value: T }>, ttlSeconds?: number): Promise<void>
   purge(key: string): Promise<void>
   flush(pattern: string): Promise<void>
 }

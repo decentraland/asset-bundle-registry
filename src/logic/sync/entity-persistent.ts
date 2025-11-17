@@ -4,6 +4,7 @@ import { Sync } from '../../types'
 import { Entity } from '@dcl/schemas'
 
 const DB_PERSISTENCE_CONCURRENCY = 30
+const REDIS_PROFILE_PREFIX = 'profile:'
 
 /**
  * Component in charge of persisting entities to the different data stores (caches and database).
@@ -12,14 +13,14 @@ const DB_PERSISTENCE_CONCURRENCY = 30
  * @export
  * @param {(Pick<
  *     AppComponents,
- *     'logs' | 'db' | 'hotProfilesCache' | 'entityTracker'
+ *     'logs' | 'db' | 'hotProfilesCache' | 'entityTracker' | 'memoryStorage'
  *   >)} components
  * @return {*}  {IEntityPersistentComponent}
  */
 export function createEntityPersistentComponent(
-  components: Pick<AppComponents, 'logs' | 'db' | 'hotProfilesCache' | 'entityTracker'>
+  components: Pick<AppComponents, 'logs' | 'db' | 'hotProfilesCache' | 'entityTracker' | 'memoryStorage'>
 ): IEntityPersistentComponent {
-  const { logs, db, hotProfilesCache, entityTracker } = components
+  const { logs, db, hotProfilesCache, entityTracker, memoryStorage } = components
   const logger = logs.getLogger('entity-persistent')
 
   let bootstrapComplete = false
@@ -45,6 +46,17 @@ export function createEntityPersistentComponent(
 
     // mark as processed after successful cache update
     entityTracker.markAsProcessed(entity.id)
+
+    // evict potentially stale profile from Redis cache
+    // this ensures the next read fetches fresh data from database or hot cache
+    const redisKey = `${REDIS_PROFILE_PREFIX}${entity.pointers[0].toLowerCase()}`
+    memoryStorage.purge(redisKey).catch((error) => {
+      logger.warn('Failed to evict profile from Redis cache', {
+        entityId: entity.id,
+        pointer: entity.pointers[0],
+        error: error.message
+      })
+    })
 
     const dbEntity: Sync.ProfileDbEntity = {
       ...entity,

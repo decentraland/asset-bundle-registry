@@ -42,8 +42,9 @@ export function createInMemoryCacheComponent(): ICacheStorage {
     return [entry.value]
   }
 
-  async function set<T>(key: string, value: T): Promise<void> {
-    const expiresAt = Date.now() + TWENTY_FOUR_HOURS_IN_MILLISECONDS
+  async function set<T>(key: string, value: T, ttlSeconds?: number): Promise<void> {
+    const ttlMs = ttlSeconds ? ttlSeconds * 1000 : TWENTY_FOUR_HOURS_IN_MILLISECONDS
+    const expiresAt = Date.now() + ttlMs
     cache.set(key, { value, expiresAt })
   }
 
@@ -60,8 +61,9 @@ export function createInMemoryCacheComponent(): ICacheStorage {
     return result
   }
 
-  async function setMany<T>(entries: Array<{ key: string; value: T }>): Promise<void> {
-    const expiresAt = Date.now() + TWENTY_FOUR_HOURS_IN_MILLISECONDS
+  async function setMany<T>(entries: Array<{ key: string; value: T }>, ttlSeconds?: number): Promise<void> {
+    const ttlMs = ttlSeconds ? ttlSeconds * 1000 : TWENTY_FOUR_HOURS_IN_MILLISECONDS
+    const expiresAt = Date.now() + ttlMs
     for (const { key, value } of entries) {
       cache.set(key, { value, expiresAt })
     }
