@@ -747,9 +747,27 @@ export async function createSynchronizerComponent(
     return { ...syncState }
   }
 
+  async function resetSyncState(): Promise<void> {
+    logger.info('Resetting sync state')
+
+    // Reset in-memory state
+    syncState.lastPointerChangesCheck = 0
+    syncState.bootstrapComplete = false
+
+    // Purge from Redis
+    try {
+      await memoryStorage.purge(SYNC_STATE_KEY)
+      logger.info('Sync state reset complete')
+    } catch (error: any) {
+      logger.error('Failed to purge sync state from Redis', { error: error.message })
+      throw error
+    }
+  }
+
   return {
     start,
     stop,
-    getSyncState
+    getSyncState,
+    resetSyncState
   }
 }

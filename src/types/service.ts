@@ -143,6 +143,7 @@ export interface IEntityPersistentComponent {
 
 export interface ISynchronizerComponent extends IBaseComponent {
   getSyncState(): Sync.State
+  resetSyncState(): Promise<void>
 }
 
 export interface IProfileRetrieverComponent {
