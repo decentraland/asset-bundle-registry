@@ -8,71 +8,6 @@ export function createProfileRetriever(
   const { logs, hotProfilesCache, memoryStorage, db, catalyst } = components
   const logger = logs.getLogger('profile-retriever')
 
-  async function getProfileFromRedis(pointer: string): Promise<Entity | null> {
-    try {
-      const key = `${REDIS_PROFILE_PREFIX}${pointer.toLowerCase()}`
-      const cached = await memoryStorage.get<string>(key)
-      if (cached && cached.length > 0) {
-        const profile = JSON.parse(cached[0]) as Entity
-        logger.debug('Profile found in Redis', { pointer })
-        return profile
-      }
-    } catch (error: any) {
-      logger.warn('Failed to fetch profile from Redis', { pointer, error: error.message })
-    }
-    return null
-  }
-
-  async function cacheProfileInRedis(profile: Entity): Promise<void> {
-    try {
-      const key = `${REDIS_PROFILE_PREFIX}${profile.pointers[0].toLowerCase()}`
-      const profileJson = JSON.stringify(profile)
-      await memoryStorage.set<string>(key, profileJson, FOUR_HOURS_IN_SECONDS)
-      logger.debug('Profile cached in Redis', { pointer: profile.pointers[0] })
-    } catch (error: any) {
-      logger.warn('Failed to cache profile in Redis', { pointer: profile.pointers[0], error: error.message })
-    }
-  }
-
-  async function getProfileFromDatabase(pointer: string): Promise<Entity | null> {
-    try {
-      const dbProfile = await db.getProfileByPointer(pointer)
-      if (dbProfile) {
-        logger.debug('Profile found in database', { pointer })
-        // Convert DbEntity to Entity
-        const profile: Entity = {
-          version: 'v3',
-          id: dbProfile.id,
-          type: EntityType.PROFILE,
-          pointers: [dbProfile.pointer],
-          timestamp: dbProfile.timestamp,
-          content: dbProfile.content,
-          metadata: dbProfile.metadata
-        }
-        return profile
-      }
-    } catch (error: any) {
-      logger.warn('Failed to fetch profile from database', { pointer, error: error.message })
-    }
-    return null
-  }
-
-  async function getProfileFromCatalyst(pointer: string): Promise<Entity | null> {
-    try {
-      logger.debug('Fetching profile from Catalyst', { pointer })
-      const entities = await catalyst.getEntityByPointers([pointer])
-      if (entities && entities.length > 0) {
-        const entity = entities[0]
-        if (entity.type === 'profile') {
-          logger.debug('Profile found in Catalyst', { pointer })
-          return entity
-        }
-      }
-    } catch (error: any) {
-      logger.warn('Failed to fetch profile from Catalyst', { pointer, error: error.message })
-    }
-    return null
-  }
   async function updateCaches(profiles: Entity[]): Promise<void> {
     if (profiles.length === 0) return
     hotProfilesCache.setManyIfNewer(profiles)
@@ -84,43 +19,8 @@ export function createProfileRetriever(
   }
 
   async function getProfile(pointer: string): Promise<Entity | null> {
-    const normalizedPointer = pointer.toLowerCase()
-
-    // Layer 1: Hot in-memory cache
-    const cachedProfile = hotProfilesCache.get(normalizedPointer)
-    if (cachedProfile) {
-      logger.debug('Profile retrieved from hot cache', { pointer: normalizedPointer })
-      return cachedProfile
-    }
-
-    // Layer 2: Redis cache
-    const redisProfile = await getProfileFromRedis(normalizedPointer)
-    if (redisProfile) {
-      // Update hot cache
-      hotProfilesCache.setIfNewer(normalizedPointer, redisProfile)
-      return redisProfile
-    }
-
-    // Layer 3: Database
-    const dbProfile = await getProfileFromDatabase(normalizedPointer)
-    if (dbProfile) {
-      // Update caches
-      hotProfilesCache.setIfNewer(normalizedPointer, dbProfile)
-      await cacheProfileInRedis(dbProfile)
-      return dbProfile
-    }
-
-    // Layer 4: Catalyst fallback
-    const catalystProfile = await getProfileFromCatalyst(normalizedPointer)
-    if (catalystProfile) {
-      // Update caches
-      hotProfilesCache.setIfNewer(normalizedPointer, catalystProfile)
-      await cacheProfileInRedis(catalystProfile)
-      return catalystProfile
-    }
-
-    logger.debug('Profile not found in any layer', { pointer: normalizedPointer })
-    return null
+    const results = await getProfiles([pointer])
+    return results.get(pointer.toLowerCase()) || null
   }
 
   async function getProfiles(pointers: string[]): Promise<Map<string, Entity>> {
