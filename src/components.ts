@@ -24,6 +24,16 @@ import { createRedisComponent } from './adapters/redis'
 import { createInMemoryCacheComponent } from './adapters/memory-cache'
 import { createWorldsAdapter } from './adapters/worlds'
 import { createQueuesStatusManagerComponent } from './logic/queues-status-manager'
+import { createProfilesDbAdapter } from './adapters/profiles-db'
+import { createHotProfilesCacheComponent } from './adapters/hot-profiles-cache'
+import { createProfileDedupCacheComponent } from './adapters/profile-dedup-cache'
+import { createSnapshotContentStorage } from './adapters/snapshot-content-storage'
+import {
+  createProfileDeployer,
+  createProfileEntitiesBloomFilter,
+  createProfileSnapshotStorage,
+  createProfileSynchronizer
+} from './logic/sync'
 
 // Initialize all the components of the app
 export async function initComponents(): Promise<AppComponents> {
@@ -104,6 +114,32 @@ export async function initComponents(): Promise<AppComponents> {
   const messageConsumer = createMessagesConsumerComponent({ logs, queue, messageProcessor })
   const workerManager = createWorkerManagerComponent({ metrics, logs })
 
+  // Profile sync components
+  const profilesDb = createProfilesDbAdapter({ pg })
+  const hotProfilesCache = createHotProfilesCacheComponent()
+  const profileDedupCache = createProfileDedupCacheComponent()
+  const profileEntitiesBloomFilter = createProfileEntitiesBloomFilter({ logs })
+  const profileSnapshotStorage = createProfileSnapshotStorage()
+  const snapshotContentStorage = await createSnapshotContentStorage({ logs })
+  const profileDeployer = createProfileDeployer({
+    logs,
+    profilesDb,
+    hotProfilesCache,
+    profileDedupCache,
+    profileEntitiesBloomFilter
+  })
+  const profileSynchronizer = await createProfileSynchronizer({
+    logs,
+    config,
+    fetch,
+    metrics,
+    profileDeployer,
+    memoryStorage,
+    profilesDb,
+    snapshotContentStorage,
+    catalyst
+  })
+
   return {
     config,
     fetch,
@@ -122,6 +158,14 @@ export async function initComponents(): Promise<AppComponents> {
     entityStatusFetcher,
     workerManager,
     memoryStorage,
-    queuesStatusManager
+    queuesStatusManager,
+    profilesDb,
+    hotProfilesCache,
+    profileDedupCache,
+    profileEntitiesBloomFilter,
+    profileSnapshotStorage,
+    profileDeployer,
+    profileSynchronizer,
+    snapshotContentStorage
   }
 }

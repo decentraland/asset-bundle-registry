@@ -8,6 +8,7 @@ import {
   EventHandlerResult,
   Registry
 } from './types'
+import { Profile } from './profiles'
 import { Entity, EthAddress } from '@dcl/schemas'
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
 
@@ -101,3 +102,45 @@ export type QueuesStatusManagerComponent = {
   markAsFinished(platform: 'windows' | 'mac' | 'webgl', entityId: string): Promise<void>
   getAllPendingEntities(platform: 'windows' | 'mac' | 'webgl'): Promise<EntityStatusInQueue[]>
 }
+
+export type ProfilesDbComponent = {
+  getProfileByPointer(pointer: string): Promise<Profile.DbEntity | null>
+  upsertProfileIfNewer(profile: Profile.DbEntity): Promise<boolean>
+  markSnapshotProcessed(hash: string): Promise<void>
+  isSnapshotProcessed(hash: string): Promise<boolean>
+  getLatestProfileTimestamp(): Promise<number | null>
+}
+
+export type HotProfilesCacheComponent = {
+  get(pointer: string): Profile.Entity | undefined
+  setIfNewer(pointer: string, profile: Profile.Entity): boolean
+  has(pointer: string): boolean
+}
+
+export type ProfileDedupCacheComponent = {
+  isDuplicate(entityId: string): boolean
+  markAsSeen(entityId: string): void
+}
+
+export type ProfileEntitiesBloomFilterComponent = {
+  add(entityId: string): void
+  has(entityId: string): boolean
+}
+
+export type ProfileSnapshotStorageComponent = {
+  has(hash: string): boolean
+}
+
+export type ProfileDeployerComponent = {
+  deployProfile(entity: Profile.Entity): Promise<void>
+  setBootstrapComplete(): void
+  isBootstrapComplete(): boolean
+  waitForDrain(): Promise<void>
+}
+
+export type ProfileSynchronizerComponent = {
+  getSyncState(): Profile.SyncState
+}
+
+// Re-export IContentStorageComponent for convenience
+export type { IContentStorageComponent as SnapshotContentStorageComponent } from '@dcl/catalyst-storage'

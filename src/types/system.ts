@@ -17,7 +17,15 @@ import {
   RegistryOrchestratorComponent,
   ICacheStorage,
   WorldsComponent,
-  QueuesStatusManagerComponent
+  QueuesStatusManagerComponent,
+  ProfilesDbComponent,
+  HotProfilesCacheComponent,
+  ProfileDedupCacheComponent,
+  ProfileEntitiesBloomFilterComponent,
+  ProfileSnapshotStorageComponent,
+  ProfileDeployerComponent,
+  ProfileSynchronizerComponent,
+  SnapshotContentStorageComponent
 } from './service'
 import { metricDeclarations } from '../metrics'
 
@@ -49,6 +57,14 @@ export type AppComponents = BaseComponents & {
   messageConsumer: MessageConsumerComponent
   workerManager: IBaseComponent
   worlds: WorldsComponent
+  profilesDb: ProfilesDbComponent
+  hotProfilesCache: HotProfilesCacheComponent
+  profileDedupCache: ProfileDedupCacheComponent
+  profileEntitiesBloomFilter: ProfileEntitiesBloomFilterComponent
+  profileSnapshotStorage: ProfileSnapshotStorageComponent
+  profileDeployer: ProfileDeployerComponent
+  profileSynchronizer: ProfileSynchronizerComponent & IBaseComponent
+  snapshotContentStorage: SnapshotContentStorageComponent
 }
 
 // components used in tests
