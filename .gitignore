@@ -10,6 +10,7 @@ yarn-error.log
 *.log
 api/src/migrations
 hide.*
+.cursor/
 
 
 # scripts output files
