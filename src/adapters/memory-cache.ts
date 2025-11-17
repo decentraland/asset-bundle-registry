@@ -47,6 +47,26 @@ export function createInMemoryCacheComponent(): ICacheStorage {
     cache.set(key, { value, expiresAt })
   }
 
+  async function getMany<T>(keys: string[]): Promise<Map<string, T>> {
+    const result = new Map<string, T>()
+    for (const key of keys) {
+      const entry = cache.get(key)
+      if (entry && (!entry.expiresAt || entry.expiresAt > Date.now())) {
+        result.set(key, entry.value)
+      } else if (entry) {
+        cache.delete(key)
+      }
+    }
+    return result
+  }
+
+  async function setMany<T>(entries: Array<{ key: string; value: T }>): Promise<void> {
+    const expiresAt = Date.now() + TWENTY_FOUR_HOURS_IN_MILLISECONDS
+    for (const { key, value } of entries) {
+      cache.set(key, { value, expiresAt })
+    }
+  }
+
   async function purge(key: string): Promise<void> {
     cache.delete(key)
   }
@@ -66,6 +86,8 @@ export function createInMemoryCacheComponent(): ICacheStorage {
   return {
     get,
     set,
+    getMany,
+    setMany,
     purge,
     flush,
     start,

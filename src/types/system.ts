@@ -18,14 +18,12 @@ import {
   ICacheStorage,
   WorldsComponent,
   QueuesStatusManagerComponent,
-  ProfilesDbComponent,
-  HotProfilesCacheComponent,
-  ProfileDedupCacheComponent,
-  ProfileEntitiesBloomFilterComponent,
-  ProfileSnapshotStorageComponent,
-  ProfileDeployerComponent,
-  ProfileSynchronizerComponent,
-  ProfileRetrieverComponent,
+  IHotProfilesCacheComponent,
+  IDeploymentCacheDeduperComponent,
+  IEntityBloomFilterComponent,
+  IEntityPersistentComponent,
+  ISynchronizerComponent,
+  IProfileRetrieverComponent,
   SnapshotContentStorageComponent
 } from './service'
 import { metricDeclarations } from '../metrics'
@@ -47,7 +45,7 @@ export type BaseComponents = {
   registryOrchestrator: RegistryOrchestratorComponent
   queuesStatusManager: QueuesStatusManagerComponent
   memoryStorage: ICacheStorage
-  profileRetriever: ProfileRetrieverComponent
+  profileRetriever: IProfileRetrieverComponent
 }
 
 // components used in runtime
@@ -59,13 +57,11 @@ export type AppComponents = BaseComponents & {
   messageConsumer: MessageConsumerComponent
   workerManager: IBaseComponent
   worlds: WorldsComponent
-  profilesDb: ProfilesDbComponent
-  hotProfilesCache: HotProfilesCacheComponent
-  profileDedupCache: ProfileDedupCacheComponent
-  profileEntitiesBloomFilter: ProfileEntitiesBloomFilterComponent
-  profileSnapshotStorage: ProfileSnapshotStorageComponent
-  profileDeployer: ProfileDeployerComponent
-  profileSynchronizer: ProfileSynchronizerComponent & IBaseComponent
+  hotProfilesCache: IHotProfilesCacheComponent
+  deploymentCacheDeduper: IDeploymentCacheDeduperComponent
+  entityBloomFilter: IEntityBloomFilterComponent
+  entityPersistent: IEntityPersistentComponent
+  synchronizer: ISynchronizerComponent & IBaseComponent
   snapshotContentStorage: SnapshotContentStorageComponent
 }
 

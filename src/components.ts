@@ -24,15 +24,13 @@ import { createRedisComponent } from './adapters/redis'
 import { createInMemoryCacheComponent } from './adapters/memory-cache'
 import { createWorldsAdapter } from './adapters/worlds'
 import { createQueuesStatusManagerComponent } from './logic/queues-status-manager'
-import { createProfilesDbAdapter } from './adapters/profiles-db'
 import { createHotProfilesCacheComponent } from './adapters/hot-profiles-cache'
-import { createProfileDedupCacheComponent } from './adapters/profile-dedup-cache'
+import { createDeploymentCacheDeduperComponent } from './adapters/deployment-cache-deduper'
 import { createSnapshotContentStorage } from './adapters/snapshot-content-storage'
 import {
-  createProfileDeployer,
-  createProfileEntitiesBloomFilter,
-  createProfileSnapshotStorage,
-  createProfileSynchronizer
+  createEntityPersistentComponent,
+  createEntityBloomFilterComponent,
+  createSynchronizerComponent
 } from './logic/sync'
 import { createProfileRetriever } from './logic/profile-retriever'
 
@@ -116,27 +114,25 @@ export async function initComponents(): Promise<AppComponents> {
   const workerManager = createWorkerManagerComponent({ metrics, logs })
 
   // Profile sync components
-  const profilesDb = createProfilesDbAdapter({ pg })
   const hotProfilesCache = createHotProfilesCacheComponent()
-  const profileDedupCache = createProfileDedupCacheComponent()
-  const profileEntitiesBloomFilter = createProfileEntitiesBloomFilter({ logs })
-  const profileSnapshotStorage = createProfileSnapshotStorage()
+  const deploymentCacheDeduper = createDeploymentCacheDeduperComponent()
+  const entityBloomFilter = createEntityBloomFilterComponent({ logs })
   const snapshotContentStorage = await createSnapshotContentStorage({ logs })
-  const profileDeployer = createProfileDeployer({
+  const entityPersistent = createEntityPersistentComponent({
     logs,
-    profilesDb,
+    db,
     hotProfilesCache,
-    profileDedupCache,
-    profileEntitiesBloomFilter
+    deploymentCacheDeduper,
+    entityBloomFilter
   })
-  const profileSynchronizer = await createProfileSynchronizer({
+  const synchronizer = await createSynchronizerComponent({
     logs,
     config,
     fetch,
     metrics,
-    profileDeployer,
+    entityPersistent,
     memoryStorage,
-    profilesDb,
+    db,
     snapshotContentStorage,
     catalyst
   })
@@ -144,7 +140,7 @@ export async function initComponents(): Promise<AppComponents> {
     logs,
     hotProfilesCache,
     memoryStorage,
-    profilesDb,
+    db,
     catalyst
   })
 
@@ -167,13 +163,11 @@ export async function initComponents(): Promise<AppComponents> {
     workerManager,
     memoryStorage,
     queuesStatusManager,
-    profilesDb,
     hotProfilesCache,
-    profileDedupCache,
-    profileEntitiesBloomFilter,
-    profileSnapshotStorage,
-    profileDeployer,
-    profileSynchronizer,
+    deploymentCacheDeduper,
+    entityBloomFilter,
+    entityPersistent,
+    synchronizer,
     profileRetriever,
     snapshotContentStorage
   }

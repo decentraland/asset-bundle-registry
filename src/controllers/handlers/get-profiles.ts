@@ -8,9 +8,10 @@ export async function getProfilesHandler(context: HandlerContextWithPath<'profil
   const body = await context.request.json()
   const pointers: string[] = body.pointers
 
-  const profiles = await profileRetriever.getProfiles(pointers)
+  const profilesMap = await profileRetriever.getProfiles(pointers)
+
   return {
-    body: profiles,
+    body: Array.from(profilesMap.values()),
     headers: {
       'Content-Type': 'application/json'
     }

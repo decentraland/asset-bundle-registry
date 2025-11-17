@@ -1,4 +1,3 @@
-export * from './profile-deployer'
-export * from './profile-synchronizer'
-export * from './profile-entities-bloom-filter'
-export * from './profile-snapshot-storage'
+export * from './entity-persistent'
+export * from './synchronizer'
+export * from './entity-bloom-filter'

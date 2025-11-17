@@ -3,9 +3,8 @@ import {
   getDeployedEntitiesStreamFromPointerChanges,
   getDeployedEntitiesStreamFromSnapshot
 } from '@dcl/snapshots-fetcher'
-import { Entity, PointerChangesSyncDeployment } from '@dcl/schemas'
-import { AppComponents, ProfileSynchronizerComponent } from '../../types'
-import { Profile } from '../../types/profiles'
+import { Entity, EntityType, PointerChangesSyncDeployment } from '@dcl/schemas'
+import { AppComponents, ISynchronizerComponent, Sync } from '../../types'
 
 const POINTER_CHANGES_POLL_INTERVAL_MS = 5000 // 5 seconds
 const POINTER_CHANGES_WAIT_TIME_MS = 1000 // Wait time between API calls within stream
@@ -47,27 +46,27 @@ type SnapshotMetadata = {
   generationTimestamp: number
 }
 
-export async function createProfileSynchronizer(
+export async function createSynchronizerComponent(
   components: Pick<
     AppComponents,
     | 'logs'
     | 'config'
     | 'fetch'
     | 'metrics'
-    | 'profileDeployer'
+    | 'entityPersistent'
     | 'memoryStorage'
-    | 'profilesDb'
+    | 'db'
     | 'snapshotContentStorage'
     | 'catalyst'
   >
-): Promise<ProfileSynchronizerComponent & IBaseComponent> {
-  const { logs, config, fetch, metrics, profileDeployer, memoryStorage, profilesDb, snapshotContentStorage, catalyst } =
+): Promise<ISynchronizerComponent & IBaseComponent> {
+  const { logs, config, fetch, metrics, entityPersistent, memoryStorage, db, snapshotContentStorage, catalyst } =
     components
-  const logger = logs.getLogger('profile-synchronizer')
+  const logger = logs.getLogger('synchronizer')
   const PRIMARY_CATALYST = await config.requireString('CATALYST_LOADBALANCER_HOST')
 
   let running = false
-  const syncState: Profile.SyncState = {
+  const syncState: Sync.State = {
     bootstrapComplete: false,
     lastPointerChangesCheck: 0
   }
@@ -113,7 +112,7 @@ export async function createProfileSynchronizer(
 
     // Priority 2: Check database for latest profile
     try {
-      const latestDbTimestamp = await profilesDb.getLatestProfileTimestamp()
+      const latestDbTimestamp = await db.getLatestProfileTimestamp()
       if (latestDbTimestamp) {
         logger.info('Using latest profile timestamp from database', {
           timestamp: new Date(latestDbTimestamp).toISOString()
@@ -173,16 +172,17 @@ export async function createProfileSynchronizer(
       return
     }
 
-    const profileEntity: Profile.Entity = {
+    const profileEntity: Entity = {
+      version: 'v3',
       id: deployedEntity.entityId,
-      pointer: deployedEntity.pointers[0],
+      type: EntityType.PROFILE,
+      pointers: deployedEntity.pointers,
       timestamp: deployedEntity.entityTimestamp,
       content: [],
-      metadata: {},
-      authChain: deployedEntity.authChain
+      metadata: {}
     }
 
-    await profileDeployer.deployProfile(profileEntity)
+    await entityPersistent.persistEntity(profileEntity)
   }
 
   // Helper function to fetch with timeout
@@ -255,16 +255,17 @@ export async function createProfileSynchronizer(
       for (const deployment of profileDeployments) {
         const completeEntity = entityMap.get(deployment.entityId)
 
-        const profileEntity: Profile.Entity = {
+        const profileEntity: Entity = {
+          version: 'v3',
           id: deployment.entityId,
-          pointer: deployment.pointer,
+          type: EntityType.PROFILE,
+          pointers: [deployment.pointer],
           timestamp: deployment.timestamp,
           content: completeEntity?.content || [],
-          metadata: completeEntity?.metadata || {},
-          authChain: deployment.authChain
+          metadata: completeEntity?.metadata || {}
         }
 
-        await profileDeployer.deployProfile(profileEntity)
+        await entityPersistent.persistEntity(profileEntity)
         deployedCount++
       }
 
@@ -281,16 +282,17 @@ export async function createProfileSynchronizer(
 
       // Fallback: deploy with empty metadata/content
       for (const deployment of profileDeployments) {
-        const profileEntity: Profile.Entity = {
+        const profileEntity: Entity = {
+          version: 'v3',
           id: deployment.entityId,
-          pointer: deployment.pointer,
+          type: EntityType.PROFILE,
+          pointers: [deployment.pointer],
           timestamp: deployment.timestamp,
           content: [],
-          metadata: {},
-          authChain: deployment.authChain
+          metadata: {}
         }
 
-        await profileDeployer.deployProfile(profileEntity)
+        await entityPersistent.persistEntity(profileEntity)
         deployedCount++
       }
     }
@@ -336,7 +338,7 @@ export async function createProfileSynchronizer(
       if (!running) break
 
       // Check if already processed
-      const alreadyProcessed = await profilesDb.isSnapshotProcessed(snapshotMeta.hash)
+      const alreadyProcessed = await db.isSnapshotProcessed(snapshotMeta.hash)
       if (alreadyProcessed) {
         logger.info('Skipping already processed snapshot', {
           hash: snapshotMeta.hash.substring(0, 30),
@@ -435,7 +437,7 @@ export async function createProfileSynchronizer(
         }
 
         // Mark snapshot as processed
-        await profilesDb.markSnapshotProcessed(snapshotMeta.hash)
+        await db.markSnapshotProcessed(snapshotMeta.hash)
         snapshotsProcessedCount++
 
         logger.info('=== SNAPSHOT COMPLETED ===', {
@@ -456,7 +458,7 @@ export async function createProfileSynchronizer(
     }
 
     // Wait for DB queue to drain
-    await profileDeployer.waitForDrain()
+    await entityPersistent.waitForDrain()
 
     syncState.lastPointerChangesCheck = lastProcessedTimestamp
     await persistState()
@@ -563,7 +565,7 @@ export async function createProfileSynchronizer(
         profilesProcessed += deployed
       }
 
-      await profileDeployer.waitForDrain()
+      await entityPersistent.waitForDrain()
 
       const bootstrapDuration = Date.now() - bootstrapStartTime
       logger.info('=== POINTER-CHANGES BOOTSTRAP COMPLETE ===', {
@@ -613,7 +615,7 @@ export async function createProfileSynchronizer(
       const success = await bootstrapFromPointerChanges(lastTimestamp)
 
       if (success) {
-        profileDeployer.setBootstrapComplete()
+        entityPersistent.setBootstrapComplete()
         syncState.bootstrapComplete = true
         await persistState()
         return
@@ -628,7 +630,7 @@ export async function createProfileSynchronizer(
     // All retries failed
     logger.error('All bootstrap retries failed, starting incremental sync from now')
     syncState.lastPointerChangesCheck = Date.now()
-    profileDeployer.setBootstrapComplete()
+    entityPersistent.setBootstrapComplete()
     syncState.bootstrapComplete = true
     await persistState()
   }
@@ -718,13 +720,13 @@ export async function createProfileSynchronizer(
     logger.info('Stopping profile synchronizer')
     running = false
 
-    await profileDeployer.waitForDrain()
+    await entityPersistent.waitForDrain()
     await persistState()
 
     logger.info('Profile synchronizer stopped')
   }
 
-  function getSyncState(): Profile.SyncState {
+  function getSyncState(): Sync.State {
     return { ...syncState }
   }
 

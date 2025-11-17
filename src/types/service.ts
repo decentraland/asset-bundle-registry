@@ -6,13 +6,14 @@ import {
   EventHandlerName,
   MessageProcessorResult,
   EventHandlerResult,
-  Registry
+  Registry,
+  Sync
 } from './types'
-import { Profile } from './profiles'
 import { Entity, EthAddress } from '@dcl/schemas'
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
 
 export type DbComponent = {
+  // Registry functions
   getSortedRegistriesByOwner(owner: EthAddress): Promise<Registry.DbEntity[]>
   getSortedRegistriesByPointers(
     pointers: string[],
@@ -44,6 +45,13 @@ export type DbComponent = {
   insertHistoricalRegistry(registry: Registry.DbEntity): Promise<Registry.DbEntity>
   getSortedHistoricalRegistriesByOwner(owner: EthAddress): Promise<Registry.DbEntity[]>
   getHistoricalRegistryById(id: string): Promise<Registry.DbEntity | null>
+  // Profile functions
+  getProfileByPointer(pointer: string): Promise<Sync.ProfileDbEntity | null>
+  getProfilesByPointers(pointers: string[]): Promise<Sync.ProfileDbEntity[]>
+  upsertProfileIfNewer(profile: Sync.ProfileDbEntity): Promise<boolean>
+  markSnapshotProcessed(hash: string): Promise<void>
+  isSnapshotProcessed(hash: string): Promise<boolean>
+  getLatestProfileTimestamp(): Promise<number | null>
 }
 
 export type QueueMessage = any
@@ -93,6 +101,8 @@ export type RegistryOrchestratorComponent = {
 export type ICacheStorage = IBaseComponent & {
   get<T>(key: string): Promise<T[]>
   set<T>(key: string, value: T): Promise<void>
+  getMany<T>(keys: string[]): Promise<Map<string, T>>
+  setMany<T>(entries: Array<{ key: string; value: T }>): Promise<void>
   purge(key: string): Promise<void>
   flush(pattern: string): Promise<void>
 }
@@ -103,48 +113,38 @@ export type QueuesStatusManagerComponent = {
   getAllPendingEntities(platform: 'windows' | 'mac' | 'webgl'): Promise<EntityStatusInQueue[]>
 }
 
-export type ProfilesDbComponent = {
-  getProfileByPointer(pointer: string): Promise<Profile.DbEntity | null>
-  upsertProfileIfNewer(profile: Profile.DbEntity): Promise<boolean>
-  markSnapshotProcessed(hash: string): Promise<void>
-  isSnapshotProcessed(hash: string): Promise<boolean>
-  getLatestProfileTimestamp(): Promise<number | null>
-}
-
-export type HotProfilesCacheComponent = {
-  get(pointer: string): Profile.Entity | undefined
-  setIfNewer(pointer: string, profile: Profile.Entity): boolean
+export interface IHotProfilesCacheComponent {
+  get(pointer: string): Entity | undefined
+  getMany(pointers: string[]): Map<string, Entity>
+  setIfNewer(pointer: string, profile: Entity): boolean
+  setManyIfNewer(profiles: Entity[]): void
   has(pointer: string): boolean
 }
 
-export type ProfileDedupCacheComponent = {
+export interface IDeploymentCacheDeduperComponent {
   isDuplicate(entityId: string): boolean
   markAsSeen(entityId: string): void
 }
 
-export type ProfileEntitiesBloomFilterComponent = {
+export interface IEntityBloomFilterComponent {
   add(entityId: string): void
   has(entityId: string): boolean
 }
 
-export type ProfileSnapshotStorageComponent = {
-  has(hash: string): boolean
-}
-
-export type ProfileDeployerComponent = {
-  deployProfile(entity: Profile.Entity): Promise<void>
+export interface IEntityPersistentComponent {
+  persistEntity(entity: Entity): Promise<void>
   setBootstrapComplete(): void
   isBootstrapComplete(): boolean
   waitForDrain(): Promise<void>
 }
 
-export type ProfileSynchronizerComponent = {
-  getSyncState(): Profile.SyncState
+export interface ISynchronizerComponent {
+  getSyncState(): Sync.State
 }
 
-export type ProfileRetrieverComponent = {
-  getProfile(pointer: string): Promise<Profile.Entity | null>
-  getProfiles(pointers: string[]): Promise<Map<string, Profile.Entity>>
+export interface IProfileRetrieverComponent {
+  getProfile(pointer: string): Promise<Entity | null>
+  getProfiles(pointers: string[]): Promise<Map<string, Entity>>
 }
 
 // Re-export IContentStorageComponent for convenience

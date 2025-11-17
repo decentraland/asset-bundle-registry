@@ -1,5 +1,22 @@
 import { Entity, EntityType } from '@dcl/schemas'
 
+export namespace Sync {
+  export type ProfileDbEntity = Omit<Entity, 'version' | 'pointers'> & {
+    localTimestamp: number
+    pointer: string // single pointer ensurance for simplicity over B-tree database index
+  }
+
+  export type CacheEntry = {
+    profile: Entity
+    localTimestamp: number
+  }
+
+  export type State = {
+    bootstrapComplete: boolean
+    lastPointerChangesCheck: number
+  }
+}
+
 export namespace Registry {
   export enum SimplifiedStatus {
     PENDING = 'pending',

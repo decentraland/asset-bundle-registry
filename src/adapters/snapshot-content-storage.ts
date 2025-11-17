@@ -1,10 +1,11 @@
+import * as fs from 'fs'
 import {
   createFsComponent,
   createFolderBasedFileSystemContentStorage,
   IContentStorageComponent
 } from '@dcl/catalyst-storage'
+
 import { AppComponents } from '../types'
-import * as fs from 'fs'
 
 const DEFAULT_SNAPSHOT_FOLDER = '/tmp/dcl-snapshots'
 

@@ -67,6 +67,51 @@ export async function createRedisComponent(
     }
   }
 
+  async function getMany<T>(keys: string[]): Promise<Map<string, T>> {
+    const result = new Map<string, T>()
+    if (keys.length === 0) {
+      return result
+    }
+
+    try {
+      const values = await client.mGet(keys)
+      keys.forEach((key, index) => {
+        const value = values[index]
+        if (value) {
+          try {
+            result.set(key, JSON.parse(value) as T)
+          } catch {
+            logger.warn(`Failed to parse value for key "${key}"`)
+          }
+        }
+      })
+      logger.debug(`Successfully retrieved ${result.size}/${keys.length} keys`)
+      return result
+    } catch (err: any) {
+      logger.error('Error getting multiple keys', err)
+      throw err
+    }
+  }
+
+  async function setMany<T>(entries: Array<{ key: string; value: T }>): Promise<void> {
+    if (entries.length === 0) {
+      return
+    }
+
+    try {
+      const pipeline = client.multi()
+      for (const { key, value } of entries) {
+        const serializedValue = JSON.stringify(value)
+        pipeline.set(key, serializedValue, { EX: SEVEN_DAYS_IN_SECONDS })
+      }
+      await pipeline.exec()
+      logger.debug(`Successfully set ${entries.length} keys in batch`)
+    } catch (err: any) {
+      logger.error('Error setting multiple keys', err)
+      throw err
+    }
+  }
+
   async function purge(key: string): Promise<void> {
     try {
       // check if key exists before deleting it
@@ -100,6 +145,8 @@ export async function createRedisComponent(
   return {
     get,
     set,
+    getMany,
+    setMany,
     purge,
     flush,
     start,

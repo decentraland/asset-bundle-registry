@@ -1,6 +1,6 @@
 import SQL, { SQLStatement } from 'sql-template-strings'
 import { AppComponents, DbComponent } from '../types'
-import { Registry } from '../types/types'
+import { Registry, Sync } from '../types/types'
 import { EthAddress } from '@dcl/schemas'
 
 export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent {
@@ -307,16 +307,106 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
 
   async function getHistoricalRegistryById(id: string): Promise<Registry.DbEntity | null> {
     const query: SQLStatement = SQL`
-      SELECT 
+      SELECT
         id, type, timestamp, deployer, pointers, content, metadata, status, bundles, versions
-      FROM 
+      FROM
         historical_registries
-      WHERE 
+      WHERE
         LOWER(id) = ${id.toLocaleLowerCase()}
     `
 
     const result = await pg.query<Registry.DbEntity>(query)
     return result.rows[0] || null
+  }
+
+  async function getProfileByPointer(pointer: string): Promise<Sync.ProfileDbEntity | null> {
+    const query = SQL`
+      SELECT
+        id, pointer, timestamp, content, metadata, local_timestamp as "localTimestamp"
+      FROM
+        profiles
+      WHERE
+        LOWER(pointer) = ${pointer.toLowerCase()}
+    `
+
+    const result = await pg.query<Sync.ProfileDbEntity>(query)
+    return result.rows[0] || null
+  }
+
+  async function getProfilesByPointers(pointers: string[]): Promise<Sync.ProfileDbEntity[]> {
+    if (pointers.length === 0) {
+      return []
+    }
+
+    const lowerCasePointers = pointers.map((p) => p.toLowerCase())
+    const query = SQL`
+      SELECT
+        id, pointer, timestamp, content, metadata, local_timestamp as "localTimestamp"
+      FROM
+        profiles
+      WHERE
+        LOWER(pointer) = ANY(${lowerCasePointers}::varchar[])
+    `
+
+    const result = await pg.query<Sync.ProfileDbEntity>(query)
+    return result.rows
+  }
+
+  async function upsertProfileIfNewer(profile: Sync.ProfileDbEntity): Promise<boolean> {
+    const query = SQL`
+      INSERT INTO profiles (
+        id, pointer, timestamp, content, metadata, local_timestamp
+      )
+      VALUES (
+        ${profile.id},
+        ${profile.pointer.toLowerCase()},
+        ${profile.timestamp},
+        ${JSON.stringify(profile.content)}::jsonb,
+        ${JSON.stringify(profile.metadata)}::jsonb,
+        ${profile.localTimestamp}
+      )
+      ON CONFLICT (pointer) DO UPDATE
+      SET
+        id = EXCLUDED.id,
+        timestamp = EXCLUDED.timestamp,
+        content = EXCLUDED.content,
+        metadata = EXCLUDED.metadata,
+        local_timestamp = EXCLUDED.local_timestamp
+      WHERE profiles.timestamp < EXCLUDED.timestamp
+      RETURNING id
+    `
+
+    const result = await pg.query(query)
+    return (result.rowCount ?? 0) > 0
+  }
+
+  async function markSnapshotProcessed(hash: string): Promise<void> {
+    const query = SQL`
+      INSERT INTO processed_profile_snapshots (hash, process_time)
+      VALUES (${hash}, NOW())
+      ON CONFLICT (hash) DO NOTHING
+    `
+
+    await pg.query(query)
+  }
+
+  async function isSnapshotProcessed(hash: string): Promise<boolean> {
+    const query = SQL`
+      SELECT 1 FROM processed_profile_snapshots WHERE hash = ${hash}
+    `
+
+    const result = await pg.query(query)
+    return (result.rowCount ?? 0) > 0
+  }
+
+  async function getLatestProfileTimestamp(): Promise<number | null> {
+    const query = SQL`
+      SELECT MAX(timestamp) as max_timestamp FROM profiles
+    `
+
+    const result = await pg.query<{ max_timestamp: string | null }>(query)
+    const maxTimestamp = result.rows[0]?.max_timestamp
+    return maxTimestamp ? parseInt(maxTimestamp, 10) : null
   }
 
   return {
@@ -332,6 +422,12 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
     getBatchOfDeprecatedRegistriesOlderThan,
     insertHistoricalRegistry,
     getSortedHistoricalRegistriesByOwner,
-    getHistoricalRegistryById
+    getHistoricalRegistryById,
+    getProfileByPointer,
+    getProfilesByPointers,
+    upsertProfileIfNewer,
+    markSnapshotProcessed,
+    isSnapshotProcessed,
+    getLatestProfileTimestamp
   }
 }
