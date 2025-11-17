@@ -5,6 +5,7 @@ import {
 } from '@dcl/snapshots-fetcher'
 import { Entity, EntityType, PointerChangesSyncDeployment } from '@dcl/schemas'
 import { AppComponents, ISynchronizerComponent, Sync } from '../../types'
+import { SYNC_STATE_KEY, SNAPSHOT_DOWNLOAD_FOLDER } from '../../types/constants'
 
 const POINTER_CHANGES_POLL_INTERVAL_MS = 5000 // 5 seconds
 const POINTER_CHANGES_WAIT_TIME_MS = 1000 // Wait time between API calls within stream
@@ -15,12 +16,6 @@ const SNAPSHOT_THRESHOLD_DAYS = 7 // Use snapshots if gap > 7 days
 
 // Genesis timestamp: When profiles were first introduced to Decentraland
 const GENESIS_TIMESTAMP = 1577836800000 // 2020-01-01T00:00:00Z
-
-// Redis/memory storage keys for state persistence
-const SYNC_STATE_KEY = 'profile-sync:state'
-
-// Snapshot folder for temporary downloads
-const SNAPSHOT_DOWNLOAD_FOLDER = '/tmp/dcl-snapshots'
 
 // Batch sizes for entity enrichment
 const SNAPSHOT_BATCH_SIZE = 50 // Batch size for fetching complete entity data during snapshots

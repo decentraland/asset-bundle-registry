@@ -2,9 +2,9 @@ import PQueue from 'p-queue'
 import { AppComponents, IEntityPersistentComponent } from '../../types'
 import { Sync } from '../../types'
 import { Entity } from '@dcl/schemas'
+import { REDIS_PROFILE_PREFIX } from '../../types/constants'
 
 const DB_PERSISTENCE_CONCURRENCY = 30
-const REDIS_PROFILE_PREFIX = 'profile:'
 
 /**
  * Component in charge of persisting entities to the different data stores (caches and database).
@@ -17,7 +17,7 @@ const REDIS_PROFILE_PREFIX = 'profile:'
  *   >)} components
  * @return {*}  {IEntityPersistentComponent}
  */
-export function createEntityPersistentComponent(
+export function createEntityMultiLayerPersisterComponent(
   components: Pick<AppComponents, 'logs' | 'db' | 'hotProfilesCache' | 'entityTracker' | 'memoryStorage'>
 ): IEntityPersistentComponent {
   const { logs, db, hotProfilesCache, entityTracker, memoryStorage } = components

@@ -28,7 +28,7 @@ import { createHotProfilesCacheComponent } from './adapters/hot-profiles-cache'
 import { createSimpleLRUCache } from './adapters/simple-lru-cache'
 import { createSnapshotContentStorage } from './adapters/snapshot-content-storage'
 import {
-  createEntityPersistentComponent,
+  createEntityMultiLayerPersisterComponent,
   createEntityTrackerComponent,
   createSynchronizerComponent,
   createOwnershipValidatorJob
@@ -121,7 +121,7 @@ export async function initComponents(): Promise<AppComponents> {
   const entityTrackerDedupCacheLRU = createSimpleLRUCache<boolean>({ maxItems: 10000, ttlMs: 60000 })
   const entityTracker = createEntityTrackerComponent({ logs }, entityTrackerDedupCacheLRU)
   const snapshotContentStorage = await createSnapshotContentStorage({ logs })
-  const entityPersistent = createEntityPersistentComponent({
+  const entityPersistent = createEntityMultiLayerPersisterComponent({
     logs,
     db,
     hotProfilesCache,

@@ -6,12 +6,11 @@ import {
 } from '@dcl/catalyst-storage'
 
 import { AppComponents } from '../types'
-
-const DEFAULT_SNAPSHOT_FOLDER = '/tmp/dcl-snapshots'
+import { SNAPSHOT_DOWNLOAD_FOLDER } from '../types/constants'
 
 export async function createSnapshotContentStorage(
   components: Pick<AppComponents, 'logs'>,
-  rootFolder: string = DEFAULT_SNAPSHOT_FOLDER
+  rootFolder: string = SNAPSHOT_DOWNLOAD_FOLDER
 ): Promise<IContentStorageComponent> {
   const { logs } = components
   const logger = logs.getLogger('snapshot-content-storage')
