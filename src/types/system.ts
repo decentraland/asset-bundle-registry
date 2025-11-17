@@ -25,6 +25,7 @@ import {
   ProfileSnapshotStorageComponent,
   ProfileDeployerComponent,
   ProfileSynchronizerComponent,
+  ProfileRetrieverComponent,
   SnapshotContentStorageComponent
 } from './service'
 import { metricDeclarations } from '../metrics'
@@ -46,6 +47,7 @@ export type BaseComponents = {
   registryOrchestrator: RegistryOrchestratorComponent
   queuesStatusManager: QueuesStatusManagerComponent
   memoryStorage: ICacheStorage
+  profileRetriever: ProfileRetrieverComponent
 }
 
 // components used in runtime

@@ -142,5 +142,10 @@ export type ProfileSynchronizerComponent = {
   getSyncState(): Profile.SyncState
 }
 
+export type ProfileRetrieverComponent = {
+  getProfile(pointer: string): Promise<Profile.Entity | null>
+  getProfiles(pointers: string[]): Promise<Map<string, Profile.Entity>>
+}
+
 // Re-export IContentStorageComponent for convenience
 export type { IContentStorageComponent as SnapshotContentStorageComponent } from '@dcl/catalyst-storage'

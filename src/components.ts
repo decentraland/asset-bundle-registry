@@ -34,6 +34,7 @@ import {
   createProfileSnapshotStorage,
   createProfileSynchronizer
 } from './logic/sync'
+import { createProfileRetriever } from './logic/profile-retriever'
 
 // Initialize all the components of the app
 export async function initComponents(): Promise<AppComponents> {
@@ -139,6 +140,13 @@ export async function initComponents(): Promise<AppComponents> {
     snapshotContentStorage,
     catalyst
   })
+  const profileRetriever = createProfileRetriever({
+    logs,
+    hotProfilesCache,
+    memoryStorage,
+    profilesDb,
+    catalyst
+  })
 
   return {
     config,
@@ -166,6 +174,7 @@ export async function initComponents(): Promise<AppComponents> {
     profileSnapshotStorage,
     profileDeployer,
     profileSynchronizer,
+    profileRetriever,
     snapshotContentStorage
   }
 }
