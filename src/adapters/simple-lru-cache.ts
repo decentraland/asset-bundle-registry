@@ -15,6 +15,7 @@ export interface SimpleLRUCache<T> {
   setMany(entries: Array<{ key: string; value: T }>): void
   clear(): void
   size(): number
+  keys(): string[]
 }
 
 export function createSimpleLRUCache<T extends object | boolean>(config: LRUCacheConfig): SimpleLRUCache<T> {
@@ -67,6 +68,10 @@ export function createSimpleLRUCache<T extends object | boolean>(config: LRUCach
     return cache.size
   }
 
+  function keys(): string[] {
+    return Array.from(cache.keys())
+  }
+
   return {
     get,
     set,
@@ -75,6 +80,7 @@ export function createSimpleLRUCache<T extends object | boolean>(config: LRUCach
     getMany,
     setMany,
     clear,
-    size
+    size,
+    keys
   }
 }

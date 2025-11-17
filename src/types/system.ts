@@ -60,6 +60,7 @@ export type AppComponents = BaseComponents & {
   entityTracker: IEntityTrackerComponent
   entityPersistent: IEntityPersistentComponent
   synchronizer: ISynchronizerComponent & IBaseComponent
+  ownershipValidator: IBaseComponent
   snapshotContentStorage: SnapshotContentStorageComponent
 }
 

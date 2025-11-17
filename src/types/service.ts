@@ -73,6 +73,12 @@ export type CatalystComponent = {
   getEntitiesByIds(ids: string[], options?: CatalystFetchOptions): Promise<Entity[]>
   getEntityByPointers(pointers: string[]): Promise<Entity[]>
   getContent(id: string): Promise<Entity | undefined>
+  /**
+   * Fetches profiles from lamb2 with ownership validation.
+   * Returns sanitized profiles with non-owned items removed
+   * (wearables/emotes that were transferred and no longer belong to the user).
+   */
+  getSanitizedProfiles(pointers: string[]): Promise<Entity[]>
 }
 
 export type WorldsComponent = {
@@ -119,6 +125,7 @@ export interface IHotProfilesCacheComponent {
   setIfNewer(pointer: string, profile: Entity): boolean
   setManyIfNewer(profiles: Entity[]): void
   has(pointer: string): boolean
+  getAllPointers(): string[]
 }
 
 export interface IEntityTrackerComponent {
@@ -134,7 +141,7 @@ export interface IEntityPersistentComponent {
   waitForDrain(): Promise<void>
 }
 
-export interface ISynchronizerComponent {
+export interface ISynchronizerComponent extends IBaseComponent {
   getSyncState(): Sync.State
 }
 

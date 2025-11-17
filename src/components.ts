@@ -30,7 +30,8 @@ import { createSnapshotContentStorage } from './adapters/snapshot-content-storag
 import {
   createEntityPersistentComponent,
   createEntityTrackerComponent,
-  createSynchronizerComponent
+  createSynchronizerComponent,
+  createOwnershipValidatorJob
 } from './logic/sync'
 import { createProfileRetriever } from './logic/profile-retriever'
 import { Sync } from './types'
@@ -145,6 +146,13 @@ export async function initComponents(): Promise<AppComponents> {
     db,
     catalyst
   })
+  const ownershipValidator = createOwnershipValidatorJob({
+    logs,
+    catalyst,
+    hotProfilesCache,
+    memoryStorage,
+    db
+  })
 
   return {
     config,
@@ -170,6 +178,7 @@ export async function initComponents(): Promise<AppComponents> {
     entityPersistent,
     synchronizer,
     profileRetriever,
-    snapshotContentStorage
+    snapshotContentStorage,
+    ownershipValidator
   }
 }

@@ -1,7 +1,7 @@
-import { Entity } from '@dcl/schemas'
+import { Entity, EntityType } from '@dcl/schemas'
 
 import { AppComponents, CatalystComponent, CatalystFetchOptions } from '../types'
-import { ContentClient, createContentClient } from 'dcl-catalyst-client'
+import { ContentClient, createContentClient, createLambdasClient } from 'dcl-catalyst-client'
 
 export async function createCatalystAdapter({
   config,
@@ -12,9 +12,14 @@ export async function createCatalystAdapter({
   const catalystLoadBalancer = await config.requireString('CATALYST_LOADBALANCER_HOST')
 
   const defaultContentClient = createContentClient({ fetcher: fetch, url: ensureContentUrl(catalystLoadBalancer) })
+  const defaultLambdasClient = createLambdasClient({ fetcher: fetch, url: ensureLambdasUrl(catalystLoadBalancer) })
 
   function ensureContentUrl(url: string): string {
     return url.endsWith('/content') ? url : url + '/content'
+  }
+
+  function ensureLambdasUrl(url: string): string {
+    return url.endsWith('/lambdas') ? url : url + '/lambdas'
   }
 
   function getContentClientOrDefault(contentServerUrl?: string): ContentClient {
@@ -92,5 +97,45 @@ export async function createCatalystAdapter({
     return contentJson as Entity
   }
 
-  return { getEntityById, getEntitiesByIds, getEntityByPointers, getContent }
+  /**
+   * Fetches profiles from lamb2 with ownership validation.
+   * Returns sanitized profiles with non-owned items removed
+   * (wearables/emotes that were transferred and no longer belong to the user).
+   */
+  async function getSanitizedProfiles(pointers: string[]): Promise<Entity[]> {
+    if (pointers.length === 0) {
+      return []
+    }
+
+    try {
+      const profiles = await defaultLambdasClient.getAvatarsDetailsByPost({ ids: pointers })
+
+      // Map lamb2 Profile response to Entity format
+      return profiles
+        .filter((profile) => profile.avatars && profile.avatars.length > 0 && profile.avatars[0].ethAddress)
+        .map((profile) => {
+          const avatar = profile.avatars![0]
+          const ethAddress = avatar.ethAddress as string
+          return {
+            version: 'v3' as const,
+            id: ethAddress,
+            type: EntityType.PROFILE,
+            pointers: [ethAddress.toLowerCase()],
+            timestamp: avatar.version || Date.now(),
+            content: [],
+            metadata: {
+              avatars: profile.avatars
+            }
+          }
+        })
+    } catch (error: any) {
+      log.error('Error fetching sanitized profiles from lamb2', {
+        error: error?.message || 'Unknown error',
+        count: pointers.length
+      })
+      return []
+    }
+  }
+
+  return { getEntityById, getEntitiesByIds, getEntityByPointers, getContent, getSanitizedProfiles }
 }
