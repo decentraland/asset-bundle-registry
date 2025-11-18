@@ -28,9 +28,10 @@ import { createHotProfilesCacheComponent } from './adapters/hot-profiles-cache'
 import { createSimpleLRUCache } from './adapters/simple-lru-cache'
 import { createSnapshotContentStorage } from './adapters/snapshot-content-storage'
 import {
-  createEntityPersistentComponent,
+  createEntityMultiLayerPersisterComponent,
   createEntityTrackerComponent,
-  createSynchronizerComponent
+  createSynchronizerComponent,
+  createOwnershipValidatorJob
 } from './logic/sync'
 import { createProfileRetriever } from './logic/profile-retriever'
 import { Sync } from './types'
@@ -120,7 +121,7 @@ export async function initComponents(): Promise<AppComponents> {
   const entityTrackerDedupCacheLRU = createSimpleLRUCache<boolean>({ maxItems: 10000, ttlMs: 60000 })
   const entityTracker = createEntityTrackerComponent({ logs }, entityTrackerDedupCacheLRU)
   const snapshotContentStorage = await createSnapshotContentStorage({ logs })
-  const entityPersistent = createEntityPersistentComponent({
+  const entityPersistent = createEntityMultiLayerPersisterComponent({
     logs,
     db,
     hotProfilesCache,
@@ -144,6 +145,13 @@ export async function initComponents(): Promise<AppComponents> {
     memoryStorage,
     db,
     catalyst
+  })
+  const ownershipValidator = createOwnershipValidatorJob({
+    logs,
+    catalyst,
+    hotProfilesCache,
+    memoryStorage,
+    db
   })
 
   return {
@@ -170,6 +178,7 @@ export async function initComponents(): Promise<AppComponents> {
     entityPersistent,
     synchronizer,
     profileRetriever,
-    snapshotContentStorage
+    snapshotContentStorage,
+    ownershipValidator
   }
 }

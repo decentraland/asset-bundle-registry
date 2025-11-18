@@ -65,11 +65,16 @@ export function createHotProfilesCacheComponent(cache: SimpleLRUCache<Sync.Cache
     return cache.has(pointer.toLowerCase())
   }
 
+  function getAllPointers(): string[] {
+    return cache.keys()
+  }
+
   return {
     get,
     getMany,
     setIfNewer,
     setManyIfNewer,
-    has
+    has,
+    getAllPointers
   }
 }

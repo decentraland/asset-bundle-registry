@@ -1,6 +1,5 @@
 import { AppComponents, EntityStatusInQueue, QueuesStatusManagerComponent } from '../types'
-
-const FOUR_HOURS_IN_SECONDS = 4 * 60 * 60 // 4 hours TTL for job queue status
+import { FOUR_HOURS_IN_SECONDS } from '../types/constants'
 
 export function createQueuesStatusManagerComponent({
   memoryStorage

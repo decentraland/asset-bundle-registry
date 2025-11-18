@@ -15,6 +15,24 @@ export namespace Sync {
     bootstrapComplete: boolean
     lastPointerChangesCheck: number
   }
+
+  export type ProfileDeployment = {
+    entityId: string
+    pointer: string
+    timestamp: number
+    authChain?: any
+  }
+
+  export type FailedProfileFetch = {
+    entityId: string
+    pointer: string
+    timestamp: number
+    authChain?: any
+    firstFailedAt: number
+    lastRetryAt?: number
+    retryCount: number
+    errorMessage?: string
+  }
 }
 
 export namespace Registry {

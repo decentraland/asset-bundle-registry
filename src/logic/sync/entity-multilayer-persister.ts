@@ -2,9 +2,9 @@ import PQueue from 'p-queue'
 import { AppComponents, IEntityPersistentComponent } from '../../types'
 import { Sync } from '../../types'
 import { Entity } from '@dcl/schemas'
+import { REDIS_PROFILE_PREFIX } from '../../types/constants'
 
 const DB_PERSISTENCE_CONCURRENCY = 30
-const REDIS_PROFILE_PREFIX = 'profile:'
 
 /**
  * Component in charge of persisting entities to the different data stores (caches and database).
@@ -17,7 +17,7 @@ const REDIS_PROFILE_PREFIX = 'profile:'
  *   >)} components
  * @return {*}  {IEntityPersistentComponent}
  */
-export function createEntityPersistentComponent(
+export function createEntityMultiLayerPersisterComponent(
   components: Pick<AppComponents, 'logs' | 'db' | 'hotProfilesCache' | 'entityTracker' | 'memoryStorage'>
 ): IEntityPersistentComponent {
   const { logs, db, hotProfilesCache, entityTracker, memoryStorage } = components
@@ -28,13 +28,8 @@ export function createEntityPersistentComponent(
   const dbPersistenceQueue = new PQueue({ concurrency: DB_PERSISTENCE_CONCURRENCY })
 
   async function persistEntity(entity: Entity): Promise<void> {
-    // prevent race-condition duplicates and already processed entities
+    // prevent race-condition duplicates (short-term dedup cache only)
     if (entityTracker.tryMarkDuplicate(entity.id)) {
-      return
-    }
-
-    // check if entity has been processed before (bloom filter check)
-    if (entityTracker.hasBeenProcessed(entity.id)) {
       return
     }
 
@@ -44,7 +39,7 @@ export function createEntityPersistentComponent(
       return
     }
 
-    // mark as processed after successful cache update
+    // mark as processed in bloom filter (permanent tracking)
     entityTracker.markAsProcessed(entity.id)
 
     // evict potentially stale profile from Redis cache

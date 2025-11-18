@@ -1,8 +1,6 @@
 import { AppComponents, IProfileRetrieverComponent } from '../types'
 import { Entity, EntityType } from '@dcl/schemas'
-
-const REDIS_PROFILE_PREFIX = 'profile:'
-const FOUR_HOURS_IN_SECONDS = 4 * 60 * 60 // 4 hours TTL for Redis cache
+import { REDIS_PROFILE_PREFIX, FOUR_HOURS_IN_SECONDS } from '../types/constants'
 
 export function createProfileRetriever(
   components: Pick<AppComponents, 'logs' | 'hotProfilesCache' | 'memoryStorage' | 'db' | 'catalyst'>
@@ -75,6 +73,15 @@ export function createProfileRetriever(
     }
     return null
   }
+  async function updateCaches(profiles: Entity[]): Promise<void> {
+    if (profiles.length === 0) return
+    hotProfilesCache.setManyIfNewer(profiles)
+    const redisEntries = profiles.map((profile) => ({
+      key: `${REDIS_PROFILE_PREFIX}${profile.pointers[0].toLowerCase()}`,
+      value: JSON.stringify(profile)
+    }))
+    await memoryStorage.setMany(redisEntries, FOUR_HOURS_IN_SECONDS)
+  }
 
   async function getProfile(pointer: string): Promise<Entity | null> {
     const normalizedPointer = pointer.toLowerCase()
@@ -134,7 +141,6 @@ export function createProfileRetriever(
     }
 
     if (notInHotCache.length === 0) {
-      logger.debug('All profiles found in hot cache', { count: results.size })
       return results
     }
 
@@ -178,7 +184,7 @@ export function createProfileRetriever(
     try {
       const dbResults = await db.getProfilesByPointers(notInRedis)
       dbProfiles = dbResults.map((dbProfile) => ({
-        version: 'v3' as const, // outdated property
+        version: 'v3' as const,
         id: dbProfile.id,
         type: EntityType.PROFILE,
         pointers: [dbProfile.pointer],
@@ -187,23 +193,12 @@ export function createProfileRetriever(
         metadata: dbProfile.metadata
       }))
 
-      // Add to results
-      for (const profile of dbProfiles) {
-        const pointer = profile.pointers[0].toLowerCase()
-        results.set(pointer, profile)
-      }
-
-      // Update caches (L1 and L2)
       if (dbProfiles.length > 0) {
-        hotProfilesCache.setManyIfNewer(dbProfiles)
-
-        // Batch cache in Redis
-        const redisEntries = dbProfiles.map((profile) => ({
-          key: `${REDIS_PROFILE_PREFIX}${profile.pointers[0].toLowerCase()}`,
-          value: JSON.stringify(profile)
-        }))
-        await memoryStorage.setMany(redisEntries, FOUR_HOURS_IN_SECONDS)
-        logger.debug('Profiles found in database correctly added to L1 and L2 caches', { count: dbProfiles.length })
+        await updateCaches(dbProfiles)
+        for (const profile of dbProfiles) {
+          results.set(profile.pointers[0].toLowerCase(), profile)
+        }
+        logger.debug('Profiles found in database', { count: dbProfiles.length })
       }
     } catch (error: any) {
       logger.warn('Failed to batch fetch from database', { error: error.message })
@@ -222,22 +217,11 @@ export function createProfileRetriever(
       const catalystEntities = await catalyst.getEntityByPointers(notInDb)
       const profileEntities = catalystEntities.filter((e) => e.type === 'profile')
 
-      // Add to results
-      for (const profile of profileEntities) {
-        const pointer = profile.pointers[0].toLowerCase()
-        results.set(pointer, profile)
-      }
-
-      // Update caches
       if (profileEntities.length > 0) {
-        hotProfilesCache.setManyIfNewer(profileEntities)
-
-        // Batch cache in Redis
-        const redisEntries = profileEntities.map((profile) => ({
-          key: `${REDIS_PROFILE_PREFIX}${profile.pointers[0].toLowerCase()}`,
-          value: JSON.stringify(profile)
-        }))
-        await memoryStorage.setMany(redisEntries, FOUR_HOURS_IN_SECONDS)
+        await updateCaches(profileEntities)
+        for (const profile of profileEntities) {
+          results.set(profile.pointers[0].toLowerCase(), profile)
+        }
         logger.debug('Profiles found in Catalyst', { count: profileEntities.length })
       }
     } catch (error: any) {
