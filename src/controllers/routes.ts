@@ -15,10 +15,7 @@ export async function setupRouter(globalContext: GlobalContext): Promise<Router<
   const router = new Router<GlobalContext>()
   router.use(errorHandler)
 
-  const env = await globalContext.components.config.getString('ENV')
-  if (env?.toLowerCase() === 'dev' || env?.toLowerCase() === 'stg') {
-    router.post('/reset-sync-state', resetSyncStateHandler)
-  }
+  router.post('/reset-sync-state', resetSyncStateHandler)
 
   const signedFetchMiddleware = wellKnownComponents({
     fetcher: globalContext.components.fetch,
