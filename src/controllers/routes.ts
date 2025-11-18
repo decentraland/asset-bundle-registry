@@ -16,7 +16,7 @@ export async function setupRouter(globalContext: GlobalContext): Promise<Router<
   router.use(errorHandler)
 
   const env = await globalContext.components.config.getString('ENV')
-  if (env?.toLowerCase() === 'dev') {
+  if (env?.toLowerCase() === 'dev' || env?.toLowerCase() === 'stg') {
     router.post('/reset-sync-state', resetSyncStateHandler)
   }
 
