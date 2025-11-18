@@ -28,13 +28,8 @@ export function createEntityMultiLayerPersisterComponent(
   const dbPersistenceQueue = new PQueue({ concurrency: DB_PERSISTENCE_CONCURRENCY })
 
   async function persistEntity(entity: Entity): Promise<void> {
-    // prevent race-condition duplicates and already processed entities
+    // prevent race-condition duplicates (short-term dedup cache only)
     if (entityTracker.tryMarkDuplicate(entity.id)) {
-      return
-    }
-
-    // check if entity has been processed before (bloom filter check)
-    if (entityTracker.hasBeenProcessed(entity.id)) {
       return
     }
 
@@ -44,7 +39,7 @@ export function createEntityMultiLayerPersisterComponent(
       return
     }
 
-    // mark as processed after successful cache update
+    // mark as processed in bloom filter (permanent tracking)
     entityTracker.markAsProcessed(entity.id)
 
     // evict potentially stale profile from Redis cache
