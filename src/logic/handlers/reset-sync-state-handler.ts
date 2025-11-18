@@ -19,7 +19,6 @@ export async function resetSyncStateHandler(context: any) {
       }
     }
   } catch (error: any) {
-    logger.error('Failed to reset sync state', { error: error.message })
     return {
       status: 500,
       body: {
