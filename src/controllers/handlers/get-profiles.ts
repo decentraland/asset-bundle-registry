@@ -6,7 +6,7 @@ export async function getProfilesHandler(context: HandlerContextWithPath<'profil
   } = context
 
   const body = await context.request.json()
-  const pointers: string[] = body.pointers
+  const pointers: string[] = body.ids
 
   const profilesMap = await profileRetriever.getProfiles(pointers)
 
