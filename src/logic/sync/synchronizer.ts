@@ -24,6 +24,9 @@ const BATCH_FETCH_DELAY_MS = 200 // Delay between batch fetches to avoid overwhe
 const ENTITY_FETCH_TIMEOUT_MS = 30000 // 30 second timeout for fetching entity data
 const ENTITY_FETCH_MAX_RETRIES = 3 // Max retries for fetching entity data
 const ENTITY_FETCH_RETRY_DELAY_MS = 2000 // 2 seconds between retries
+const FAILED_FETCH_RETRY_BATCH_SIZE = 50 // Batch size for retrying failed fetches (reuse snapshot batch size)
+const FAILED_FETCH_MAX_RETRIES = 10 // Max retries before giving up on a failed fetch
+const FAILED_FETCH_RETRY_INTERVAL_MS = 60000 // 1 minute between retry cycles
 
 type PersistedSyncState = {
   lastPointerChangesCheck: number
@@ -199,9 +202,9 @@ export async function createSynchronizerComponent(
 
   // Batch fetch complete entity data from Catalyst and convert to Profile.Entity
   async function enrichAndDeployProfiles(
-    profileDeployments: Array<{ entityId: string; pointer: string; timestamp: number; authChain: any }>
-  ): Promise<number> {
-    if (profileDeployments.length === 0) return 0
+    profileDeployments: Array<Sync.ProfileDeployment>
+  ): Promise<{ deployed: number; failed: number }> {
+    if (profileDeployments.length === 0) return { deployed: 0, failed: 0 }
 
     const entityIds = profileDeployments.map((p) => p.entityId)
 
@@ -211,8 +214,10 @@ export async function createSynchronizerComponent(
     })
 
     let deployedCount = 0
+    let failedCount = 0
     let completeEntities: Entity[] = []
     let fetchSuccess = false
+    let lastError: string | undefined
 
     // Retry logic with timeout
     for (let attempt = 1; attempt <= ENTITY_FETCH_MAX_RETRIES; attempt++) {
@@ -225,6 +230,7 @@ export async function createSynchronizerComponent(
         break
       } catch (error: any) {
         const isTimeout = error.message?.includes('timed out')
+        lastError = error.message
         logger.warn('Entity fetch attempt failed', {
           attempt,
           maxRetries: ENTITY_FETCH_MAX_RETRIES,
@@ -246,53 +252,242 @@ export async function createSynchronizerComponent(
         entityMap.set(entity.id, entity)
       }
 
+      // Track which deployments succeeded and which failed
+      const failedDeployments: Sync.ProfileDeployment[] = []
+
       // Deploy each profile with enriched data
       for (const deployment of profileDeployments) {
         const completeEntity = entityMap.get(deployment.entityId)
 
-        const profileEntity: Entity = {
-          version: 'v3',
-          id: deployment.entityId,
-          type: EntityType.PROFILE,
-          pointers: [deployment.pointer],
-          timestamp: deployment.timestamp,
-          content: completeEntity?.content || [],
-          metadata: completeEntity?.metadata || {}
-        }
+        if (completeEntity) {
+          // Successfully fetched - persist it
+          const profileEntity: Entity = {
+            version: 'v3',
+            id: deployment.entityId,
+            type: EntityType.PROFILE,
+            pointers: [deployment.pointer],
+            timestamp: deployment.timestamp,
+            content: completeEntity.content || [],
+            metadata: completeEntity.metadata || {}
+          }
 
-        await entityPersistent.persistEntity(profileEntity)
-        deployedCount++
+          await entityPersistent.persistEntity(profileEntity)
+          deployedCount++
+        } else {
+          // Entity not found in response - track as failed
+          failedDeployments.push(deployment)
+        }
+      }
+
+      // Track partial failures
+      if (failedDeployments.length > 0) {
+        const now = Date.now()
+        for (const deployment of failedDeployments) {
+          try {
+            await db.insertFailedProfileFetch({
+              entityId: deployment.entityId,
+              pointer: deployment.pointer,
+              timestamp: deployment.timestamp,
+              authChain: deployment.authChain,
+              firstFailedAt: now,
+              retryCount: 0,
+              errorMessage: 'Entity not found in Catalyst response'
+            })
+            failedCount++
+          } catch (error: any) {
+            logger.warn('Failed to track failed profile fetch', {
+              entityId: deployment.entityId,
+              error: error.message
+            })
+          }
+        }
       }
 
       logger.info('Batch enrichment complete', {
         requested: entityIds.length,
         fetched: completeEntities.length,
-        deployed: deployedCount
+        deployed: deployedCount,
+        failed: failedCount
       })
     } else {
-      logger.error('All fetch attempts failed, deploying with partial data', {
+      // All fetch attempts failed - track all deployments as failed
+      logger.error('All fetch attempts failed, tracking failures for retry', {
         batchSize: entityIds.length,
-        attempts: ENTITY_FETCH_MAX_RETRIES
+        attempts: ENTITY_FETCH_MAX_RETRIES,
+        error: lastError || 'Unknown error'
       })
 
-      // Fallback: deploy with empty metadata/content
+      const now = Date.now()
       for (const deployment of profileDeployments) {
-        const profileEntity: Entity = {
-          version: 'v3',
-          id: deployment.entityId,
-          type: EntityType.PROFILE,
-          pointers: [deployment.pointer],
-          timestamp: deployment.timestamp,
-          content: [],
-          metadata: {}
+        try {
+          await db.insertFailedProfileFetch({
+            entityId: deployment.entityId,
+            pointer: deployment.pointer,
+            timestamp: deployment.timestamp,
+            authChain: deployment.authChain,
+            firstFailedAt: now,
+            retryCount: 0,
+            errorMessage: lastError || 'All fetch attempts failed'
+          })
+          failedCount++
+        } catch (error: any) {
+          logger.warn('Failed to track failed profile fetch', {
+            entityId: deployment.entityId,
+            error: error.message
+          })
         }
-
-        await entityPersistent.persistEntity(profileEntity)
-        deployedCount++
       }
     }
 
-    return deployedCount
+    return { deployed: deployedCount, failed: failedCount }
+  }
+
+  async function retryFailedProfileFetches(): Promise<{ retried: number; succeeded: number; failed: number }> {
+    let retried = 0
+    let succeeded = 0
+    let failed = 0
+
+    try {
+      // Fetch failed fetches that haven't exceeded max retries
+      const failedFetches = await db.getFailedProfileFetches(FAILED_FETCH_RETRY_BATCH_SIZE, FAILED_FETCH_MAX_RETRIES)
+
+      if (failedFetches.length === 0) {
+        return { retried: 0, succeeded: 0, failed: 0 }
+      }
+
+      logger.info('Retrying failed profile fetches', {
+        count: failedFetches.length,
+        maxRetries: FAILED_FETCH_MAX_RETRIES
+      })
+
+      // Check for newer profiles before retrying (timestamp safety)
+      const deploymentsToRetry: Sync.ProfileDeployment[] = []
+      const skipped: string[] = []
+
+      for (const failedFetch of failedFetches) {
+        // Check if a newer profile already exists
+        const existingProfile = await db.getProfileByPointer(failedFetch.pointer)
+        if (existingProfile && existingProfile.timestamp >= failedFetch.timestamp) {
+          // Newer or same timestamp profile already exists - skip retry and clean up
+          logger.debug('Skipping retry - newer profile already exists', {
+            entityId: failedFetch.entityId.substring(0, 30),
+            pointer: failedFetch.pointer,
+            existingTimestamp: existingProfile.timestamp,
+            failedTimestamp: failedFetch.timestamp
+          })
+          await db.deleteFailedProfileFetch(failedFetch.entityId)
+          skipped.push(failedFetch.entityId)
+          continue
+        }
+
+        deploymentsToRetry.push({
+          entityId: failedFetch.entityId,
+          pointer: failedFetch.pointer,
+          timestamp: failedFetch.timestamp,
+          authChain: failedFetch.authChain
+        })
+      }
+
+      if (deploymentsToRetry.length === 0) {
+        logger.info('All failed fetches skipped - newer profiles already exist', { skipped: skipped.length })
+        return { retried: skipped.length, succeeded: skipped.length, failed: 0 }
+      }
+
+      retried = deploymentsToRetry.length
+
+      // Attempt to fetch entities
+      const entityIds = deploymentsToRetry.map((d) => d.entityId)
+      let completeEntities: Entity[] = []
+      let fetchSuccess = false
+      let lastError: string | undefined
+
+      // Use same retry logic as enrichAndDeployProfiles
+      for (let attempt = 1; attempt <= ENTITY_FETCH_MAX_RETRIES; attempt++) {
+        try {
+          completeEntities = await fetchWithTimeout(catalyst.getEntitiesByIds(entityIds), ENTITY_FETCH_TIMEOUT_MS)
+          fetchSuccess = true
+          break
+        } catch (error: any) {
+          lastError = error.message
+          logger.warn('Retry fetch attempt failed', {
+            attempt,
+            maxRetries: ENTITY_FETCH_MAX_RETRIES,
+            batchSize: entityIds.length,
+            error: error.message
+          })
+
+          if (attempt < ENTITY_FETCH_MAX_RETRIES) {
+            await new Promise((resolve) => setTimeout(resolve, ENTITY_FETCH_RETRY_DELAY_MS))
+          }
+        }
+      }
+
+      if (fetchSuccess && completeEntities.length > 0) {
+        // Create map for quick lookup
+        const entityMap = new Map<string, Entity>()
+        for (const entity of completeEntities) {
+          entityMap.set(entity.id, entity)
+        }
+
+        // Process each deployment
+        for (const deployment of deploymentsToRetry) {
+          const completeEntity = entityMap.get(deployment.entityId)
+
+          if (completeEntity) {
+            // Successfully fetched - persist it
+            const profileEntity: Entity = {
+              version: 'v3',
+              id: deployment.entityId,
+              type: EntityType.PROFILE,
+              pointers: [deployment.pointer],
+              timestamp: deployment.timestamp,
+              content: completeEntity.content || [],
+              metadata: completeEntity.metadata || {}
+            }
+
+            await entityPersistent.persistEntity(profileEntity)
+            await db.deleteFailedProfileFetch(deployment.entityId)
+            succeeded++
+          } else {
+            // Entity not found - update retry count
+            const failedFetch = failedFetches.find((f) => f.entityId === deployment.entityId)
+            if (failedFetch) {
+              const newRetryCount = failedFetch.retryCount + 1
+              await db.updateFailedProfileFetchRetry(
+                deployment.entityId,
+                newRetryCount,
+                'Entity not found in Catalyst response'
+              )
+              failed++
+            }
+          }
+        }
+      } else {
+        // All fetch attempts failed - update retry counts
+        for (const deployment of deploymentsToRetry) {
+          const failedFetch = failedFetches.find((f) => f.entityId === deployment.entityId)
+          if (failedFetch) {
+            const newRetryCount = failedFetch.retryCount + 1
+            await db.updateFailedProfileFetchRetry(deployment.entityId, newRetryCount, lastError)
+            failed++
+          }
+        }
+      }
+
+      logger.info('Failed fetch retry cycle complete', {
+        retried,
+        succeeded,
+        failed,
+        skipped: skipped.length
+      })
+    } catch (error: any) {
+      logger.error('Error during failed fetch retry', {
+        error: error.message,
+        stack: error.stack?.substring(0, 200)
+      })
+    }
+
+    return { retried, succeeded, failed }
   }
 
   async function bootstrapFromSnapshots(fromTimestamp: number): Promise<number> {
@@ -383,7 +578,7 @@ export async function createSynchronizerComponent(
         )
 
         // Collect profiles in batches for enrichment
-        const profileBatch: Array<{ entityId: string; pointer: string; timestamp: number; authChain: any }> = []
+        const profileBatch: Array<Sync.ProfileDeployment> = []
 
         for await (const entity of stream) {
           if (!running) break
@@ -403,9 +598,9 @@ export async function createSynchronizerComponent(
 
             // Process batch when it reaches the threshold
             if (profileBatch.length >= SNAPSHOT_BATCH_SIZE) {
-              const deployed = await enrichAndDeployProfiles(profileBatch)
-              snapshotProfilesProcessed += deployed
-              totalProfilesProcessed += deployed
+              const result = await enrichAndDeployProfiles(profileBatch)
+              snapshotProfilesProcessed += result.deployed
+              totalProfilesProcessed += result.deployed
               profileBatch.length = 0 // Clear the batch
 
               // Add delay to avoid overwhelming Catalyst
@@ -426,9 +621,9 @@ export async function createSynchronizerComponent(
 
         // Process any remaining profiles in the batch
         if (profileBatch.length > 0) {
-          const deployed = await enrichAndDeployProfiles(profileBatch)
-          snapshotProfilesProcessed += deployed
-          totalProfilesProcessed += deployed
+          const result = await enrichAndDeployProfiles(profileBatch)
+          snapshotProfilesProcessed += result.deployed
+          totalProfilesProcessed += result.deployed
         }
 
         // Mark snapshot as processed
@@ -486,7 +681,7 @@ export async function createSynchronizerComponent(
     const MAX_DUPLICATES = 3
 
     // Collect profiles in batches for enrichment
-    const profileBatch: Array<{ entityId: string; pointer: string; timestamp: number; authChain: any }> = []
+    const profileBatch: Array<Sync.ProfileDeployment> = []
 
     try {
       const stream = getDeployedEntitiesStreamFromPointerChanges(
@@ -534,8 +729,8 @@ export async function createSynchronizerComponent(
 
           // Process batch when it reaches the threshold
           if (profileBatch.length >= POINTER_CHANGES_BATCH_SIZE) {
-            const deployed = await enrichAndDeployProfiles(profileBatch)
-            profilesProcessed += deployed
+            const result = await enrichAndDeployProfiles(profileBatch)
+            profilesProcessed += result.deployed
             profileBatch.length = 0 // Clear the batch
 
             // Add delay to avoid overwhelming Catalyst
@@ -556,8 +751,8 @@ export async function createSynchronizerComponent(
 
       // Process any remaining profiles in the batch
       if (profileBatch.length > 0) {
-        const deployed = await enrichAndDeployProfiles(profileBatch)
-        profilesProcessed += deployed
+        const result = await enrichAndDeployProfiles(profileBatch)
+        profilesProcessed += result.deployed
       }
 
       await entityPersistent.waitForDrain()
@@ -685,6 +880,19 @@ export async function createSynchronizerComponent(
     }
   }
 
+  async function runFailedFetchRetryLoop(): Promise<void> {
+    while (running) {
+      try {
+        await retryFailedProfileFetches()
+      } catch (error: any) {
+        logger.error('Error in failed fetch retry loop', { error: error.message })
+      }
+
+      // Wait before next retry cycle
+      await new Promise((resolve) => setTimeout(resolve, FAILED_FETCH_RETRY_INTERVAL_MS))
+    }
+  }
+
   async function runSyncWorkflow(): Promise<void> {
     if (!syncState.bootstrapComplete) {
       await bootstrapWithRetry()
@@ -694,8 +902,10 @@ export async function createSynchronizerComponent(
       })
     }
 
-    logger.info('Starting incremental sync loop')
-    await runPointerChangesLoop()
+    logger.info('Starting incremental sync loop and failed fetch retry loop')
+
+    // Run both loops in parallel
+    await Promise.all([runPointerChangesLoop(), runFailedFetchRetryLoop()])
   }
 
   async function waitForDatabaseReady(): Promise<void> {

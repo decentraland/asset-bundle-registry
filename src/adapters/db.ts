@@ -409,6 +409,110 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
     return maxTimestamp ? parseInt(maxTimestamp, 10) : null
   }
 
+  async function insertFailedProfileFetch(failed: Sync.FailedProfileFetch): Promise<void> {
+    const query = SQL`
+      INSERT INTO failed_profile_fetches (
+        entity_id, pointer, timestamp, auth_chain, first_failed_at, last_retry_at, retry_count, error_message
+      )
+      VALUES (
+        ${failed.entityId},
+        ${failed.pointer.toLowerCase()},
+        ${failed.timestamp},
+        ${failed.authChain ? JSON.stringify(failed.authChain) : null}::jsonb,
+        ${failed.firstFailedAt},
+        ${failed.lastRetryAt || null},
+        ${failed.retryCount},
+        ${failed.errorMessage || null}
+      )
+      ON CONFLICT (entity_id) DO UPDATE
+      SET
+        pointer = EXCLUDED.pointer,
+        timestamp = EXCLUDED.timestamp,
+        auth_chain = EXCLUDED.auth_chain,
+        first_failed_at = LEAST(failed_profile_fetches.first_failed_at, EXCLUDED.first_failed_at),
+        last_retry_at = EXCLUDED.last_retry_at,
+        retry_count = EXCLUDED.retry_count,
+        error_message = EXCLUDED.error_message
+    `
+
+    await pg.query(query)
+  }
+
+  async function getFailedProfileFetches(limit: number, maxRetryCount?: number): Promise<Sync.FailedProfileFetch[]> {
+    const query = SQL`
+      SELECT
+        entity_id as "entityId",
+        pointer,
+        timestamp,
+        auth_chain as "authChain",
+        first_failed_at as "firstFailedAt",
+        last_retry_at as "lastRetryAt",
+        retry_count as "retryCount",
+        error_message as "errorMessage"
+      FROM
+        failed_profile_fetches
+    `
+
+    if (maxRetryCount !== undefined) {
+      query.append(SQL` WHERE retry_count < ${maxRetryCount}`)
+    }
+
+    query.append(SQL`
+      ORDER BY first_failed_at ASC, retry_count ASC
+      LIMIT ${limit}
+    `)
+
+    const result = await pg.query<Sync.FailedProfileFetch>(query)
+    return result.rows
+  }
+
+  async function deleteFailedProfileFetch(entityId: string): Promise<void> {
+    const query = SQL`
+      DELETE FROM failed_profile_fetches
+      WHERE entity_id = ${entityId.toLowerCase()}
+    `
+
+    await pg.query(query)
+  }
+
+  async function updateFailedProfileFetchRetry(
+    entityId: string,
+    retryCount: number,
+    errorMessage?: string
+  ): Promise<void> {
+    const query = SQL`
+      UPDATE failed_profile_fetches
+      SET
+        last_retry_at = ${Date.now()},
+        retry_count = ${retryCount},
+        error_message = ${errorMessage || null}
+      WHERE entity_id = ${entityId.toLowerCase()}
+    `
+
+    await pg.query(query)
+  }
+
+  async function getFailedProfileFetchByEntityId(entityId: string): Promise<Sync.FailedProfileFetch | null> {
+    const query = SQL`
+      SELECT
+        entity_id as "entityId",
+        pointer,
+        timestamp,
+        auth_chain as "authChain",
+        first_failed_at as "firstFailedAt",
+        last_retry_at as "lastRetryAt",
+        retry_count as "retryCount",
+        error_message as "errorMessage"
+      FROM
+        failed_profile_fetches
+      WHERE
+        entity_id = ${entityId.toLowerCase()}
+    `
+
+    const result = await pg.query<Sync.FailedProfileFetch>(query)
+    return result.rows[0] || null
+  }
+
   return {
     insertRegistry,
     updateRegistriesStatus,
@@ -428,6 +532,11 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent 
     upsertProfileIfNewer,
     markSnapshotProcessed,
     isSnapshotProcessed,
-    getLatestProfileTimestamp
+    getLatestProfileTimestamp,
+    insertFailedProfileFetch,
+    getFailedProfileFetches,
+    deleteFailedProfileFetch,
+    updateFailedProfileFetchRetry,
+    getFailedProfileFetchByEntityId
   }
 }

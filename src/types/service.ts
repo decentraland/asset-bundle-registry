@@ -52,6 +52,12 @@ export type DbComponent = {
   markSnapshotProcessed(hash: string): Promise<void>
   isSnapshotProcessed(hash: string): Promise<boolean>
   getLatestProfileTimestamp(): Promise<number | null>
+  // Failed fetch tracking
+  insertFailedProfileFetch(failed: Sync.FailedProfileFetch): Promise<void>
+  getFailedProfileFetches(limit: number, maxRetryCount?: number): Promise<Sync.FailedProfileFetch[]>
+  deleteFailedProfileFetch(entityId: string): Promise<void>
+  updateFailedProfileFetchRetry(entityId: string, retryCount: number, errorMessage?: string): Promise<void>
+  getFailedProfileFetchByEntityId(entityId: string): Promise<Sync.FailedProfileFetch | null>
 }
 
 export type QueueMessage = any
