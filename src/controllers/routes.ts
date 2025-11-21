@@ -10,6 +10,7 @@ import { flushCacheHandler } from '../logic/handlers/flush-cache-handler'
 import { getEntityVersionsHandler } from './handlers/get-entity-versions'
 import { getProfilesHandler } from './handlers/get-profiles'
 import { resetSyncStateHandler } from '../logic/handlers/reset-sync-state-handler'
+import { getProfilesMetadataHandler } from './handlers/get-profiles-metadata'
 
 export async function setupRouter(globalContext: GlobalContext): Promise<Router<GlobalContext>> {
   const router = new Router<GlobalContext>()
@@ -30,6 +31,7 @@ export async function setupRouter(globalContext: GlobalContext): Promise<Router<
   router.get('/status', getStatusHandler)
   router.post('/entities/active', getActiveEntityHandler)
   router.post('/profiles', getProfilesHandler)
+  router.post('/profiles/metadata', getProfilesMetadataHandler)
   router.post('/entities/versions', getEntityVersionsHandler)
   router.get('/entities/status/:id', getEntityStatusHandler)
   router.get('/entities/status', signedFetchMiddleware, getEntitiesStatusHandler)
