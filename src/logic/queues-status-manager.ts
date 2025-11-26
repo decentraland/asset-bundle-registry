@@ -1,5 +1,4 @@
 import { AppComponents, EntityStatusInQueue, QueuesStatusManagerComponent } from '../types'
-import { FOUR_HOURS_IN_SECONDS } from '../types/constants'
 
 export function createQueuesStatusManagerComponent({
   memoryStorage
@@ -24,7 +23,7 @@ export function createQueuesStatusManagerComponent({
       status: 0
     }
 
-    await memoryStorage.set(key, { ...currentValue, status: currentValue.status + 1 }, FOUR_HOURS_IN_SECONDS)
+    await memoryStorage.set(key, { ...currentValue, status: currentValue.status + 1 })
   }
 
   async function markAsFinished(platform: 'windows' | 'mac' | 'webgl', entityId: string): Promise<void> {
@@ -42,7 +41,7 @@ export function createQueuesStatusManagerComponent({
       return
     }
 
-    await memoryStorage.set<EntityStatusInQueue>(key, { ...currentValue, status: newStatus }, FOUR_HOURS_IN_SECONDS)
+    await memoryStorage.set<EntityStatusInQueue>(key, { ...currentValue, status: newStatus })
   }
 
   async function getAllPendingEntities(platform: 'windows' | 'mac' | 'webgl'): Promise<EntityStatusInQueue[]> {

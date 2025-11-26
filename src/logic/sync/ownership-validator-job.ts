@@ -3,15 +3,13 @@ import { AppComponents } from '../../types'
 import { Entity, EntityType } from '@dcl/schemas'
 import { Sync } from '../../types'
 
-const REDIS_PROFILE_PREFIX = 'profile:'
-const FOUR_HOURS_IN_SECONDS = 4 * 60 * 60
 const VALIDATION_INTERVAL_MS = 5 * 60 * 1000 // 5 minutes
 const BATCH_SIZE = 50 // Process profiles in batches
 
 export function createOwnershipValidatorJob(
-  components: Pick<AppComponents, 'logs' | 'catalyst' | 'hotProfilesCache' | 'memoryStorage' | 'db'>
+  components: Pick<AppComponents, 'logs' | 'catalyst' | 'hotProfilesCache' | 'db'>
 ): IBaseComponent {
-  const { logs, catalyst, hotProfilesCache, memoryStorage, db } = components
+  const { logs, catalyst, hotProfilesCache, db } = components
   const logger = logs.getLogger('ownership-validator')
 
   let validationInterval: NodeJS.Timeout | null = null
@@ -49,18 +47,8 @@ export function createOwnershipValidatorJob(
   async function updateProfileInAllLayers(profile: Entity): Promise<void> {
     const pointer = profile.pointers[0].toLowerCase()
 
-    // Update L1: Hot cache
     hotProfilesCache.setIfNewer(pointer, profile)
 
-    // Update L2: Redis cache
-    try {
-      const redisKey = `${REDIS_PROFILE_PREFIX}${pointer}`
-      await memoryStorage.set<string>(redisKey, JSON.stringify(profile), FOUR_HOURS_IN_SECONDS)
-    } catch (error: any) {
-      logger.warn('Failed to update profile in Redis', { pointer, error: error.message })
-    }
-
-    // Update L3: Database
     try {
       const dbProfile: Sync.ProfileDbEntity = {
         id: profile.id,

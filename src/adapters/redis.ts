@@ -54,61 +54,15 @@ export async function createRedisComponent(
     }
   }
 
-  async function set<T>(key: string, value: T, ttlSeconds?: number): Promise<void> {
+  async function set<T>(key: string, value: T): Promise<void> {
     try {
       const serializedValue = JSON.stringify(value)
       await client.set(key, serializedValue, {
-        EX: ttlSeconds ?? SEVEN_DAYS_IN_SECONDS // expiration time (TTL)
+        EX: SEVEN_DAYS_IN_SECONDS // expiration time (TTL)
       })
       logger.debug(`Successfully set key "${key}"`)
     } catch (err: any) {
       logger.error(`Error setting key "${key}"`, err)
-      throw err
-    }
-  }
-
-  async function getMany<T>(keys: string[]): Promise<Map<string, T>> {
-    const result = new Map<string, T>()
-    if (keys.length === 0) {
-      return result
-    }
-
-    try {
-      const values = await client.mGet(keys)
-      keys.forEach((key, index) => {
-        const value = values[index]
-        if (value) {
-          try {
-            result.set(key, JSON.parse(value) as T)
-          } catch {
-            logger.warn(`Failed to parse value for key "${key}"`)
-          }
-        }
-      })
-      logger.debug(`Successfully retrieved ${result.size}/${keys.length} keys`)
-      return result
-    } catch (err: any) {
-      logger.error('Error getting multiple keys', err)
-      throw err
-    }
-  }
-
-  async function setMany<T>(entries: Array<{ key: string; value: T }>, ttlSeconds?: number): Promise<void> {
-    if (entries.length === 0) {
-      return
-    }
-
-    try {
-      const pipeline = client.multi()
-      const effectiveTtl = ttlSeconds ?? SEVEN_DAYS_IN_SECONDS
-      for (const { key, value } of entries) {
-        const serializedValue = JSON.stringify(value)
-        pipeline.set(key, serializedValue, { EX: effectiveTtl })
-      }
-      await pipeline.exec()
-      logger.debug(`Successfully set ${entries.length} keys in batch`)
-    } catch (err: any) {
-      logger.error('Error setting multiple keys', err)
       throw err
     }
   }
@@ -146,8 +100,6 @@ export async function createRedisComponent(
   return {
     get,
     set,
-    getMany,
-    setMany,
     purge,
     flush,
     start,

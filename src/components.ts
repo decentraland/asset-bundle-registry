@@ -150,7 +150,6 @@ export async function initComponents(): Promise<AppComponents> {
     logs,
     catalyst,
     hotProfilesCache,
-    memoryStorage,
     db
   })
 
