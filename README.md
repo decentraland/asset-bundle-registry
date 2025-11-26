@@ -39,13 +39,12 @@ Centralized reactive cache for fetching user profiles with high availability and
 ### Cache Architecture
 
 ```
-L1 Hot Cache (LRU) → L2 Redis (4h TTL) → L3 Database → L4 Catalyst
+L1 Hot Cache (LRU) → L2 Database → L3 Catalyst
 ```
 
 - **L1**: In-memory LRU, instant access, timestamp-validated
-- **L2**: Redis/memory cache, 4-hour TTL, evicted on new deployments
-- **L3**: PostgreSQL, persistent storage
-- **L4**: Catalyst fallback for cache misses
+- **L2**: PostgreSQL, persistent storage
+- **L3**: Catalyst fallback for cache misses
 
 ### Components
 
@@ -53,7 +52,7 @@ L1 Hot Cache (LRU) → L2 Redis (4h TTL) → L3 Database → L4 Catalyst
 |-----------|---------|
 | `synchronizer` | Orchestrates bootstrap and incremental sync phases |
 | `entity-tracker` | Deduplication (LRU) + permanent tracking (Bloom filter) |
-| `entity-persistent` | Persists to caches/DB, evicts stale Redis entries |
+| `entity-persistent` | Persists to in-memory cache and database |
 | `hot-profiles-cache` | L1 in-memory cache with timestamp validation |
 | `profile-retriever` | Multi-layer cache lookup with batch operations |
 
@@ -66,25 +65,16 @@ sequenceDiagram
     alt Cache Hit
         L1 Hot Cache-->>Client: Profile
     else Cache Miss
-        ProfileRetriever->>L2 Redis: get(pointer)
-        alt Cache Hit
-            L2 Redis-->>ProfileRetriever: Profile
+        ProfileRetriever->>L2 Database: getProfileByPointer()
+        alt Found
+            L2 Database-->>ProfileRetriever: Profile
             ProfileRetriever->>L1 Hot Cache: setIfNewer()
             ProfileRetriever-->>Client: Profile
-        else Cache Miss
-            ProfileRetriever->>L3 Database: getProfileByPointer()
-            alt Found
-                L3 Database-->>ProfileRetriever: Profile
-                ProfileRetriever->>L1 Hot Cache: setIfNewer()
-                ProfileRetriever->>L2 Redis: set(TTL: 4h)
-                ProfileRetriever-->>Client: Profile
-            else Not Found
-                ProfileRetriever->>L4 Catalyst: getEntityByPointers()
-                L4 Catalyst-->>ProfileRetriever: Profile
-                ProfileRetriever->>L1 Hot Cache: setIfNewer()
-                ProfileRetriever->>L2 Redis: set(TTL: 4h)
-                ProfileRetriever-->>Client: Profile
-            end
+        else Not Found
+            ProfileRetriever->>L3 Catalyst: getEntityByPointers()
+            L3 Catalyst-->>ProfileRetriever: Profile
+            ProfileRetriever->>L1 Hot Cache: setIfNewer()
+            ProfileRetriever-->>Client: Profile
         end
     end
 ```
