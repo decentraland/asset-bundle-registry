@@ -38,6 +38,7 @@ import { Sync } from './types'
 import { createSnapshotsHandlerComponent } from './logic/sync/snapshots-handler'
 import { createProfileSanitizerComponent } from './logic/sync/profile-sanitizer'
 import { createPointerChangesHandlerComponent } from './logic/sync/pointer-changes-handler'
+import { createFailedProfilesRetrierComponent } from './logic/sync/failed-profiles-retrier'
 
 // Initialize all the components of the app
 export async function initComponents(): Promise<AppComponents> {
@@ -150,17 +151,21 @@ export async function initComponents(): Promise<AppComponents> {
     entityPersistent,
     profileSanitizer
   })
+  const failedProfilesRetrier = createFailedProfilesRetrierComponent({
+    logs,
+    db,
+    profileSanitizer,
+    entityPersistent
+  })
   const synchronizer = await createSynchronizerComponent({
     logs,
     config,
-    fetch,
-    metrics,
     entityPersistent,
     memoryStorage,
     db,
-    catalyst,
     snapshotsHandler,
-    pointerChangesHandler
+    pointerChangesHandler,
+    failedProfilesRetrier
   })
   const profileRetriever = createProfileRetriever({
     logs,
@@ -204,6 +209,7 @@ export async function initComponents(): Promise<AppComponents> {
     ownershipValidator,
     profileSanitizer,
     snapshotsHandler,
-    pointerChangesHandler
+    pointerChangesHandler,
+    failedProfilesRetrier
   }
 }

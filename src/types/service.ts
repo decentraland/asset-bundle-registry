@@ -154,9 +154,13 @@ export interface IProfilesSynchronizerComponent {
   syncProfiles(fromTimestamp: number): Promise<number>
 }
 
+export interface IFailedProfilesRetrierComponent {
+  retryFailedProfiles(): Promise<void>
+}
+
 export interface IProfileSanitizerComponent {
   sanitizeProfiles(
-    minimalProfiles: Sync.ProfileDeployment[],
+    minimalProfiles: Sync.ProfileDeployment[] | Sync.FailedProfileFetch[],
     notFoundProfilesHandler: (profile: Sync.ProfileDeployment) => Promise<void>
   ): Promise<Entity[]>
 }

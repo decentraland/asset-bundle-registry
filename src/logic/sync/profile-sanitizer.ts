@@ -9,7 +9,7 @@ export function createProfileSanitizerComponent({
 }: Pick<AppComponents, 'catalyst'>): IProfileSanitizerComponent {
   async function sanitizeProfiles(
     minimalProfiles: Sync.ProfileDeployment[],
-    notFoundProfilesHandler: (profile: Sync.ProfileDeployment) => Promise<void>
+    notFoundProfilesHandler: (profile: Sync.ProfileDeployment | Sync.FailedProfileFetch) => Promise<void>
   ): Promise<Entity[]> {
     if (minimalProfiles.length === 0) {
       return []
