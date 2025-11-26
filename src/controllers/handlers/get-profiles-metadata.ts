@@ -1,3 +1,4 @@
+import { Entity, Profile } from '@dcl/schemas'
 import { HandlerContextWithPath } from '../../types'
 
 export async function getProfilesMetadataHandler(
@@ -13,15 +14,13 @@ export async function getProfilesMetadataHandler(
   const profilesMap = await profileRetriever.getProfiles(pointers)
 
   return {
-    body: Array.from(profilesMap.values()).map((profile) => ({
-      pointer: profile.pointers[0],
-      hasClaimedName: profile.metadata.hasClaimedName,
-      unclaimedName: profile.metadata.unclaimedName,
-      name: profile.metadata.name,
-      description: profile.metadata.description
-    })),
-    headers: {
-      'Content-Type': 'application/json'
-    }
+    body: Array.from(profilesMap.values()).map((profile: Entity) => {
+      const avatar = (profile.metadata as Profile).avatars[0]
+      return {
+        pointer: profile.pointers[0],
+        hasClaimedName: avatar.hasClaimedName,
+        name: avatar.name
+      }
+    })
   }
 }

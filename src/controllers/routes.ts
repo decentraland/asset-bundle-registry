@@ -9,14 +9,11 @@ import { createRegistryHandler } from './handlers/post-registry'
 import { flushCacheHandler } from '../logic/handlers/flush-cache-handler'
 import { getEntityVersionsHandler } from './handlers/get-entity-versions'
 import { getProfilesHandler } from './handlers/get-profiles'
-import { resetSyncStateHandler } from '../logic/handlers/reset-sync-state-handler'
 import { getProfilesMetadataHandler } from './handlers/get-profiles-metadata'
 
 export async function setupRouter(globalContext: GlobalContext): Promise<Router<GlobalContext>> {
   const router = new Router<GlobalContext>()
   router.use(errorHandler)
-
-  router.post('/reset-sync-state', resetSyncStateHandler)
 
   const signedFetchMiddleware = wellKnownComponents({
     fetcher: globalContext.components.fetch,
