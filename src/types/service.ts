@@ -150,8 +150,15 @@ export interface ISynchronizerComponent extends IBaseComponent {
   resetSyncState(): Promise<void>
 }
 
-export interface ISnapshotsHandlerComponent {
+export interface IProfilesSynchronizerComponent {
   syncProfiles(fromTimestamp: number): Promise<number>
+}
+
+export interface IProfileSanitizerComponent {
+  sanitizeProfiles(
+    minimalProfiles: Sync.ProfileDeployment[],
+    notFoundProfilesHandler: (profile: Sync.ProfileDeployment) => Promise<void>
+  ): Promise<Entity[]>
 }
 
 export interface IProfileRetrieverComponent {

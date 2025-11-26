@@ -1,6 +1,6 @@
 import { IBaseComponent } from '@well-known-components/interfaces'
 import { getDeployedEntitiesStreamFromPointerChanges } from '@dcl/snapshots-fetcher'
-import { Entity, EntityType, PointerChangesSyncDeployment } from '@dcl/schemas'
+import { Entity, EntityType } from '@dcl/schemas'
 import { AppComponents, ISynchronizerComponent, Sync } from '../../types'
 import { SYNC_STATE_KEY } from '../../types/constants'
 import { withTimeout } from '../../utils/async-utils'
@@ -42,9 +42,21 @@ export async function createSynchronizerComponent(
     | 'db'
     | 'catalyst'
     | 'snapshotsHandler'
+    | 'pointerChangesHandler'
   >
 ): Promise<ISynchronizerComponent & IBaseComponent> {
-  const { logs, config, fetch, metrics, entityPersistent, memoryStorage, db, catalyst, snapshotsHandler } = components
+  const {
+    logs,
+    config,
+    fetch,
+    metrics,
+    entityPersistent,
+    memoryStorage,
+    db,
+    catalyst,
+    snapshotsHandler,
+    pointerChangesHandler
+  } = components
   const logger = logs.getLogger('synchronizer')
   const PRIMARY_CATALYST = await config.requireString('CATALYST_LOADBALANCER_HOST')
 
@@ -111,24 +123,6 @@ export async function createSynchronizerComponent(
       genesisTimestamp: new Date(GENESIS_TIMESTAMP).toISOString()
     })
     return GENESIS_TIMESTAMP
-  }
-
-  async function processProfileEntity(deployedEntity: PointerChangesSyncDeployment): Promise<void> {
-    if (deployedEntity.entityType !== 'profile') {
-      return
-    }
-
-    const profileEntity: Entity = {
-      version: 'v3',
-      id: deployedEntity.entityId,
-      type: EntityType.PROFILE,
-      pointers: deployedEntity.pointers,
-      timestamp: deployedEntity.entityTimestamp,
-      content: [],
-      metadata: {}
-    }
-
-    await entityPersistent.persistEntity(profileEntity)
   }
 
   // Batch fetch complete entity data from Catalyst and convert to Profile.Entity
@@ -583,41 +577,6 @@ export async function createSynchronizerComponent(
     await persistState()
   }
 
-  async function syncFromCatalyst(serverUrl: string, fromTimestamp: number): Promise<number> {
-    let lastTimestamp = fromTimestamp
-
-    try {
-      logger.debug('Starting sync from catalyst', { serverUrl, fromTimestamp })
-
-      const stream = getDeployedEntitiesStreamFromPointerChanges(
-        {
-          fetcher: fetch,
-          metrics: metrics as any,
-          logs: logs
-        },
-        {
-          fromTimestamp: fromTimestamp,
-          pointerChangesWaitTime: POINTER_CHANGES_WAIT_TIME_MS
-        },
-        serverUrl
-      )
-
-      for await (const deployedEntity of stream) {
-        if (!running) break
-
-        await processProfileEntity(deployedEntity)
-        lastTimestamp = Math.max(lastTimestamp, deployedEntity.entityTimestamp)
-      }
-    } catch (error: any) {
-      logger.error('Error syncing from catalyst', {
-        serverUrl,
-        error: error.message
-      })
-    }
-
-    return lastTimestamp
-  }
-
   async function runPointerChangesLoop(): Promise<void> {
     while (running) {
       const fromTimestamp = syncState.lastPointerChangesCheck || Date.now()
@@ -627,7 +586,7 @@ export async function createSynchronizerComponent(
         fromTimestamp: new Date(fromTimestamp).toISOString()
       })
 
-      const newTimestamp = await syncFromCatalyst(PRIMARY_CATALYST + '/content', fromTimestamp)
+      const newTimestamp = await pointerChangesHandler.syncProfiles(fromTimestamp)
 
       if (newTimestamp > syncState.lastPointerChangesCheck) {
         syncState.lastPointerChangesCheck = newTimestamp

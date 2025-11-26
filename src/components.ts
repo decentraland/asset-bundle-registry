@@ -36,6 +36,8 @@ import {
 import { createProfileRetriever } from './logic/profile-retriever'
 import { Sync } from './types'
 import { createSnapshotsHandlerComponent } from './logic/sync/snapshots-handler'
+import { createProfileSanitizerComponent } from './logic/sync/profile-sanitizer'
+import { createPointerChangesHandlerComponent } from './logic/sync/pointer-changes-handler'
 
 // Initialize all the components of the app
 export async function initComponents(): Promise<AppComponents> {
@@ -100,6 +102,7 @@ export async function initComponents(): Promise<AppComponents> {
     : createInMemoryCacheComponent()
 
   const catalyst = await createCatalystAdapter({ logs, fetch, config })
+  const profileSanitizer = createProfileSanitizerComponent({ catalyst })
   const worlds = await createWorldsAdapter({ logs, config, fetch })
   const registryOrchestrator = createRegistryOrchestratorComponent({ logs, db, metrics })
   const entityStatusFetcher = await createEntityStatusFetcherComponent({ fetch, logs, config })
@@ -126,8 +129,7 @@ export async function initComponents(): Promise<AppComponents> {
     logs,
     db,
     hotProfilesCache,
-    entityTracker,
-    memoryStorage
+    entityTracker
   })
   const snapshotsHandler = await createSnapshotsHandlerComponent({
     logs,
@@ -135,9 +137,18 @@ export async function initComponents(): Promise<AppComponents> {
     metrics,
     fetch,
     db,
-    catalyst,
     entityPersistent,
-    snapshotContentStorage
+    snapshotContentStorage,
+    profileSanitizer
+  })
+  const pointerChangesHandler = await createPointerChangesHandlerComponent({
+    logs,
+    config,
+    metrics,
+    fetch,
+    db,
+    entityPersistent,
+    profileSanitizer
   })
   const synchronizer = await createSynchronizerComponent({
     logs,
@@ -148,7 +159,8 @@ export async function initComponents(): Promise<AppComponents> {
     memoryStorage,
     db,
     catalyst,
-    snapshotsHandler
+    snapshotsHandler,
+    pointerChangesHandler
   })
   const profileRetriever = createProfileRetriever({
     logs,
@@ -190,6 +202,8 @@ export async function initComponents(): Promise<AppComponents> {
     profileRetriever,
     snapshotContentStorage,
     ownershipValidator,
-    snapshotsHandler
+    profileSanitizer,
+    snapshotsHandler,
+    pointerChangesHandler
   }
 }

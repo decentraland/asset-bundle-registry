@@ -24,7 +24,8 @@ import {
   ISynchronizerComponent,
   IProfileRetrieverComponent,
   SnapshotContentStorageComponent,
-  ISnapshotsHandlerComponent
+  IProfileSanitizerComponent,
+  IProfilesSynchronizerComponent
 } from './service'
 import { metricDeclarations } from '../metrics'
 
@@ -63,7 +64,9 @@ export type AppComponents = BaseComponents & {
   synchronizer: ISynchronizerComponent & IBaseComponent
   ownershipValidator: IBaseComponent
   snapshotContentStorage: SnapshotContentStorageComponent
-  snapshotsHandler: ISnapshotsHandlerComponent
+  profileSanitizer: IProfileSanitizerComponent
+  snapshotsHandler: IProfilesSynchronizerComponent
+  pointerChangesHandler: IProfilesSynchronizerComponent
 }
 
 // components used in tests

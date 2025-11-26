@@ -18,9 +18,9 @@ const DB_PERSISTENCE_CONCURRENCY = 30
  * @return {*}  {IEntityPersistentComponent}
  */
 export function createEntityMultiLayerPersisterComponent(
-  components: Pick<AppComponents, 'logs' | 'db' | 'hotProfilesCache' | 'entityTracker' | 'memoryStorage'>
+  components: Pick<AppComponents, 'logs' | 'db' | 'hotProfilesCache' | 'entityTracker'>
 ): IEntityPersistentComponent {
-  const { logs, db, hotProfilesCache, entityTracker, memoryStorage } = components
+  const { logs, db, hotProfilesCache, entityTracker } = components
   const logger = logs.getLogger('entity-persistent')
 
   let bootstrapComplete = false

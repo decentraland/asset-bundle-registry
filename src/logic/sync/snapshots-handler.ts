@@ -1,12 +1,8 @@
 import { SnapshotMetadata } from '@dcl/snapshots-fetcher/dist/types'
-import { AppComponents, ISnapshotsHandlerComponent, Sync } from '../../types'
+import { AppComponents, IProfilesSynchronizerComponent, Sync } from '../../types'
 import { getDeployedEntitiesStreamFromSnapshot } from '@dcl/snapshots-fetcher'
 import { SNAPSHOT_DOWNLOAD_FOLDER } from '../../types/constants'
-import { Entity, EntityType } from '@dcl/schemas'
-import { withRetry } from '../../utils/timer'
-import { withTimeout } from '../../utils/async-utils'
-
-const THIRTY_SECONDS_IN_MS = 30000
+import { EntityType } from '@dcl/schemas'
 
 export async function createSnapshotsHandlerComponent({
   config,
@@ -14,13 +10,13 @@ export async function createSnapshotsHandlerComponent({
   metrics,
   fetch,
   db,
-  catalyst,
+  profileSanitizer,
   entityPersistent,
   snapshotContentStorage
 }: Pick<
   AppComponents,
-  'config' | 'logs' | 'metrics' | 'fetch' | 'db' | 'catalyst' | 'entityPersistent' | 'snapshotContentStorage'
->): Promise<ISnapshotsHandlerComponent> {
+  'config' | 'logs' | 'metrics' | 'fetch' | 'db' | 'profileSanitizer' | 'entityPersistent' | 'snapshotContentStorage'
+>): Promise<IProfilesSynchronizerComponent> {
   const CATALYST_LOAD_BALANCER = await config.requireString('CATALYST_LOADBALANCER_HOST')
   const logger = logs.getLogger('snapshots-handler')
 
@@ -44,33 +40,6 @@ export async function createSnapshotsHandlerComponent({
     const snapshotsToProcess = sortedSnapshots.filter((s) => s.timeRange.initTimestamp < currentTime)
 
     return snapshotsToProcess
-  }
-
-  async function fetchProfiles(profilesFromSnapshots: Array<Sync.ProfileDeployment>): Promise<Entity[]> {
-    const entityIdsToFetch = Array.from(new Set(profilesFromSnapshots.map((p) => p.entityId)))
-
-    logger.info(`Fetching ${entityIdsToFetch.length} profiles from Catalyst`)
-
-    const profilesFetched: Entity[] = await withRetry(() =>
-      withTimeout(catalyst.getEntitiesByIds(entityIdsToFetch), THIRTY_SECONDS_IN_MS)
-    )
-
-    for (const profileFromSnapshot of profilesFromSnapshots) {
-      const profile = profilesFetched.find((p) => p.id === profileFromSnapshot.entityId)
-      if (!profile) {
-        await db.insertFailedProfileFetch({
-          entityId: profileFromSnapshot.entityId,
-          pointer: profileFromSnapshot.pointer,
-          timestamp: profileFromSnapshot.timestamp,
-          authChain: profileFromSnapshot.authChain,
-          firstFailedAt: Date.now(),
-          retryCount: 0,
-          errorMessage: 'Profile not found in Catalyst response'
-        })
-      }
-    }
-
-    return profilesFetched
   }
 
   async function processSnapshots(snapshots: SnapshotMetadata[]): Promise<number> {
@@ -122,7 +91,17 @@ export async function createSnapshotsHandlerComponent({
         }
       }
 
-      const profilesFetched = await fetchProfiles(extractedProfiles)
+      const profilesFetched = await profileSanitizer.sanitizeProfiles(extractedProfiles, (profile) => {
+        return db.insertFailedProfileFetch({
+          entityId: profile.entityId,
+          pointer: profile.pointer,
+          timestamp: profile.timestamp,
+          authChain: profile.authChain,
+          firstFailedAt: Date.now(),
+          retryCount: 0,
+          errorMessage: 'Profile not found in Catalyst response'
+        })
+      })
       await Promise.all(profilesFetched.map((p) => entityPersistent.persistEntity(p)))
       await db.markSnapshotProcessed(snapshot.hash)
       lastProcessedTimestamp = Math.max(lastProcessedTimestamp, snapshot.timeRange.endTimestamp)
