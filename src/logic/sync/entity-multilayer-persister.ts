@@ -42,17 +42,6 @@ export function createEntityMultiLayerPersisterComponent(
     // mark as processed in bloom filter (permanent tracking)
     entityTracker.markAsProcessed(entity.id)
 
-    // evict potentially stale profile from Redis cache
-    // this ensures the next read fetches fresh data from database or hot cache
-    const redisKey = `${REDIS_PROFILE_PREFIX}${entity.pointers[0].toLowerCase()}`
-    memoryStorage.purge(redisKey).catch((error) => {
-      logger.warn('Failed to evict profile from Redis cache', {
-        entityId: entity.id,
-        pointer: entity.pointers[0],
-        error: error.message
-      })
-    })
-
     const dbEntity: Sync.ProfileDbEntity = {
       ...entity,
       pointer: entity.pointers[0],

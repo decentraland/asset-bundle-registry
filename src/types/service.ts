@@ -150,6 +150,10 @@ export interface ISynchronizerComponent extends IBaseComponent {
   resetSyncState(): Promise<void>
 }
 
+export interface ISnapshotsHandlerComponent {
+  syncProfiles(fromTimestamp: number): Promise<number>
+}
+
 export interface IProfileRetrieverComponent {
   getProfile(pointer: string): Promise<Entity | null>
   getProfiles(pointers: string[]): Promise<Map<string, Entity>>

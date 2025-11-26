@@ -1,11 +1,9 @@
 import { IBaseComponent } from '@well-known-components/interfaces'
-import {
-  getDeployedEntitiesStreamFromPointerChanges,
-  getDeployedEntitiesStreamFromSnapshot
-} from '@dcl/snapshots-fetcher'
+import { getDeployedEntitiesStreamFromPointerChanges } from '@dcl/snapshots-fetcher'
 import { Entity, EntityType, PointerChangesSyncDeployment } from '@dcl/schemas'
 import { AppComponents, ISynchronizerComponent, Sync } from '../../types'
-import { SYNC_STATE_KEY, SNAPSHOT_DOWNLOAD_FOLDER } from '../../types/constants'
+import { SYNC_STATE_KEY } from '../../types/constants'
+import { withTimeout } from '../../utils/async-utils'
 
 const POINTER_CHANGES_POLL_INTERVAL_MS = 5000 // 5 seconds
 const POINTER_CHANGES_WAIT_TIME_MS = 1000 // Wait time between API calls within stream
@@ -18,7 +16,6 @@ const SNAPSHOT_THRESHOLD_DAYS = 7 // Use snapshots if gap > 7 days
 const GENESIS_TIMESTAMP = 1577836800000 // 2020-01-01T00:00:00Z
 
 // Batch sizes for entity enrichment
-const SNAPSHOT_BATCH_SIZE = 50 // Batch size for fetching complete entity data during snapshots
 const POINTER_CHANGES_BATCH_SIZE = 20 // Smaller batch for pointer-changes
 const BATCH_FETCH_DELAY_MS = 200 // Delay between batch fetches to avoid overwhelming Catalyst
 const ENTITY_FETCH_TIMEOUT_MS = 30000 // 30 second timeout for fetching entity data
@@ -33,17 +30,6 @@ type PersistedSyncState = {
   bootstrapComplete: boolean
 }
 
-type SnapshotMetadata = {
-  hash: string
-  timeRange: {
-    initTimestamp: number
-    endTimestamp: number
-  }
-  numberOfEntities: number
-  replacedSnapshotHashes?: string[]
-  generationTimestamp: number
-}
-
 export async function createSynchronizerComponent(
   components: Pick<
     AppComponents,
@@ -54,12 +40,11 @@ export async function createSynchronizerComponent(
     | 'entityPersistent'
     | 'memoryStorage'
     | 'db'
-    | 'snapshotContentStorage'
     | 'catalyst'
+    | 'snapshotsHandler'
   >
 ): Promise<ISynchronizerComponent & IBaseComponent> {
-  const { logs, config, fetch, metrics, entityPersistent, memoryStorage, db, snapshotContentStorage, catalyst } =
-    components
+  const { logs, config, fetch, metrics, entityPersistent, memoryStorage, db, catalyst, snapshotsHandler } = components
   const logger = logs.getLogger('synchronizer')
   const PRIMARY_CATALYST = await config.requireString('CATALYST_LOADBALANCER_HOST')
 
@@ -128,43 +113,6 @@ export async function createSynchronizerComponent(
     return GENESIS_TIMESTAMP
   }
 
-  async function fetchSnapshotMetadata(): Promise<SnapshotMetadata[]> {
-    try {
-      const response = await fetch.fetch(`${PRIMARY_CATALYST}/content/snapshots`)
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-      }
-      const snapshots: SnapshotMetadata[] = await response.json()
-      logger.info('Fetched snapshot metadata', { count: snapshots.length })
-      return snapshots
-    } catch (error: any) {
-      logger.error('Failed to fetch snapshot metadata', { error: error.message })
-      return []
-    }
-  }
-
-  function selectSnapshotsToProcess(
-    snapshots: SnapshotMetadata[],
-    fromTimestamp: number,
-    currentTime: number
-  ): SnapshotMetadata[] {
-    // Sort oldest first
-    const sorted = snapshots.sort((a, b) => a.timeRange.initTimestamp - b.timeRange.initTimestamp)
-
-    // Filter: only snapshots with data newer than fromTimestamp
-    const relevant = sorted.filter(
-      (s) => s.timeRange.endTimestamp > fromTimestamp && s.timeRange.initTimestamp < currentTime
-    )
-
-    logger.info('Selected snapshots to process', {
-      total: snapshots.length,
-      relevant: relevant.length,
-      fromTimestamp: new Date(fromTimestamp).toISOString()
-    })
-
-    return relevant
-  }
-
   async function processProfileEntity(deployedEntity: PointerChangesSyncDeployment): Promise<void> {
     if (deployedEntity.entityType !== 'profile') {
       return
@@ -181,23 +129,6 @@ export async function createSynchronizerComponent(
     }
 
     await entityPersistent.persistEntity(profileEntity)
-  }
-
-  // Helper function to fetch with timeout
-  async function fetchWithTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
-    let timeoutHandle: NodeJS.Timeout
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      timeoutHandle = setTimeout(() => reject(new Error(`Operation timed out after ${timeoutMs}ms`)), timeoutMs)
-    })
-
-    try {
-      const result = await Promise.race([promise, timeoutPromise])
-      clearTimeout(timeoutHandle!)
-      return result
-    } catch (error) {
-      clearTimeout(timeoutHandle!)
-      throw error
-    }
   }
 
   // Batch fetch complete entity data from Catalyst and convert to Profile.Entity
@@ -224,7 +155,7 @@ export async function createSynchronizerComponent(
       try {
         logger.debug('Attempting to fetch entity batch', { attempt, maxRetries: ENTITY_FETCH_MAX_RETRIES })
 
-        completeEntities = await fetchWithTimeout(catalyst.getEntitiesByIds(entityIds), ENTITY_FETCH_TIMEOUT_MS)
+        completeEntities = await withTimeout(catalyst.getEntitiesByIds(entityIds), ENTITY_FETCH_TIMEOUT_MS)
 
         fetchSuccess = true
         break
@@ -404,7 +335,7 @@ export async function createSynchronizerComponent(
       // Use same retry logic as enrichAndDeployProfiles
       for (let attempt = 1; attempt <= ENTITY_FETCH_MAX_RETRIES; attempt++) {
         try {
-          completeEntities = await fetchWithTimeout(catalyst.getEntitiesByIds(entityIds), ENTITY_FETCH_TIMEOUT_MS)
+          completeEntities = await withTimeout(catalyst.getEntitiesByIds(entityIds), ENTITY_FETCH_TIMEOUT_MS)
           fetchSuccess = true
           break
         } catch (error: any) {
@@ -488,179 +419,6 @@ export async function createSynchronizerComponent(
     }
 
     return { retried, succeeded, failed }
-  }
-
-  async function bootstrapFromSnapshots(fromTimestamp: number): Promise<number> {
-    logger.info('=== STARTING SNAPSHOT-BASED BOOTSTRAP ===')
-
-    const snapshots = await fetchSnapshotMetadata()
-    if (snapshots.length === 0) {
-      logger.warn('No snapshots available from Catalyst, falling back to pointer-changes')
-      return fromTimestamp
-    }
-
-    logger.info('Snapshot metadata fetched', {
-      totalSnapshots: snapshots.length,
-      oldestSnapshot: new Date(Math.min(...snapshots.map((s) => s.timeRange.initTimestamp))).toISOString(),
-      newestSnapshot: new Date(Math.max(...snapshots.map((s) => s.timeRange.endTimestamp))).toISOString()
-    })
-
-    const currentTime = Date.now()
-    const snapshotsToProcess = selectSnapshotsToProcess(snapshots, fromTimestamp, currentTime)
-
-    if (snapshotsToProcess.length === 0) {
-      logger.info('No relevant snapshots to process (all may be older than fromTimestamp)')
-      return fromTimestamp
-    }
-
-    logger.info('Snapshots selected for processing', {
-      count: snapshotsToProcess.length,
-      firstSnapshotHash: snapshotsToProcess[0]?.hash.substring(0, 30) || 'none',
-      lastSnapshotHash: snapshotsToProcess[snapshotsToProcess.length - 1]?.hash.substring(0, 30) || 'none'
-    })
-
-    let lastProcessedTimestamp = fromTimestamp
-    let totalProfilesProcessed = 0
-    let totalEntitiesProcessed = 0
-    let snapshotsProcessedCount = 0
-
-    for (const snapshotMeta of snapshotsToProcess) {
-      if (!running) break
-
-      // Check if already processed
-      const alreadyProcessed = await db.isSnapshotProcessed(snapshotMeta.hash)
-      if (alreadyProcessed) {
-        logger.info('Skipping already processed snapshot', {
-          hash: snapshotMeta.hash.substring(0, 30),
-          timeRangeEnd: new Date(snapshotMeta.timeRange.endTimestamp).toISOString()
-        })
-        // Update timestamp to skip ahead
-        lastProcessedTimestamp = Math.max(lastProcessedTimestamp, snapshotMeta.timeRange.endTimestamp)
-        snapshotsProcessedCount++
-        continue
-      }
-
-      logger.info(`=== PROCESSING SNAPSHOT ${snapshotsProcessedCount + 1}/${snapshotsToProcess.length} ===`, {
-        hash: snapshotMeta.hash.substring(0, 30),
-        timeRangeInit: new Date(snapshotMeta.timeRange.initTimestamp).toISOString(),
-        timeRangeEnd: new Date(snapshotMeta.timeRange.endTimestamp).toISOString(),
-        totalEntitiesInSnapshot: snapshotMeta.numberOfEntities
-      })
-
-      let snapshotProfilesProcessed = 0
-      let snapshotEntitiesProcessed = 0
-
-      try {
-        // Use the snapshot's init timestamp to process ALL entities in this snapshot
-        // We want to process the entire snapshot file, not just entities newer than our last processed
-        const snapshotFromTimestamp = Math.max(fromTimestamp, snapshotMeta.timeRange.initTimestamp)
-        logger.info('Processing snapshot with timestamp filter', {
-          snapshotHash: snapshotMeta.hash.substring(0, 20),
-          fromTimestamp: new Date(snapshotFromTimestamp).toISOString(),
-          snapshotInitTimestamp: new Date(snapshotMeta.timeRange.initTimestamp).toISOString()
-        })
-
-        const stream = getDeployedEntitiesStreamFromSnapshot(
-          {
-            logs: logs,
-            metrics: metrics as any,
-            storage: snapshotContentStorage
-          },
-          {
-            fromTimestamp: snapshotFromTimestamp,
-            requestRetryWaitTime: 1000,
-            requestMaxRetries: 5,
-            tmpDownloadFolder: SNAPSHOT_DOWNLOAD_FOLDER,
-            deleteSnapshotAfterUsage: true
-          },
-          snapshotMeta.hash,
-          new Set([PRIMARY_CATALYST + '/content'])
-        )
-
-        // Collect profiles in batches for enrichment
-        const profileBatch: Array<Sync.ProfileDeployment> = []
-
-        for await (const entity of stream) {
-          if (!running) break
-
-          snapshotEntitiesProcessed++
-          totalEntitiesProcessed++
-
-          if (entity.entityType === 'profile') {
-            profileBatch.push({
-              entityId: entity.entityId,
-              pointer: entity.pointers[0],
-              timestamp: entity.entityTimestamp,
-              authChain: entity.authChain
-            })
-
-            lastProcessedTimestamp = Math.max(lastProcessedTimestamp, entity.entityTimestamp)
-
-            // Process batch when it reaches the threshold
-            if (profileBatch.length >= SNAPSHOT_BATCH_SIZE) {
-              const result = await enrichAndDeployProfiles(profileBatch)
-              snapshotProfilesProcessed += result.deployed
-              totalProfilesProcessed += result.deployed
-              profileBatch.length = 0 // Clear the batch
-
-              // Add delay to avoid overwhelming Catalyst
-              await new Promise((resolve) => setTimeout(resolve, BATCH_FETCH_DELAY_MS))
-            }
-          }
-
-          // Log progress every 5000 entities
-          if (snapshotEntitiesProcessed % 5000 === 0) {
-            logger.info('Snapshot processing progress', {
-              snapshotHash: snapshotMeta.hash.substring(0, 20),
-              entitiesProcessed: snapshotEntitiesProcessed,
-              profilesFound: snapshotProfilesProcessed,
-              percentComplete: ((snapshotEntitiesProcessed / snapshotMeta.numberOfEntities) * 100).toFixed(1)
-            })
-          }
-        }
-
-        // Process any remaining profiles in the batch
-        if (profileBatch.length > 0) {
-          const result = await enrichAndDeployProfiles(profileBatch)
-          snapshotProfilesProcessed += result.deployed
-          totalProfilesProcessed += result.deployed
-        }
-
-        // Mark snapshot as processed
-        await db.markSnapshotProcessed(snapshotMeta.hash)
-        snapshotsProcessedCount++
-
-        logger.info('=== SNAPSHOT COMPLETED ===', {
-          hash: snapshotMeta.hash.substring(0, 30),
-          entitiesProcessed: snapshotEntitiesProcessed,
-          profilesFound: snapshotProfilesProcessed,
-          totalProfilesSoFar: totalProfilesProcessed,
-          snapshotsCompleted: `${snapshotsProcessedCount}/${snapshotsToProcess.length}`
-        })
-      } catch (error: any) {
-        logger.error('Failed to process snapshot', {
-          hash: snapshotMeta.hash.substring(0, 30),
-          error: error.message,
-          stack: error.stack?.substring(0, 200)
-        })
-        // Continue with next snapshot
-      }
-    }
-
-    // Wait for DB queue to drain
-    await entityPersistent.waitForDrain()
-
-    syncState.lastPointerChangesCheck = lastProcessedTimestamp
-    await persistState()
-
-    logger.info('=== SNAPSHOT BOOTSTRAP PHASE COMPLETE ===', {
-      snapshotsProcessed: snapshotsProcessedCount,
-      totalEntitiesProcessed,
-      totalProfilesFound: totalProfilesProcessed,
-      lastTimestamp: new Date(lastProcessedTimestamp).toISOString()
-    })
-
-    return lastProcessedTimestamp
   }
 
   async function bootstrapFromPointerChanges(fromTimestamp: number): Promise<boolean> {
@@ -798,7 +556,7 @@ export async function createSynchronizerComponent(
       // Phase 1: Use snapshots for large gaps
       if (gapDays > SNAPSHOT_THRESHOLD_DAYS) {
         logger.info('Using snapshot-based bootstrap for large time gap')
-        lastTimestamp = await bootstrapFromSnapshots(fromTimestamp)
+        lastTimestamp = await snapshotsHandler.syncProfiles(fromTimestamp)
       }
 
       // Phase 2: Use pointer-changes for recent data
@@ -919,9 +677,6 @@ export async function createSynchronizerComponent(
         logger.info('Database is ready, profiles table exists')
         return
       } catch (error: any) {
-        if (attempt === maxRetries) {
-          throw new Error(`Database not ready after ${maxRetries} attempts: ${error.message}`)
-        }
         logger.info(`Waiting for database migrations to complete`, { attempt, maxRetries })
         await new Promise((resolve) => setTimeout(resolve, retryDelayMs))
       }

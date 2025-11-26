@@ -23,7 +23,8 @@ import {
   IEntityPersistentComponent,
   ISynchronizerComponent,
   IProfileRetrieverComponent,
-  SnapshotContentStorageComponent
+  SnapshotContentStorageComponent,
+  ISnapshotsHandlerComponent
 } from './service'
 import { metricDeclarations } from '../metrics'
 
@@ -62,6 +63,7 @@ export type AppComponents = BaseComponents & {
   synchronizer: ISynchronizerComponent & IBaseComponent
   ownershipValidator: IBaseComponent
   snapshotContentStorage: SnapshotContentStorageComponent
+  snapshotsHandler: ISnapshotsHandlerComponent
 }
 
 // components used in tests

@@ -33,6 +33,25 @@ export async function createCatalystAdapter({
     return contentClientToReturn
   }
 
+  function withBatches<T extends string[]>(
+    fn: (items: T, ...args: any[]) => Promise<Entity[]>,
+    batchSize: number = 50
+  ): (items: T, ...args: any[]) => Promise<Entity[]> {
+    return async (items: T, ...args: any[]): Promise<Entity[]> => {
+      if (items.length <= batchSize) {
+        return fn(items, ...args)
+      }
+
+      const batches: T[] = []
+      for (let i = 0; i < items.length; i += batchSize) {
+        batches.push(items.slice(i, i + batchSize) as T)
+      }
+
+      const results = await Promise.all(batches.map((batch) => fn(batch, ...args)))
+      return results.flat()
+    }
+  }
+
   async function getEntityById(id: string, options?: CatalystFetchOptions): Promise<Entity | null> {
     try {
       const contentClient = getContentClientOrDefault(options?.overrideContentServerUrl)
@@ -137,5 +156,11 @@ export async function createCatalystAdapter({
     }
   }
 
-  return { getEntityById, getEntitiesByIds, getEntityByPointers, getContent, getSanitizedProfiles }
+  return {
+    getEntityById,
+    getEntitiesByIds: withBatches(getEntitiesByIds),
+    getEntityByPointers: withBatches(getEntityByPointers),
+    getContent,
+    getSanitizedProfiles
+  }
 }

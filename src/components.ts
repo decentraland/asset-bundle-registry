@@ -35,6 +35,7 @@ import {
 } from './logic/sync'
 import { createProfileRetriever } from './logic/profile-retriever'
 import { Sync } from './types'
+import { createSnapshotsHandlerComponent } from './logic/sync/snapshots-handler'
 
 // Initialize all the components of the app
 export async function initComponents(): Promise<AppComponents> {
@@ -128,6 +129,16 @@ export async function initComponents(): Promise<AppComponents> {
     entityTracker,
     memoryStorage
   })
+  const snapshotsHandler = await createSnapshotsHandlerComponent({
+    logs,
+    config,
+    metrics,
+    fetch,
+    db,
+    catalyst,
+    entityPersistent,
+    snapshotContentStorage
+  })
   const synchronizer = await createSynchronizerComponent({
     logs,
     config,
@@ -136,8 +147,8 @@ export async function initComponents(): Promise<AppComponents> {
     entityPersistent,
     memoryStorage,
     db,
-    snapshotContentStorage,
-    catalyst
+    catalyst,
+    snapshotsHandler
   })
   const profileRetriever = createProfileRetriever({
     logs,
@@ -178,6 +189,7 @@ export async function initComponents(): Promise<AppComponents> {
     synchronizer,
     profileRetriever,
     snapshotContentStorage,
-    ownershipValidator
+    ownershipValidator,
+    snapshotsHandler
   }
 }
