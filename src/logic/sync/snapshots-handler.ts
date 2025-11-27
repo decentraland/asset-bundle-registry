@@ -42,11 +42,16 @@ export async function createSnapshotsHandlerComponent({
     return snapshotsToProcess
   }
 
-  async function processSnapshots(snapshots: SnapshotMetadata[]): Promise<number> {
+  async function processSnapshots(snapshots: SnapshotMetadata[], abortSignal: AbortSignal): Promise<number> {
     logger.info(`Processing ${snapshots.length} snapshots`)
     let lastProcessedTimestamp = 0
 
     for (const snapshot of snapshots) {
+      if (abortSignal.aborted) {
+        logger.info('Abort signal received, stopping processing snapshots')
+        break
+      }
+
       const alreadyProcessed = await db.isSnapshotProcessed(snapshot.hash)
       if (alreadyProcessed) {
         logger.info('Skipping already processed snapshot', { hash: snapshot.hash })
@@ -110,7 +115,7 @@ export async function createSnapshotsHandlerComponent({
     return lastProcessedTimestamp
   }
 
-  async function syncProfiles(fromTimestamp: number): Promise<number> {
+  async function syncProfiles(fromTimestamp: number, abortSignal: AbortSignal): Promise<number> {
     logger.info('Syncing profiles from snapshots', { fromTimestamp })
     let lastProcessedTimestamp = fromTimestamp
 
@@ -122,7 +127,7 @@ export async function createSnapshotsHandlerComponent({
         return fromTimestamp
       }
 
-      lastProcessedTimestamp = await processSnapshots(snapshots)
+      lastProcessedTimestamp = await processSnapshots(snapshots, abortSignal)
       return lastProcessedTimestamp
     } catch (error: any) {
       logger.error('Error syncing profiles from snapshots', { error: error.message })

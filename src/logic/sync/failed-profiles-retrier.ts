@@ -10,8 +10,12 @@ export function createFailedProfilesRetrierComponent({
 }: Pick<AppComponents, 'logs' | 'db' | 'profileSanitizer' | 'entityPersistent'>): IFailedProfilesRetrierComponent {
   const logger = logs.getLogger('failed-profiles-retrier')
 
-  async function retryFailedProfiles(): Promise<void> {
+  async function retryFailedProfiles(abortSignal: AbortSignal): Promise<void> {
     try {
+      if (abortSignal.aborted) {
+        return
+      }
+
       const failedDeployments: Sync.FailedProfileFetch[] = await db.getFailedProfileFetches(FIFTY_ITEMS)
 
       if (failedDeployments.length === 0) {

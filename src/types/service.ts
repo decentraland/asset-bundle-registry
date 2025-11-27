@@ -145,17 +145,18 @@ export interface IEntityPersistentComponent {
   waitForDrain(): Promise<void>
 }
 
-export interface ISynchronizerComponent extends IBaseComponent {
-  getSyncState(): Sync.State
-  resetSyncState(): Promise<void>
+export interface ISynchronizerComponent extends IBaseComponent {}
+
+export interface ISynchronizerStateManagerComponent {
+  loadLastCursor(): Promise<number>
 }
 
 export interface IProfilesSynchronizerComponent {
-  syncProfiles(fromTimestamp: number): Promise<number>
+  syncProfiles(fromTimestamp: number, abortSignal: AbortSignal): Promise<number>
 }
 
 export interface IFailedProfilesRetrierComponent {
-  retryFailedProfiles(): Promise<void>
+  retryFailedProfiles(abortSignal: AbortSignal): Promise<void>
 }
 
 export interface IProfileSanitizerComponent {

@@ -43,7 +43,7 @@ export interface RetryOptions {
  * @throws The last error encountered if all retries fail
  */
 export async function withRetry<T>(operation: () => Promise<T>, options?: RetryOptions): Promise<T> {
-  const { maxRetries, retryDelayMs, onRetry } = options
+  const { maxRetries, retryDelayMs, onRetry } = options || { maxRetries: 3, retryDelayMs: 1000, onRetry: () => {} }
   let lastError: Error | undefined
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {

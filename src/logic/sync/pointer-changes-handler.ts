@@ -19,7 +19,7 @@ export async function createPointerChangesHandlerComponent({
   const logger = logs.getLogger('pointer-changes-handler')
   const CATALYST_LOAD_BALANCER = await config.requireString('CATALYST_LOADBALANCER_HOST')
 
-  async function syncProfiles(fromTimestamp: number, abortSignal?: AbortSignal): Promise<number> {
+  async function syncProfiles(fromTimestamp: number, abortSignal: AbortSignal): Promise<number> {
     const entitiesStream = getDeployedEntitiesStreamFromPointerChanges(
       {
         fetcher: fetch,
@@ -35,44 +35,55 @@ export async function createPointerChangesHandlerComponent({
 
     let lastEntityIdHandled = ''
     let lastProfileTimestampProcessed = 0
-    for await (const entity of entitiesStream) {
-      if (!abortSignal?.aborted) {
-        break
-      }
+    const iterator = entitiesStream[Symbol.asyncIterator]()
 
-      if (entity.entityType !== EntityType.PROFILE.toLowerCase() || entity.entityId === lastEntityIdHandled) {
-        continue
-      }
-
-      logger.info('Processing profile', { entityId: entity.entityId, pointer: entity.pointers[0] })
-
-      // TODO: GET /pointer-changes should already return the complete entity data
-      // the type seems to be wrong in the stream.
-      const sanitizedProfile = await profileSanitizer.sanitizeProfiles(
-        [
-          {
-            entityId: entity.entityId,
-            pointer: entity.pointers[0],
-            timestamp: entity.entityTimestamp,
-            authChain: entity.authChain
-          }
-        ],
-        (profile) => {
-          return db.insertFailedProfileFetch({
-            entityId: profile.entityId,
-            pointer: profile.pointer,
-            timestamp: profile.timestamp,
-            authChain: profile.authChain,
-            firstFailedAt: Date.now(),
-            retryCount: 0,
-            errorMessage: 'Profile not found in Catalyst response'
-          })
+    try {
+      while (!abortSignal.aborted) {
+        const result = await iterator.next()
+        if (result.done || result.value.entityId === lastEntityIdHandled) {
+          break
         }
-      )
 
-      await entityPersistent.persistEntity(sanitizedProfile[0])
-      lastEntityIdHandled = entity.entityId
-      lastProfileTimestampProcessed = entity.entityTimestamp
+        const entity = result.value
+
+        if (entity.entityType !== EntityType.PROFILE.toLowerCase()) {
+          continue
+        }
+
+        logger.info('Processing profile', { entityId: entity.entityId, pointer: entity.pointers[0] })
+
+        // TODO: GET /pointer-changes should already return the complete entity data
+        // the type seems to be wrong in the stream.
+        const sanitizedProfile = await profileSanitizer.sanitizeProfiles(
+          [
+            {
+              entityId: entity.entityId,
+              pointer: entity.pointers[0],
+              timestamp: entity.entityTimestamp,
+              authChain: entity.authChain
+            }
+          ],
+          (profile) => {
+            return db.insertFailedProfileFetch({
+              entityId: profile.entityId,
+              pointer: profile.pointer,
+              timestamp: profile.timestamp,
+              authChain: profile.authChain,
+              firstFailedAt: Date.now(),
+              retryCount: 0,
+              errorMessage: 'Profile not found in Catalyst response'
+            })
+          }
+        )
+
+        await entityPersistent.persistEntity(sanitizedProfile[0])
+        lastEntityIdHandled = entity.entityId
+        lastProfileTimestampProcessed = entity.entityTimestamp
+      }
+    } finally {
+      if (iterator.return) {
+        await iterator.return()
+      }
     }
 
     return Math.max(lastProfileTimestampProcessed, fromTimestamp)

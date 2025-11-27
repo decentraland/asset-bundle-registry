@@ -2,7 +2,6 @@ import PQueue from 'p-queue'
 import { AppComponents, IEntityPersistentComponent } from '../../types'
 import { Sync } from '../../types'
 import { Entity } from '@dcl/schemas'
-import { REDIS_PROFILE_PREFIX } from '../../types/constants'
 
 const DB_PERSISTENCE_CONCURRENCY = 30
 

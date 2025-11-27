@@ -1,6 +1,5 @@
 // Redis key prefixes
-export const REDIS_PROFILE_PREFIX = 'profile:'
-export const SYNC_STATE_KEY = 'profile-sync:state'
+export const SYNC_STATE_KEY = 'profile-sync:cursor'
 
 // TTL values (in seconds)
 export const FOUR_HOURS_IN_SECONDS = 4 * 60 * 60
