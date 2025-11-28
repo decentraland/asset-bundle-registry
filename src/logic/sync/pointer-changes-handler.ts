@@ -40,7 +40,7 @@ export async function createPointerChangesHandlerComponent({
     try {
       while (!abortSignal.aborted) {
         const result = await iterator.next()
-        if (result.done || result.value.entityId === lastEntityIdHandled) {
+        if (result.done || !result.value || result.value.entityId === lastEntityIdHandled) {
           break
         }
 
