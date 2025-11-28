@@ -14,6 +14,17 @@ export function createDbMockComponent(): DbComponent {
     getBatchOfDeprecatedRegistriesOlderThan: jest.fn(),
     insertHistoricalRegistry: jest.fn(),
     getHistoricalRegistryById: jest.fn(),
-    getSortedHistoricalRegistriesByOwner: jest.fn()
+    getSortedHistoricalRegistriesByOwner: jest.fn(),
+    getProfileByPointer: jest.fn(),
+    getProfilesByPointers: jest.fn(),
+    upsertProfileIfNewer: jest.fn(),
+    markSnapshotProcessed: jest.fn(),
+    insertFailedProfileFetch: jest.fn(),
+    getFailedProfileFetches: jest.fn(),
+    getLatestProfileTimestamp: jest.fn(),
+    isSnapshotProcessed: jest.fn(),
+    deleteFailedProfileFetch: jest.fn(),
+    updateFailedProfileFetchRetry: jest.fn(),
+    getFailedProfileFetchByEntityId: jest.fn()
   }
 }
