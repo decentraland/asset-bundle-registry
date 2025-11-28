@@ -5,6 +5,7 @@ export function createCatalystMockComponent(): CatalystComponent {
     getEntityById: jest.fn(),
     getEntityByPointers: jest.fn(),
     getContent: jest.fn(),
-    getEntitiesByIds: jest.fn()
+    getEntitiesByIds: jest.fn(),
+    getSanitizedProfiles: jest.fn()
   }
 }

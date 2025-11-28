@@ -39,6 +39,7 @@ export const metricDeclarations = {
     buckets: [1, 5, 10, 20, 50, 100]
   },
   // Metrics required by @dcl/snapshots-fetcher
+  // TODO: make them optional
   dcl_content_download_bytes_total: {
     help: 'Total downloaded bytes from other catalysts',
     type: IMetricsComponent.CounterType,

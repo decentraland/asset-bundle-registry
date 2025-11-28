@@ -22,8 +22,16 @@ export function createSynchronizerComponent(
     | 'failedProfilesRetrier'
   >
 ): ISynchronizerComponent {
-  const { logs, entityPersistent, memoryStorage, db, snapshotsHandler, pointerChangesHandler, failedProfilesRetrier } =
-    components
+  const {
+    logs,
+    config,
+    entityPersistent,
+    memoryStorage,
+    db,
+    snapshotsHandler,
+    pointerChangesHandler,
+    failedProfilesRetrier
+  } = components
   const logger = logs.getLogger('synchronizer')
 
   let running = false
@@ -97,16 +105,13 @@ export function createSynchronizerComponent(
       const isAWeekOld = Date.now() - fromTimestamp > ONE_DAY_MS * 7
       let cursor: number = fromTimestamp
       if (isAWeekOld && !abortSignal.aborted) {
-        console.log('before cursor', cursor)
         cursor =
           (await withRetry(async () => await snapshotsHandler.syncProfiles(fromTimestamp, abortSignal))) ?? cursor
-        console.log('cursor returned', cursor)
         cursor && (await memoryStorage.set(SYNC_STATE_KEY, [cursor]))
       }
 
       const pointerChangesLoopPromise = loop(
         async (signal) => {
-          console.log('syncing pointer changes with cursor ', cursor)
           const newCursor = await pointerChangesHandler.syncProfiles(cursor, signal)
           if (newCursor && newCursor > cursor) {
             cursor = newCursor
@@ -136,6 +141,11 @@ export function createSynchronizerComponent(
   }
 
   async function start(_startOptions?: any): Promise<void> {
+    const shouldStartSynchronizer = (await config.getString('DISABLE_PROFILE_SYNC')) === 'true'
+    if (shouldStartSynchronizer) {
+      logger.info('Profile sync is disabled, skipping')
+      return
+    }
     logger.info('Starting profile synchronizer')
     running = true
     abortController = new AbortController()
