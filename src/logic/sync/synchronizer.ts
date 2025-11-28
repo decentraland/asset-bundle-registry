@@ -3,10 +3,11 @@ import { SYNC_STATE_KEY } from '../../types/constants'
 import { withRetry } from '../../utils/async-utils'
 
 const POINTER_CHANGES_POLL_INTERVAL_MS = 5000 // 5 seconds
+const FAILED_FETCH_RETRY_INTERVAL_MS = 10 * 60 * 1000 // 10 minutes
 const ONE_DAY_MS = 24 * 60 * 60 * 1000
 
 // Genesis timestamp: When profiles were first introduced to Decentraland
-const GENESIS_TIMESTAMP = 1577836800000 // 2020-01-01T00:00:00Z
+export const GENESIS_TIMESTAMP = 1577836800000 // 2020-01-01T00:00:00Z
 
 export function createSynchronizerComponent(
   components: Pick<
@@ -27,6 +28,8 @@ export function createSynchronizerComponent(
 
   let running = false
   let abortController: AbortController | null = null
+  let loopPromises: Promise<void>[] = []
+  let syncWorkflowRunning = false
 
   async function loadLastCursor(): Promise<number> {
     let lastCursor: number = GENESIS_TIMESTAMP
@@ -62,14 +65,21 @@ export function createSynchronizerComponent(
 
   async function loop(
     callToLoop: (abortSignal: AbortSignal) => Promise<void>,
-    abortSignal: AbortSignal
+    { abortSignal, interval = POINTER_CHANGES_POLL_INTERVAL_MS }: { abortSignal: AbortSignal; interval?: number }
   ): Promise<void> {
     while (running && !abortSignal.aborted) {
       await callToLoop(abortSignal).catch((error) => {
         logger.error('Error in loop', { error: error.message })
       })
-      if (!abortSignal.aborted) {
-        await new Promise((resolve) => setTimeout(resolve, POINTER_CHANGES_POLL_INTERVAL_MS))
+      if (!abortSignal.aborted && running) {
+        // Create a cancellable timeout that respects the abort signal
+        await new Promise<void>((resolve) => {
+          const timeoutId = setTimeout(() => resolve(), interval)
+          abortSignal.addEventListener('abort', () => {
+            clearTimeout(timeoutId)
+            resolve()
+          })
+        })
       }
     }
     if (abortSignal.aborted) {
@@ -78,28 +88,54 @@ export function createSynchronizerComponent(
   }
 
   async function syncProfiles(fromTimestamp: number, abortSignal: AbortSignal): Promise<void> {
-    const isAWeekOld = Date.now() - fromTimestamp > ONE_DAY_MS * 7
-    let cursor: number = fromTimestamp
-    if (isAWeekOld && !abortSignal.aborted) {
-      cursor = (await withRetry(async () => await snapshotsHandler.syncProfiles(fromTimestamp, abortSignal))) ?? cursor
-      cursor && (await memoryStorage.set(SYNC_STATE_KEY, [cursor]))
+    if (syncWorkflowRunning) {
+      logger.warn('Sync workflow already running, skipping concurrent call')
+      return
     }
+    syncWorkflowRunning = true
+    try {
+      const isAWeekOld = Date.now() - fromTimestamp > ONE_DAY_MS * 7
+      let cursor: number = fromTimestamp
+      if (isAWeekOld && !abortSignal.aborted) {
+        console.log('before cursor', cursor)
+        cursor =
+          (await withRetry(async () => await snapshotsHandler.syncProfiles(fromTimestamp, abortSignal))) ?? cursor
+        console.log('cursor returned', cursor)
+        cursor && (await memoryStorage.set(SYNC_STATE_KEY, [cursor]))
+      }
 
-    void Promise.all([
-      loop(async (signal) => {
-        const newCursor = await pointerChangesHandler.syncProfiles(cursor, signal)
-        if (newCursor && newCursor > cursor) {
-          cursor = newCursor
-          await memoryStorage.set(SYNC_STATE_KEY, [cursor])
-        }
-      }, abortSignal),
-      loop(async (signal) => {
-        await failedProfilesRetrier.retryFailedProfiles(signal)
-      }, abortSignal)
-    ])
+      const pointerChangesLoopPromise = loop(
+        async (signal) => {
+          console.log('syncing pointer changes with cursor ', cursor)
+          const newCursor = await pointerChangesHandler.syncProfiles(cursor, signal)
+          if (newCursor && newCursor > cursor) {
+            cursor = newCursor
+            await memoryStorage.set(SYNC_STATE_KEY, [cursor])
+          }
+        },
+        { abortSignal, interval: POINTER_CHANGES_POLL_INTERVAL_MS }
+      )
+
+      const retrierLoopPromise = loop(
+        async (signal) => {
+          await failedProfilesRetrier.retryFailedProfiles(signal)
+        },
+        { abortSignal, interval: FAILED_FETCH_RETRY_INTERVAL_MS }
+      )
+
+      // Track promises for monitoring - handled by Promise.all below
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+      loopPromises = [pointerChangesLoopPromise, retrierLoopPromise]
+
+      void Promise.all(loopPromises).catch((error) => {
+        logger.error('Error in sync loops', { error: error.message })
+      })
+    } finally {
+      syncWorkflowRunning = false
+    }
   }
 
-  async function start(): Promise<void> {
+  async function start(_startOptions?: any): Promise<void> {
     logger.info('Starting profile synchronizer')
     running = true
     abortController = new AbortController()
@@ -117,9 +153,15 @@ export function createSynchronizerComponent(
   async function stop(): Promise<void> {
     logger.info('Stopping profile synchronizer')
     running = false
+    syncWorkflowRunning = false
 
     if (abortController) {
       abortController.abort()
+    }
+
+    // Wait for loops to finish (they should exit quickly after abort)
+    if (loopPromises.length > 0) {
+      await Promise.allSettled(loopPromises)
     }
 
     await entityPersistent.waitForDrain()
