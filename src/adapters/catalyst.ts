@@ -8,7 +8,7 @@ export async function createCatalystAdapter({
   logs,
   fetch
 }: Pick<AppComponents, 'config' | 'logs' | 'fetch'>): Promise<CatalystComponent> {
-  const log = logs.getLogger('catalyst-client')
+  const log = logs.getLogger('catalyst-adapter')
   const catalystLoadBalancer = await config.requireString('CATALYST_LOADBALANCER_HOST')
 
   const defaultContentClient = createContentClient({ fetcher: fetch, url: ensureContentUrl(catalystLoadBalancer) })
@@ -47,8 +47,13 @@ export async function createCatalystAdapter({
         batches.push(items.slice(i, i + batchSize) as T)
       }
 
-      const results = await Promise.all(batches.map((batch) => fn(batch, ...args)))
-      return results.flat()
+      const results: Entity[] = []
+      for (let i = 0; i < batches.length; i++) {
+        const batch = batches[i]
+        const batchResults = await fn(batch, ...args)
+        results.push(...batchResults)
+      }
+      return results
     }
   }
 
@@ -56,10 +61,6 @@ export async function createCatalystAdapter({
     try {
       const contentClient = getContentClientOrDefault(options?.overrideContentServerUrl)
       if (options?.parallelFetch && options?.parallelFetch.catalystServers.length > 0) {
-        log.debug('Fetching entity by id in parallel', {
-          id,
-          servers: options.parallelFetch.catalystServers.join(', ')
-        })
         const result = await contentClient.fetchEntityById(id, {
           parallel: {
             urls: options.parallelFetch.catalystServers.map((server) => ensureContentUrl(server))
@@ -67,7 +68,6 @@ export async function createCatalystAdapter({
         })
         return result
       } else {
-        log.debug('Fetching entity by id', { id })
         return await contentClient.fetchEntityById(id)
       }
     } catch (error: any) {
@@ -80,10 +80,6 @@ export async function createCatalystAdapter({
     try {
       const contentClient = getContentClientOrDefault(options?.overrideContentServerUrl)
       if (options?.parallelFetch && options?.parallelFetch.catalystServers.length > 0) {
-        log.debug('Fetching entities by ids in parallel', {
-          ids: ids.join(', '),
-          servers: options.parallelFetch.catalystServers.join(', ')
-        })
         const result = await contentClient.fetchEntitiesByIds(ids, {
           parallel: {
             urls: options.parallelFetch.catalystServers.map((server) => ensureContentUrl(server))
@@ -91,7 +87,7 @@ export async function createCatalystAdapter({
         })
         return result
       } else {
-        log.debug('Fetching entities by ids', { ids: ids.join(', ') })
+        // log.debug('Fetching entities by ids', { amount: ids.length })
         return await contentClient.fetchEntitiesByIds(ids)
       }
     } catch (error: any) {

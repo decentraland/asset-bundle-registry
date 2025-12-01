@@ -76,6 +76,10 @@ export async function createPointerChangesHandlerComponent({
           }
         )
 
+        if (sanitizedProfile.length === 0) {
+          continue
+        }
+
         await entityPersistent.persistEntity(sanitizedProfile[0])
         lastEntityIdHandled = entity.entityId
         lastProfileTimestampProcessed = entity.entityTimestamp

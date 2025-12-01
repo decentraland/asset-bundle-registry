@@ -76,6 +76,7 @@ export function createSynchronizerComponent(
     { abortSignal, interval = POINTER_CHANGES_POLL_INTERVAL_MS }: { abortSignal: AbortSignal; interval?: number }
   ): Promise<void> {
     while (running && !abortSignal.aborted) {
+      logger.info('Starting sync profiles loop')
       await callToLoop(abortSignal).catch((error) => {
         logger.error('Error in loop', { error: error.message })
       })

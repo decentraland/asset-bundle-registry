@@ -96,18 +96,33 @@ export async function createSnapshotsHandlerComponent({
         }
       }
 
-      const profilesFetched = await profileSanitizer.sanitizeProfiles(extractedProfiles, (profile) => {
-        return db.insertFailedProfileFetch({
-          entityId: profile.entityId,
-          pointer: profile.pointer,
-          timestamp: profile.timestamp,
-          authChain: profile.authChain,
-          firstFailedAt: Date.now(),
-          retryCount: 0,
-          errorMessage: 'Profile not found in Catalyst response'
+      logger.info(`${extractedProfiles.length} profiles extracted from snapshot ${snapshot.hash}`)
+
+      // Process profiles in chunks to avoid overwhelming the Catalyst API
+      const CHUNK_SIZE = 1000
+      for (let i = 0; i < extractedProfiles.length; i += CHUNK_SIZE) {
+        const chunk = extractedProfiles.slice(i, i + CHUNK_SIZE)
+        logger.debug(
+          `Processing profile chunk ${Math.floor(i / CHUNK_SIZE) + 1} of ${Math.ceil(extractedProfiles.length / CHUNK_SIZE)}`,
+          {
+            chunkSize: chunk.length,
+            totalProfiles: extractedProfiles.length
+          }
+        )
+
+        const profilesFetched = await profileSanitizer.sanitizeProfiles(chunk, (profile) => {
+          return db.insertFailedProfileFetch({
+            entityId: profile.entityId,
+            pointer: profile.pointer,
+            timestamp: profile.timestamp,
+            authChain: profile.authChain,
+            firstFailedAt: Date.now(),
+            retryCount: 0,
+            errorMessage: 'Profile not found in Catalyst response'
+          })
         })
-      })
-      await Promise.all(profilesFetched.map((p) => entityPersistent.persistEntity(p)))
+        await Promise.all(profilesFetched.map((p) => entityPersistent.persistEntity(p)))
+      }
       await db.markSnapshotProcessed(snapshot.hash)
       lastProcessedTimestamp = Math.max(lastProcessedTimestamp, snapshot.timeRange.endTimestamp)
     }
