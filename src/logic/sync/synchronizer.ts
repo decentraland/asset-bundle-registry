@@ -45,8 +45,10 @@ export function createSynchronizerComponent(
       const storedCursor: number[] | undefined = await memoryStorage.get<number>(SYNC_STATE_KEY)
       if (storedCursor && storedCursor.length > 0) {
         lastCursor = storedCursor[0]
+        logger.info('Loaded last cursor from memory', { lastCursor })
       } else {
         lastCursor = (await db.getLatestProfileTimestamp()) ?? lastCursor
+        logger.info('Loaded last cursor from database', { lastCursor })
       }
     } catch (error: any) {
       logger.warn('Failed to load last cursor', { error: error.message })
@@ -133,9 +135,7 @@ export function createSynchronizerComponent(
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       loopPromises = [pointerChangesLoopPromise, retrierLoopPromise]
 
-      void Promise.all(loopPromises).catch((error) => {
-        logger.error('Error in sync loops', { error: error.message })
-      })
+      void Promise.all(loopPromises)
     } finally {
       syncWorkflowRunning = false
     }
@@ -147,18 +147,18 @@ export function createSynchronizerComponent(
       logger.info('Profile sync is disabled, skipping')
       return
     }
-    logger.info('Starting profile synchronizer')
+
     running = true
     abortController = new AbortController()
 
     await waitForDatabaseReady()
     const lastCursor = await loadLastCursor()
 
+    logger.info('Starting profile synchronizer', { lastCursor })
+
     void withRetry(async () => await syncProfiles(lastCursor, abortController!.signal)).catch((error) => {
       logger.error('Sync workflow failed', { error: error.message })
     })
-
-    logger.info('Profile synchronizer started (sync workflow running in background)')
   }
 
   async function stop(): Promise<void> {

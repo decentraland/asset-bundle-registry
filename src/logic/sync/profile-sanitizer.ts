@@ -28,6 +28,11 @@ export function createProfileSanitizerComponent({
         requested: entityIdsToFetch.length,
         fetched: profilesFetched.length
       })
+
+      for (const minimalProfile of minimalProfiles) {
+        await notFoundProfilesHandler(minimalProfile)
+      }
+
       return []
     }
 

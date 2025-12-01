@@ -11,10 +11,11 @@ export async function createPointerChangesHandlerComponent({
   fetch,
   db,
   profileSanitizer,
-  entityPersistent
+  entityPersistent,
+  entityTracker
 }: Pick<
   AppComponents,
-  'config' | 'logs' | 'metrics' | 'fetch' | 'db' | 'profileSanitizer' | 'entityPersistent'
+  'config' | 'logs' | 'metrics' | 'fetch' | 'db' | 'profileSanitizer' | 'entityPersistent' | 'entityTracker'
 >): Promise<IProfilesSynchronizerComponent> {
   const logger = logs.getLogger('pointer-changes-handler')
   const CATALYST_LOAD_BALANCER = await config.requireString('CATALYST_LOADBALANCER_HOST')
@@ -50,7 +51,12 @@ export async function createPointerChangesHandlerComponent({
           continue
         }
 
-        logger.info('Processing profile', { entityId: entity.entityId, pointer: entity.pointers[0] })
+        logger.info('Streamed profile', { entityId: entity.entityId, pointer: entity.pointers[0] })
+
+        if (entityTracker.hasBeenProcessed(entity.entityId)) {
+          logger.debug('Skipping already processed profile', { entityId: entity.entityId, pointer: entity.pointers[0] })
+          continue
+        }
 
         // TODO: GET /pointer-changes should already return the complete entity data
         // the type seems to be wrong in the stream.

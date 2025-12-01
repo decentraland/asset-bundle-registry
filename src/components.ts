@@ -149,7 +149,8 @@ export async function initComponents(): Promise<AppComponents> {
     fetch,
     db,
     entityPersistent,
-    profileSanitizer
+    profileSanitizer,
+    entityTracker
   })
   const failedProfilesRetrier = createFailedProfilesRetrierComponent({
     logs,
