@@ -42,10 +42,21 @@ export function createSynchronizerComponent(
   async function loadLastCursor(): Promise<number> {
     let lastCursor: number = GENESIS_TIMESTAMP
     try {
-      const storedCursor: number[] | undefined = await memoryStorage.get<number>(SYNC_STATE_KEY)
-      if (storedCursor && storedCursor.length > 0) {
-        lastCursor = storedCursor[0]
-        logger.info('Loaded last cursor from memory', { lastCursor })
+      const storedCursor: number[] | number[][] | undefined = await memoryStorage.get<number>(SYNC_STATE_KEY)
+      logger.info('retrieved cursor', {
+        storedCursor: JSON.stringify(storedCursor),
+        type: typeof storedCursor,
+        firstIndex: storedCursor?.[0],
+        firstIndexType: typeof storedCursor?.[0]
+      })
+      if (!!storedCursor && storedCursor.length > 0) {
+        if (Array.isArray(storedCursor[0])) {
+          lastCursor = (storedCursor[0] as any)[0]
+          logger.info('storedCursor is an array of arrays', { lastCursor, storedCursor: JSON.stringify(storedCursor) })
+        } else {
+          lastCursor = storedCursor[0]
+          logger.info('storedCursor is an array of numbers', { lastCursor, storedCursor: JSON.stringify(storedCursor) })
+        }
       } else {
         lastCursor = (await db.getLatestProfileTimestamp()) ?? lastCursor
         logger.info('Loaded last cursor from database', { lastCursor })
@@ -110,7 +121,7 @@ export function createSynchronizerComponent(
       if (isAWeekOld && !abortSignal.aborted) {
         cursor =
           (await withRetry(async () => await snapshotsHandler.syncProfiles(fromTimestamp, abortSignal))) ?? cursor
-        cursor && (await memoryStorage.set(SYNC_STATE_KEY, [cursor]))
+        cursor && (await memoryStorage.set(SYNC_STATE_KEY, cursor))
       }
 
       const pointerChangesLoopPromise = loop(
@@ -118,7 +129,7 @@ export function createSynchronizerComponent(
           const newCursor = await pointerChangesHandler.syncProfiles(cursor, signal)
           if (newCursor && newCursor > cursor) {
             cursor = newCursor
-            await memoryStorage.set(SYNC_STATE_KEY, [cursor])
+            await memoryStorage.set(SYNC_STATE_KEY, cursor)
           }
         },
         { abortSignal, interval: POINTER_CHANGES_POLL_INTERVAL_MS }
