@@ -37,7 +37,7 @@ export async function createSnapshotsHandlerComponent({
     })
 
     const sortedSnapshots = snapshots.sort((a, b) => a.timeRange.initTimestamp - b.timeRange.initTimestamp)
-    const snapshotsToProcess = sortedSnapshots.filter((s) => s.timeRange.initTimestamp < currentTime)
+    const snapshotsToProcess = sortedSnapshots.filter((s) => s.timeRange.initTimestamp >= currentTime)
 
     return snapshotsToProcess
   }
