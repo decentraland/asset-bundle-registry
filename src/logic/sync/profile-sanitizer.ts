@@ -48,18 +48,55 @@ export async function createProfileSanitizerComponent({
     return profilesFetched as Entity[]
   }
 
+  function buildProfilesSnapshots(entityId: string): { body: string; face: string } {
+    return {
+      body: `${PROFILES_IMAGE_URL}/entities/${entityId}/body.png`,
+      face: `${PROFILES_IMAGE_URL}/entities/${entityId}/face.png`
+    }
+  }
+
   function getMetadata(profile: Entity): ProfileMetadata {
     const avatar = (profile.metadata as Profile).avatars[0]
     return {
       pointer: profile.pointers[0],
       hasClaimedName: avatar.hasClaimedName,
       name: avatar.name,
-      thumbnailUrl: `${PROFILES_IMAGE_URL}/entities/${profile.id}/face.png`
+      thumbnailUrl: buildProfilesSnapshots(profile.id).face
     }
+  }
+
+  function getProfilesWithSnapshotsAsUrls(profiles: Entity[]): Entity[] {
+    return profiles.map((profile) => {
+      const snapshots = buildProfilesSnapshots(profile.id)
+      const metadata = profile.metadata as Profile
+
+      return {
+        ...profile,
+        metadata: {
+          ...metadata,
+          avatars: metadata.avatars.map((avatar) => {
+            if (avatar.avatar) {
+              return {
+                ...avatar,
+                avatar: {
+                  ...avatar.avatar,
+                  snapshots: {
+                    face256: snapshots.face,
+                    body: snapshots.body
+                  }
+                }
+              }
+            }
+            return avatar
+          })
+        }
+      }
+    })
   }
 
   return {
     sanitizeProfiles,
-    getMetadata
+    getMetadata,
+    getProfilesWithSnapshotsAsUrls
   }
 }

@@ -162,6 +162,7 @@ export interface IFailedProfilesRetrierComponent {
 
 export interface IProfileSanitizerComponent {
   getMetadata(profile: Entity): ProfileMetadata
+  getProfilesWithSnapshotsAsUrls(profiles: Entity[]): Entity[]
   sanitizeProfiles(
     minimalProfiles: Sync.ProfileDeployment[] | Sync.FailedProfileFetch[],
     notFoundProfilesHandler: (profile: Sync.ProfileDeployment) => Promise<void>
