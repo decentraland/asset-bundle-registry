@@ -143,6 +143,10 @@ export async function createSnapshotsHandlerComponent({
       }
 
       lastProcessedTimestamp = await processSnapshots(snapshots, abortSignal)
+      logger.info('All snapshots processing completed', {
+        lastProcessedTimestamp,
+        timestamp: new Date(lastProcessedTimestamp).toISOString()
+      })
       return lastProcessedTimestamp
     } catch (error: any) {
       logger.error('Error syncing profiles from snapshots', { error: error.message })

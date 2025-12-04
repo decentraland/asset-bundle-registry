@@ -50,7 +50,7 @@ export function createEntityMultiLayerPersisterComponent(
     // if service is bootstrapping, queue the persistence for later
     // otherwise, persist directly
     if (bootstrapComplete) {
-      db.upsertProfileIfNewer(dbEntity).catch((error) => {
+      await db.upsertProfileIfNewer(dbEntity).catch((error) => {
         logger.error('Failed to persist profile to database', {
           entityId: entity.id,
           pointer: entity.pointers[0],
@@ -58,7 +58,7 @@ export function createEntityMultiLayerPersisterComponent(
         })
       })
     } else {
-      dbPersistenceQueue
+      await dbPersistenceQueue
         .add(() => db.upsertProfileIfNewer(dbEntity))
         .catch((error) => {
           logger.error('Failed to queue profile persistence', {

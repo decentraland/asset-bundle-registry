@@ -129,10 +129,14 @@ export function createSynchronizerComponent(
     try {
       const isAWeekOld = Date.now() - fromTimestamp > ONE_DAY_MS * 7
       let cursor: number = fromTimestamp
+
+      // Process snapshots first if needed, and wait for completion before starting pointer-changes loop
       if (isAWeekOld && !abortSignal.aborted) {
+        logger.info('Processing snapshots before starting pointer-changes loop')
         cursor =
           (await withRetry(async () => await snapshotsHandler.syncProfiles(fromTimestamp, abortSignal))) ?? cursor
         cursor && (await memoryStorage.set(SYNC_STATE_KEY, cursor))
+        logger.info('Snapshots processing completed, starting pointer-changes loop', { cursor })
       }
 
       const pointerChangesLoopPromise = loop(
