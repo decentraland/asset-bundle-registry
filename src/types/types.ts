@@ -1,4 +1,39 @@
-import { Entity, EntityType } from '@dcl/schemas'
+import { Entity, EntityType, EthAddress } from '@dcl/schemas'
+
+export namespace Sync {
+  export type ProfileDbEntity = Omit<Entity, 'version' | 'pointers'> & {
+    localTimestamp: number
+    pointer: string // single pointer ensurance for simplicity over B-tree database index
+  }
+
+  export type CacheEntry = {
+    profile: Entity
+    localTimestamp: number
+  }
+
+  export type State = {
+    bootstrapComplete: boolean
+    lastPointerChangesCheck: number
+  }
+
+  export type ProfileDeployment = {
+    entityId: string
+    pointer: string
+    timestamp: number
+    authChain?: any
+  }
+
+  export type FailedProfileFetch = {
+    entityId: string
+    pointer: string
+    timestamp: number
+    authChain?: any
+    firstFailedAt: number
+    lastRetryAt?: number
+    retryCount: number
+    errorMessage?: string
+  }
+}
 
 export namespace Registry {
   export enum SimplifiedStatus {
@@ -43,6 +78,13 @@ export namespace Registry {
     OBSOLETE = 'obsolete',
     FALLBACK = 'fallback'
   }
+}
+
+export type ProfileMetadata = {
+  pointer: EthAddress
+  hasClaimedName: boolean
+  name: string
+  thumbnailUrl: string
 }
 
 type StatusByPlatform = {

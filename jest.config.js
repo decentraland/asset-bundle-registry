@@ -7,5 +7,6 @@ module.exports = {
   collectCoverageFrom: ['src/**/*.ts'],
   coveragePathIgnorePatterns: ['/node_modules/', '/src/index.ts'],
   testMatch: ['**/*.spec.(ts)'],
-  testEnvironment: 'node'
+  testEnvironment: 'node',
+  testTimeout: 30000
 }

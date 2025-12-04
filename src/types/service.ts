@@ -6,12 +6,15 @@ import {
   EventHandlerName,
   MessageProcessorResult,
   EventHandlerResult,
-  Registry
+  Registry,
+  Sync,
+  ProfileMetadata
 } from './types'
 import { Entity, EthAddress } from '@dcl/schemas'
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
 
 export type DbComponent = {
+  // Registry functions
   getSortedRegistriesByOwner(owner: EthAddress): Promise<Registry.DbEntity[]>
   getSortedRegistriesByPointers(
     pointers: string[],
@@ -43,6 +46,19 @@ export type DbComponent = {
   insertHistoricalRegistry(registry: Registry.DbEntity): Promise<Registry.DbEntity>
   getSortedHistoricalRegistriesByOwner(owner: EthAddress): Promise<Registry.DbEntity[]>
   getHistoricalRegistryById(id: string): Promise<Registry.DbEntity | null>
+  // Profile functions
+  getProfileByPointer(pointer: string): Promise<Sync.ProfileDbEntity | null>
+  getProfilesByPointers(pointers: string[]): Promise<Sync.ProfileDbEntity[]>
+  upsertProfileIfNewer(profile: Sync.ProfileDbEntity): Promise<boolean>
+  markSnapshotProcessed(hash: string): Promise<void>
+  isSnapshotProcessed(hash: string): Promise<boolean>
+  getLatestProfileTimestamp(): Promise<number | null>
+  // Failed fetch tracking
+  insertFailedProfileFetch(failed: Sync.FailedProfileFetch): Promise<void>
+  getFailedProfileFetches(limit: number, maxRetryCount?: number): Promise<Sync.FailedProfileFetch[]>
+  deleteFailedProfileFetch(entityId: string): Promise<void>
+  updateFailedProfileFetchRetry(entityId: string, retryCount: number, errorMessage?: string): Promise<void>
+  getFailedProfileFetchByEntityId(entityId: string): Promise<Sync.FailedProfileFetch | null>
 }
 
 export type QueueMessage = any
@@ -64,6 +80,12 @@ export type CatalystComponent = {
   getEntitiesByIds(ids: string[], options?: CatalystFetchOptions): Promise<Entity[]>
   getEntityByPointers(pointers: string[]): Promise<Entity[]>
   getContent(id: string): Promise<Entity | undefined>
+  /**
+   * Fetches profiles from lamb2 with ownership validation.
+   * Returns sanitized profiles with non-owned items removed
+   * (wearables/emotes that were transferred and no longer belong to the user).
+   */
+  getSanitizedProfiles(pointers: string[]): Promise<Entity[]>
 }
 
 export type WorldsComponent = {
@@ -101,3 +123,56 @@ export type QueuesStatusManagerComponent = {
   markAsFinished(platform: 'windows' | 'mac' | 'webgl', entityId: string): Promise<void>
   getAllPendingEntities(platform: 'windows' | 'mac' | 'webgl'): Promise<EntityStatusInQueue[]>
 }
+
+export interface IHotProfilesCacheComponent {
+  get(pointer: string): Entity | undefined
+  getMany(pointers: string[]): Map<string, Entity>
+  setIfNewer(pointer: string, profile: Entity): boolean
+  setManyIfNewer(profiles: Entity[]): void
+  has(pointer: string): boolean
+  getAllPointers(): string[]
+}
+
+export interface IEntityTrackerComponent {
+  hasBeenProcessed(entityId: string): boolean
+  markAsProcessed(entityId: string): void
+  tryMarkDuplicate(entityId: string): boolean
+}
+
+export interface IEntityPersistentComponent {
+  persistEntity(entity: Entity): Promise<void>
+  setBootstrapComplete(): void
+  isBootstrapComplete(): boolean
+  waitForDrain(): Promise<void>
+}
+
+export interface ISynchronizerComponent extends IBaseComponent {}
+
+export interface ISynchronizerStateManagerComponent {
+  loadLastCursor(): Promise<number>
+}
+
+export interface IProfilesSynchronizerComponent {
+  syncProfiles(fromTimestamp: number, abortSignal: AbortSignal): Promise<number>
+}
+
+export interface IFailedProfilesRetrierComponent {
+  retryFailedProfiles(abortSignal: AbortSignal): Promise<void>
+}
+
+export interface IProfileSanitizerComponent {
+  getMetadata(profile: Entity): ProfileMetadata
+  getProfilesWithSnapshotsAsUrls(profiles: Entity[]): Entity[]
+  sanitizeProfiles(
+    minimalProfiles: Sync.ProfileDeployment[] | Sync.FailedProfileFetch[],
+    notFoundProfilesHandler: (profile: Sync.ProfileDeployment) => Promise<void>
+  ): Promise<Entity[]>
+}
+
+export interface IProfileRetrieverComponent {
+  getProfile(pointer: string): Promise<Entity | null>
+  getProfiles(pointers: string[]): Promise<Map<string, Entity>>
+}
+
+// Re-export IContentStorageComponent for convenience
+export type { IContentStorageComponent as SnapshotContentStorageComponent } from '@dcl/catalyst-storage'

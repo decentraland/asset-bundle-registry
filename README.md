@@ -27,6 +27,58 @@ This service integrates with our event-driven architecture, monitoring deploymen
 
 This criteria can evolve and change over time. As of the time of writing, this Registry marks an entity as ready to be retrieved when it receives confirmation that the deployed entity has been optimized for Windows and Mac platforms. At the moment, LODs are not being considered for this state transition.
 
+## Profile Synchronization
+
+Centralized reactive cache for fetching user profiles with high availability and low latency.
+
+### Sync Phases
+
+1. **Bootstrap**: Initial data load using snapshots (large gaps) or pointer-changes (small gaps)
+2. **Incremental**: Continuous near real-time (1s) sync via Catalyst pointer-changes endpoint
+
+### Cache Architecture
+
+```
+L1 Hot Cache (LRU) → L2 Database → L3 Catalyst
+```
+
+- **L1**: In-memory LRU, instant access, timestamp-validated
+- **L2**: PostgreSQL, persistent storage
+- **L3**: Catalyst fallback for cache misses
+
+### Components
+
+| Component | Purpose |
+|-----------|---------|
+| `synchronizer` | Orchestrates bootstrap and incremental sync phases |
+| `entity-tracker` | Deduplication (LRU) + permanent tracking (Bloom filter) |
+| `entity-persistent` | Persists to in-memory cache and database |
+| `hot-profiles-cache` | L1 in-memory cache with timestamp validation |
+| `profile-retriever` | Multi-layer cache lookup with batch operations |
+
+### Retrieval Flow
+
+```mermaid
+sequenceDiagram
+    Client->>ProfileRetriever: getProfile(pointer)
+    ProfileRetriever->>L1 Hot Cache: get(pointer)
+    alt Cache Hit
+        L1 Hot Cache-->>Client: Profile
+    else Cache Miss
+        ProfileRetriever->>L2 Database: getProfileByPointer()
+        alt Found
+            L2 Database-->>ProfileRetriever: Profile
+            ProfileRetriever->>L1 Hot Cache: setIfNewer()
+            ProfileRetriever-->>Client: Profile
+        else Not Found
+            ProfileRetriever->>L3 Catalyst: getEntityByPointers()
+            L3 Catalyst-->>ProfileRetriever: Profile
+            ProfileRetriever->>L1 Hot Cache: setIfNewer()
+            ProfileRetriever-->>Client: Profile
+        end
+    end
+```
+
 ## Endpoints
 
 ### GET /status

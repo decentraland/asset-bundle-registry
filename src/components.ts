@@ -24,6 +24,21 @@ import { createRedisComponent } from './adapters/redis'
 import { createInMemoryCacheComponent } from './adapters/memory-cache'
 import { createWorldsAdapter } from './adapters/worlds'
 import { createQueuesStatusManagerComponent } from './logic/queues-status-manager'
+import { createHotProfilesCacheComponent } from './adapters/hot-profiles-cache'
+import { createSimpleLRUCache } from './adapters/simple-lru-cache'
+import { createSnapshotContentStorage } from './adapters/snapshot-content-storage'
+import {
+  createEntityMultiLayerPersisterComponent,
+  createEntityTrackerComponent,
+  createSynchronizerComponent,
+  createOwnershipValidatorJob
+} from './logic/sync'
+import { createProfileRetriever } from './logic/profile-retriever'
+import { Sync } from './types'
+import { createSnapshotsHandlerComponent } from './logic/sync/snapshots-handler'
+import { createProfileSanitizerComponent } from './logic/sync/profile-sanitizer'
+import { createPointerChangesHandlerComponent } from './logic/sync/pointer-changes-handler'
+import { createFailedProfilesRetrierComponent } from './logic/sync/failed-profiles-retrier'
 
 // Initialize all the components of the app
 export async function initComponents(): Promise<AppComponents> {
@@ -88,6 +103,7 @@ export async function initComponents(): Promise<AppComponents> {
     : createInMemoryCacheComponent()
 
   const catalyst = await createCatalystAdapter({ logs, fetch, config })
+  const profileSanitizer = await createProfileSanitizerComponent({ catalyst, config, logs })
   const worlds = await createWorldsAdapter({ logs, config, fetch })
   const registryOrchestrator = createRegistryOrchestratorComponent({ logs, db, metrics })
   const entityStatusFetcher = await createEntityStatusFetcherComponent({ fetch, logs, config })
@@ -103,6 +119,68 @@ export async function initComponents(): Promise<AppComponents> {
   })
   const messageConsumer = createMessagesConsumerComponent({ logs, queue, messageProcessor })
   const workerManager = createWorkerManagerComponent({ metrics, logs })
+
+  // Profile sync components
+  const hotProfilesCacheLRU = createSimpleLRUCache<Sync.CacheEntry>({ maxItems: 10000 })
+  const hotProfilesCache = createHotProfilesCacheComponent(hotProfilesCacheLRU)
+  const entityTrackerDedupCacheLRU = createSimpleLRUCache<boolean>({ maxItems: 10000, ttlMs: 60000 })
+  const entityTracker = createEntityTrackerComponent({ logs }, entityTrackerDedupCacheLRU)
+  const snapshotContentStorage = await createSnapshotContentStorage({ logs })
+  const entityPersistent = createEntityMultiLayerPersisterComponent({
+    logs,
+    db,
+    hotProfilesCache,
+    entityTracker
+  })
+  const snapshotsHandler = await createSnapshotsHandlerComponent({
+    logs,
+    config,
+    metrics,
+    fetch,
+    db,
+    entityPersistent,
+    snapshotContentStorage,
+    profileSanitizer
+  })
+  const pointerChangesHandler = await createPointerChangesHandlerComponent({
+    logs,
+    config,
+    metrics,
+    fetch,
+    db,
+    entityPersistent,
+    profileSanitizer,
+    entityTracker
+  })
+  const failedProfilesRetrier = createFailedProfilesRetrierComponent({
+    logs,
+    db,
+    profileSanitizer,
+    entityPersistent
+  })
+  const synchronizer = await createSynchronizerComponent({
+    logs,
+    config,
+    entityPersistent,
+    memoryStorage,
+    db,
+    snapshotsHandler,
+    pointerChangesHandler,
+    failedProfilesRetrier
+  })
+  const profileRetriever = createProfileRetriever({
+    logs,
+    hotProfilesCache,
+    memoryStorage,
+    db,
+    catalyst
+  })
+  const ownershipValidator = createOwnershipValidatorJob({
+    logs,
+    catalyst,
+    hotProfilesCache,
+    db
+  })
 
   return {
     config,
@@ -122,6 +200,17 @@ export async function initComponents(): Promise<AppComponents> {
     entityStatusFetcher,
     workerManager,
     memoryStorage,
-    queuesStatusManager
+    queuesStatusManager,
+    hotProfilesCache,
+    entityTracker,
+    entityPersistent,
+    synchronizer,
+    profileRetriever,
+    snapshotContentStorage,
+    ownershipValidator,
+    profileSanitizer,
+    snapshotsHandler,
+    pointerChangesHandler,
+    failedProfilesRetrier
   }
 }

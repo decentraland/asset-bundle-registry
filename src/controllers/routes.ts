@@ -8,6 +8,8 @@ import { bearerTokenMiddleware, errorHandler } from '@dcl/platform-server-common
 import { createRegistryHandler } from './handlers/post-registry'
 import { flushCacheHandler } from '../logic/handlers/flush-cache-handler'
 import { getEntityVersionsHandler } from './handlers/get-entity-versions'
+import { getProfilesHandler } from './handlers/get-profiles'
+import { getProfilesMetadataHandler } from './handlers/get-profiles-metadata'
 
 export async function setupRouter(globalContext: GlobalContext): Promise<Router<GlobalContext>> {
   const router = new Router<GlobalContext>()
@@ -25,6 +27,8 @@ export async function setupRouter(globalContext: GlobalContext): Promise<Router<
 
   router.get('/status', getStatusHandler)
   router.post('/entities/active', getActiveEntityHandler)
+  router.post('/profiles', getProfilesHandler)
+  router.post('/profiles/metadata', getProfilesMetadataHandler)
   router.post('/entities/versions', getEntityVersionsHandler)
   router.get('/entities/status/:id', getEntityStatusHandler)
   router.get('/entities/status', signedFetchMiddleware, getEntitiesStatusHandler)
@@ -34,7 +38,7 @@ export async function setupRouter(globalContext: GlobalContext): Promise<Router<
 
   if (!!adminToken) {
     router.post('/registry', bearerTokenMiddleware(adminToken), createRegistryHandler)
-    router.delete('/flush-cache', bearerTokenMiddleware(adminToken), flushCacheHandler)
+    router.delete('/flush-cache/:type', bearerTokenMiddleware(adminToken), flushCacheHandler)
   }
 
   return router

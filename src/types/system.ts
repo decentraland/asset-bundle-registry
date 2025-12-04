@@ -17,7 +17,16 @@ import {
   RegistryOrchestratorComponent,
   ICacheStorage,
   WorldsComponent,
-  QueuesStatusManagerComponent
+  QueuesStatusManagerComponent,
+  IHotProfilesCacheComponent,
+  IEntityTrackerComponent,
+  IEntityPersistentComponent,
+  ISynchronizerComponent,
+  IProfileRetrieverComponent,
+  SnapshotContentStorageComponent,
+  IProfileSanitizerComponent,
+  IProfilesSynchronizerComponent,
+  IFailedProfilesRetrierComponent
 } from './service'
 import { metricDeclarations } from '../metrics'
 
@@ -38,6 +47,8 @@ export type BaseComponents = {
   registryOrchestrator: RegistryOrchestratorComponent
   queuesStatusManager: QueuesStatusManagerComponent
   memoryStorage: ICacheStorage
+  profileRetriever: IProfileRetrieverComponent
+  profileSanitizer: IProfileSanitizerComponent
 }
 
 // components used in runtime
@@ -49,6 +60,15 @@ export type AppComponents = BaseComponents & {
   messageConsumer: MessageConsumerComponent
   workerManager: IBaseComponent
   worlds: WorldsComponent
+  hotProfilesCache: IHotProfilesCacheComponent
+  entityTracker: IEntityTrackerComponent
+  entityPersistent: IEntityPersistentComponent
+  synchronizer: ISynchronizerComponent & IBaseComponent
+  ownershipValidator: IBaseComponent
+  snapshotContentStorage: SnapshotContentStorageComponent
+  snapshotsHandler: IProfilesSynchronizerComponent
+  pointerChangesHandler: IProfilesSynchronizerComponent
+  failedProfilesRetrier: IFailedProfilesRetrierComponent
 }
 
 // components used in tests
