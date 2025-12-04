@@ -26,7 +26,7 @@ export async function createProfileSanitizerComponent({
     )
 
     if (profilesFetched.length === 0 || profilesFetched.length !== entityIdsToFetch.length) {
-      logger.error('Profiles fetched mismatch', {
+      logger.warn('Profiles fetched mismatch', {
         requested: entityIdsToFetch.length,
         fetched: profilesFetched.length
       })

@@ -51,10 +51,12 @@ export async function createPointerChangesHandlerComponent({
           continue
         }
 
-        logger.info('Streamed profile', { entityId: entity.entityId, pointer: entity.pointers[0] })
+        logger.info("Streamed profile, won't be processed if already processed", {
+          entityId: entity.entityId,
+          pointer: entity.pointers[0]
+        })
 
         if (entityTracker.hasBeenProcessed(entity.entityId)) {
-          logger.debug('Skipping already processed profile', { entityId: entity.entityId, pointer: entity.pointers[0] })
           continue
         }
 
