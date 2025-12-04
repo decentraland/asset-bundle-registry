@@ -7,7 +7,8 @@ import {
   MessageProcessorResult,
   EventHandlerResult,
   Registry,
-  Sync
+  Sync,
+  ProfileMetadata
 } from './types'
 import { Entity, EthAddress } from '@dcl/schemas'
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
@@ -160,6 +161,7 @@ export interface IFailedProfilesRetrierComponent {
 }
 
 export interface IProfileSanitizerComponent {
+  getMetadata(profile: Entity): ProfileMetadata
   sanitizeProfiles(
     minimalProfiles: Sync.ProfileDeployment[] | Sync.FailedProfileFetch[],
     notFoundProfilesHandler: (profile: Sync.ProfileDeployment) => Promise<void>

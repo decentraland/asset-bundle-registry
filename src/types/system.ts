@@ -48,6 +48,7 @@ export type BaseComponents = {
   queuesStatusManager: QueuesStatusManagerComponent
   memoryStorage: ICacheStorage
   profileRetriever: IProfileRetrieverComponent
+  profileSanitizer: IProfileSanitizerComponent
 }
 
 // components used in runtime
@@ -65,7 +66,6 @@ export type AppComponents = BaseComponents & {
   synchronizer: ISynchronizerComponent & IBaseComponent
   ownershipValidator: IBaseComponent
   snapshotContentStorage: SnapshotContentStorageComponent
-  profileSanitizer: IProfileSanitizerComponent
   snapshotsHandler: IProfilesSynchronizerComponent
   pointerChangesHandler: IProfilesSynchronizerComponent
   failedProfilesRetrier: IFailedProfilesRetrierComponent

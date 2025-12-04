@@ -1,14 +1,16 @@
-import { Entity } from '@dcl/schemas'
-import { AppComponents, IProfileSanitizerComponent, Sync } from '../../types'
+import { Entity, Profile } from '@dcl/schemas'
+import { AppComponents, IProfileSanitizerComponent, Sync, ProfileMetadata } from '../../types'
 import { withRetry, withTimeout } from '../../utils/async-utils'
 
 const THIRTY_SECONDS_IN_MS = 30000
 
-export function createProfileSanitizerComponent({
+export async function createProfileSanitizerComponent({
   catalyst,
+  config,
   logs
-}: Pick<AppComponents, 'catalyst' | 'logs'>): IProfileSanitizerComponent {
+}: Pick<AppComponents, 'catalyst' | 'config' | 'logs'>): Promise<IProfileSanitizerComponent> {
   const logger = logs.getLogger('profile-sanitizer')
+  const PROFILES_IMAGE_URL = await config.requireString('PROFILES_IMAGE_URL')
 
   async function sanitizeProfiles(
     minimalProfiles: Sync.ProfileDeployment[],
@@ -46,7 +48,18 @@ export function createProfileSanitizerComponent({
     return profilesFetched as Entity[]
   }
 
+  function getMetadata(profile: Entity): ProfileMetadata {
+    const avatar = (profile.metadata as Profile).avatars[0]
+    return {
+      pointer: profile.pointers[0],
+      hasClaimedName: avatar.hasClaimedName,
+      name: avatar.name,
+      thumbnailUrl: `${PROFILES_IMAGE_URL}/entities/${profile.id}/face.png`
+    }
+  }
+
   return {
-    sanitizeProfiles
+    sanitizeProfiles,
+    getMetadata
   }
 }

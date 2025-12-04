@@ -1,4 +1,4 @@
-import { Entity, EntityType } from '@dcl/schemas'
+import { Entity, EntityType, EthAddress } from '@dcl/schemas'
 
 export namespace Sync {
   export type ProfileDbEntity = Omit<Entity, 'version' | 'pointers'> & {
@@ -78,6 +78,13 @@ export namespace Registry {
     OBSOLETE = 'obsolete',
     FALLBACK = 'fallback'
   }
+}
+
+export type ProfileMetadata = {
+  pointer: EthAddress
+  hasClaimedName: boolean
+  name: string
+  thumbnailUrl: string
 }
 
 type StatusByPlatform = {
