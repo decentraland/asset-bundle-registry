@@ -38,7 +38,7 @@ export async function setupRouter(globalContext: GlobalContext): Promise<Router<
 
   if (!!adminToken) {
     router.post('/registry', bearerTokenMiddleware(adminToken), createRegistryHandler)
-    router.delete('/flush-cache', bearerTokenMiddleware(adminToken), flushCacheHandler)
+    router.delete('/flush-cache/:type', bearerTokenMiddleware(adminToken), flushCacheHandler)
   }
 
   return router
