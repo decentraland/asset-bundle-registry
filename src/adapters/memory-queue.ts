@@ -1,9 +1,9 @@
 import { Message } from '@aws-sdk/client-sqs'
 import { randomUUID } from 'node:crypto'
 
-import { QueueComponent, QueueMessage } from '../types'
+import { IQueueComponent, QueueMessage } from '../types'
 
-export function createMemoryQueueAdapter(): QueueComponent {
+export function createMemoryQueueAdapter(): IQueueComponent {
   const queue: Map<string, Message> = new Map()
 
   async function send(message: QueueMessage): Promise<void> {

@@ -1,11 +1,11 @@
-import { AppComponents, MessageConsumerComponent, MessageProcessorResult } from '../types'
+import { AppComponents, IMessageConsumerComponent, MessageProcessorResult } from '../types'
 import { sleep } from '../utils/timer'
 
 export function createMessagesConsumerComponent({
   logs,
   queue,
   messageProcessor
-}: Pick<AppComponents, 'logs' | 'queue' | 'messageProcessor'>): MessageConsumerComponent {
+}: Pick<AppComponents, 'logs' | 'queue' | 'messageProcessor'>): IMessageConsumerComponent {
   const logger = logs.getLogger('messages-consumer')
   const intervalToWaitInSeconds = 5 // wait time when no messages are found in the queue
   let isRunning = false

@@ -1,8 +1,8 @@
 import SQL, { SQLStatement } from 'sql-template-strings'
-import { AppComponents, DbComponent, Registry, Sync } from '../types'
+import { AppComponents, IDbComponent, Registry, Sync } from '../types'
 import { EthAddress } from '@dcl/schemas'
 
-export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): DbComponent {
+export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent {
   async function getSortedRegistriesByOwner(owner: EthAddress): Promise<Registry.DbEntity[]> {
     const query: SQLStatement = SQL`
       SELECT 

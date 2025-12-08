@@ -1,4 +1,4 @@
-import { AppComponents, Registry, RegistryOrchestratorComponent } from '../types'
+import { AppComponents, Registry, IRegistryOrchestratorComponent } from '../types'
 
 type RelatedEntities = {
   newerEntities: Registry.PartialDbEntity[]
@@ -10,7 +10,7 @@ export function createRegistryOrchestratorComponent({
   db,
   logs,
   metrics
-}: Pick<AppComponents, 'db' | 'logs' | 'metrics'>): RegistryOrchestratorComponent {
+}: Pick<AppComponents, 'db' | 'logs' | 'metrics'>): IRegistryOrchestratorComponent {
   const logger = logs.getLogger('registry-orchestrator')
 
   function categorizeRelatedEntities(

@@ -1,4 +1,4 @@
-import { AppComponents, EntityStatusFetcher, Registry } from '../types'
+import { AppComponents, IEntityStatusFetcherComponent, Registry } from '../types'
 import { withRetry } from '../utils/timer'
 
 export enum ManifestStatusCode {
@@ -30,7 +30,7 @@ export async function createEntityStatusFetcherComponent({
   fetch,
   logs,
   config
-}: Pick<AppComponents, 'fetch' | 'logs' | 'config'>): Promise<EntityStatusFetcher> {
+}: Pick<AppComponents, 'fetch' | 'logs' | 'config'>): Promise<IEntityStatusFetcherComponent> {
   const ASSET_BUNDLE_CDN_URL = (await config.requireString('ASSET_BUNDLE_CDN_URL')).replace(/\/?$/, '/')
   const MAX_RETRIES = (await config.getNumber('MAX_RETRIES')) || 5
   const logger = logs.getLogger('entity-status-fetcher')

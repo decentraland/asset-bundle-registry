@@ -1,8 +1,8 @@
-import { AppComponents, EntityStatusInQueue, QueuesStatusManagerComponent } from '../types'
+import { AppComponents, EntityStatusInQueue, IQueuesStatusManagerComponent } from '../types'
 
 export function createQueuesStatusManagerComponent({
   memoryStorage
-}: Pick<AppComponents, 'memoryStorage'>): QueuesStatusManagerComponent {
+}: Pick<AppComponents, 'memoryStorage'>): IQueuesStatusManagerComponent {
   function generateCacheKey(platform: 'windows' | 'mac' | 'webgl', entityId: string): string {
     return `jobs:${platform}:${entityId}`
   }

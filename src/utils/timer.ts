@@ -33,3 +33,19 @@ export async function withRetry<T>(
 
   throw new Error('Should never reach this point')
 }
+
+export async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  let timeoutHandle: NodeJS.Timeout
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutHandle = setTimeout(() => reject(new Error(`Operation timed out after ${timeoutMs}ms`)), timeoutMs)
+  })
+
+  try {
+    const result = await Promise.race([promise, timeoutPromise])
+    clearTimeout(timeoutHandle!)
+    return result
+  } catch (error) {
+    clearTimeout(timeoutHandle!)
+    throw error
+  }
+}

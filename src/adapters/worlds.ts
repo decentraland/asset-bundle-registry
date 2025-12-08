@@ -1,12 +1,12 @@
 import { Entity } from '@dcl/schemas'
-import { AppComponents, WorldsComponent } from '../types'
+import { AppComponents, IWorldsComponent } from '../types'
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
 
 export async function createWorldsAdapter({
   logs,
   config,
   fetch
-}: Pick<AppComponents, 'logs' | 'config' | 'fetch'>): Promise<WorldsComponent> {
+}: Pick<AppComponents, 'logs' | 'config' | 'fetch'>): Promise<IWorldsComponent> {
   const logger = logs.getLogger('worlds-adapter')
   const defaultWorldsContentServerUrl = await config.requireString('WORLDS_CONTENT_SERVER_URL')
 

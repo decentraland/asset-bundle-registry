@@ -8,16 +8,16 @@ import type {
 } from '@well-known-components/interfaces'
 import { IPgComponent } from '@well-known-components/pg-component'
 import {
-  CatalystComponent,
-  DbComponent,
-  MessageConsumerComponent,
-  MessageProcessorComponent,
-  QueueComponent,
-  EntityStatusFetcher,
-  RegistryOrchestratorComponent,
+  ICatalystComponent,
+  IDbComponent,
+  IMessageConsumerComponent,
+  IMessageProcessorComponent,
+  IQueueComponent,
+  IEntityStatusFetcherComponent,
+  IRegistryOrchestratorComponent,
   ICacheStorage,
-  WorldsComponent,
-  QueuesStatusManagerComponent
+  IWorldsComponent,
+  IQueuesStatusManagerComponent
 } from './service'
 import { metricDeclarations } from '../metrics'
 
@@ -32,11 +32,11 @@ export type BaseComponents = {
   logs: ILoggerComponent
   server: IHttpServerComponent<GlobalContext>
   metrics: IMetricsComponent<keyof typeof metricDeclarations>
-  db: DbComponent
-  catalyst: CatalystComponent
-  entityStatusFetcher: EntityStatusFetcher
-  registryOrchestrator: RegistryOrchestratorComponent
-  queuesStatusManager: QueuesStatusManagerComponent
+  db: IDbComponent
+  catalyst: ICatalystComponent
+  entityStatusFetcher: IEntityStatusFetcherComponent
+  registryOrchestrator: IRegistryOrchestratorComponent
+  queuesStatusManager: IQueuesStatusManagerComponent
   memoryStorage: ICacheStorage
 }
 
@@ -44,19 +44,19 @@ export type BaseComponents = {
 export type AppComponents = BaseComponents & {
   pg: IPgComponent
   statusChecks: IBaseComponent
-  queue: QueueComponent
-  messageProcessor: MessageProcessorComponent
-  messageConsumer: MessageConsumerComponent
+  queue: IQueueComponent
+  messageProcessor: IMessageProcessorComponent
+  messageConsumer: IMessageConsumerComponent
   workerManager: IBaseComponent
-  worlds: WorldsComponent
+  worlds: IWorldsComponent
 }
 
 // components used in tests
 export type TestComponents = BaseComponents & {
   // A fetch component that only hits the test server
   localFetch: IFetchComponent
-  messageConsumer: MessageConsumerComponent
-  extendedDb: DbComponent & {
+  messageConsumer: IMessageConsumerComponent
+  extendedDb: IDbComponent & {
     deleteHistoricalRegistries: (ids: string[]) => Promise<void>
     close: () => Promise<void>
   }
