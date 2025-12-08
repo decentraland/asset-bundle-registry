@@ -1,4 +1,4 @@
-import { Entity, EntityType } from '@dcl/schemas'
+import { Entity, EntityType, Profile, Avatar } from '@dcl/schemas'
 
 export function createProfileEntity(overrides: Partial<Entity> = { metadata: {} }): Entity {
   return {
@@ -14,6 +14,58 @@ export function createProfileEntity(overrides: Partial<Entity> = { metadata: {} 
       image: 'test',
       ...overrides.metadata
     },
+    ...overrides
+  }
+}
+
+export function createAvatar(overrides: Partial<Avatar> = {}): Avatar {
+  return {
+    hasClaimedName: false,
+    name: 'test',
+    ethAddress: '0x0000000000000000000000000000000000000000',
+    userId: '',
+    description: '',
+    version: 0,
+    tutorialStep: 0,
+    avatar: {
+      bodyShape: 'dcl://base-avatars/BaseFemale',
+      eyes: {
+        color: {
+          r: 0.5,
+          g: 0.5,
+          b: 0.5
+        }
+      },
+      hair: {
+        color: {
+          r: 0.3,
+          g: 0.3,
+          b: 0.3
+        }
+      },
+      skin: {
+        color: {
+          r: 0.8,
+          g: 0.7,
+          b: 0.6
+        }
+      },
+      wearables: [],
+      forceRender: [],
+      emotes: [],
+      snapshots: {
+        face256: '',
+        body: ''
+      }
+    },
+    ...overrides
+  }
+}
+
+export function createProfile(overrides: Partial<Profile> = {}): Profile {
+  const defaultAvatar = createAvatar(overrides.avatars?.[0])
+  return {
+    avatars: overrides.avatars || [defaultAvatar],
     ...overrides
   }
 }

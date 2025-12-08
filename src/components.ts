@@ -89,7 +89,7 @@ export async function initComponents(): Promise<AppComponents> {
     : createInMemoryCacheComponent()
 
   const catalyst = await createCatalystAdapter({ logs, fetch, config })
-  const profileSanitizer = await createProfileSanitizerComponent({ logs, catalyst, config })
+  const profileSanitizer = await createProfileSanitizerComponent({ catalyst, config })
   const worlds = await createWorldsAdapter({ logs, config, fetch })
   const registryOrchestrator = createRegistryOrchestratorComponent({ logs, db, metrics })
   const entityStatusFetcher = await createEntityStatusFetcherComponent({ fetch, logs, config })
@@ -124,6 +124,7 @@ export async function initComponents(): Promise<AppComponents> {
     entityStatusFetcher,
     workerManager,
     memoryStorage,
-    queuesStatusManager
+    queuesStatusManager,
+    profileSanitizer
   }
 }

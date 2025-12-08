@@ -6,10 +6,8 @@ const THIRTY_SECONDS_IN_MS = 30000
 
 export async function createProfileSanitizerComponent({
   catalyst,
-  config,
-  logs
-}: Pick<AppComponents, 'catalyst' | 'config' | 'logs'>): Promise<IProfileSanitizerComponent> {
-  const logger = logs.getLogger('profile-sanitizer')
+  config
+}: Pick<AppComponents, 'catalyst' | 'config'>): Promise<IProfileSanitizerComponent> {
   const PROFILES_IMAGE_URL = await config.requireString('PROFILES_IMAGE_URL')
 
   async function sanitizeProfiles(
@@ -25,24 +23,9 @@ export async function createProfileSanitizerComponent({
       withTimeout(catalyst.getEntitiesByIds(entityIdsToFetch), THIRTY_SECONDS_IN_MS)
     )
 
-    if (profilesFetched.length === 0 || profilesFetched.length !== entityIdsToFetch.length) {
-      logger.warn('Profiles fetched mismatch', {
-        requested: entityIdsToFetch.length,
-        fetched: profilesFetched.length
-      })
-
-      for (const minimalProfile of minimalProfiles) {
-        await notFoundProfilesHandler(minimalProfile)
-      }
-
-      return []
-    }
-
-    for (const minimalProfile of minimalProfiles) {
-      const profile = profilesFetched.find((p) => p.id === minimalProfile.entityId)
-      if (!profile) {
-        await notFoundProfilesHandler(minimalProfile)
-      }
+    const missingProfiles = minimalProfiles.filter((p) => !profilesFetched.some((pf) => pf.id === p.entityId))
+    for (const missingProfile of missingProfiles) {
+      await notFoundProfilesHandler(missingProfile)
     }
 
     return profilesFetched as Entity[]
@@ -94,7 +77,7 @@ export async function createProfileSanitizerComponent({
     })
   }
 
-  function mapProfilesToEntities(profiles: any[]): Entity[] {
+  function mapProfilesToEntities(profiles: Profile[]): Entity[] {
     return profiles.map((profile) => {
       const avatar = profile.avatars![0]
       const ethAddress = avatar.ethAddress as string

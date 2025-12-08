@@ -17,7 +17,8 @@ import {
   IRegistryOrchestratorComponent,
   ICacheStorage,
   IWorldsComponent,
-  IQueuesStatusManagerComponent
+  IQueuesStatusManagerComponent,
+  IProfileSanitizerComponent
 } from './service'
 import { metricDeclarations } from '../metrics'
 
@@ -49,6 +50,7 @@ export type AppComponents = BaseComponents & {
   messageConsumer: IMessageConsumerComponent
   workerManager: IBaseComponent
   worlds: IWorldsComponent
+  profileSanitizer: IProfileSanitizerComponent
 }
 
 // components used in tests
