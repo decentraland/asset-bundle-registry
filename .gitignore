@@ -16,3 +16,5 @@ hide.*
 wearables.json
 emotes.json
 scenes-processor-missing-pointers.json
+
+.cursor/

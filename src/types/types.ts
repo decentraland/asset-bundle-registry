@@ -1,6 +1,22 @@
 import { Entity, EntityType } from '@dcl/schemas'
 
 export namespace Sync {
+  export type ProfileDbEntity = Omit<Entity, 'version' | 'pointers'> & {
+    localTimestamp: number
+    pointer: string // single pointer ensurance for simplicity over B-tree database index
+  }
+
+  export type FailedProfileDbEntity = {
+    entityId: string
+    pointer: string
+    timestamp: number
+    authChain?: any
+    firstFailedAt: number
+    lastRetryAt?: number
+    retryCount: number
+    errorMessage?: string
+  }
+
   export type CacheEntry = {
     profile: Entity
     localTimestamp: number
