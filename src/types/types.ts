@@ -1,5 +1,12 @@
 import { Entity, EntityType } from '@dcl/schemas'
 
+export namespace Sync {
+  export type CacheEntry = {
+    profile: Entity
+    localTimestamp: number
+  }
+}
+
 export namespace Registry {
   export enum SimplifiedStatus {
     PENDING = 'pending',

@@ -11,7 +11,7 @@ import {
 import { Entity, EthAddress } from '@dcl/schemas'
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
 
-export type DbComponent = {
+export interface DbComponent {
   getSortedRegistriesByOwner(owner: EthAddress): Promise<Registry.DbEntity[]>
   getSortedRegistriesByPointers(
     pointers: string[],
@@ -47,37 +47,37 @@ export type DbComponent = {
 
 export type QueueMessage = any
 
-export type QueueComponent = {
+export interface QueueComponent {
   send(message: QueueMessage): Promise<void>
   receiveMessages(amount: number): Promise<Message[]>
   deleteMessage(receiptHandle: string): Promise<void>
 }
 
-export type MessageConsumerComponent = IBaseComponent
+export interface MessageConsumerComponent extends IBaseComponent {}
 
-export type MessageProcessorComponent = {
+export interface MessageProcessorComponent {
   process(message: any): Promise<MessageProcessorResult>
 }
 
-export type CatalystComponent = {
+export interface CatalystComponent {
   getEntityById(id: string, options?: CatalystFetchOptions): Promise<Entity | null>
   getEntitiesByIds(ids: string[], options?: CatalystFetchOptions): Promise<Entity[]>
   getEntityByPointers(pointers: string[]): Promise<Entity[]>
   getContent(id: string): Promise<Entity | undefined>
 }
 
-export type WorldsComponent = {
+export interface WorldsComponent {
   getWorld(worldId: string, worldContentServerUrl?: string): Promise<Entity | null>
   isWorldDeployment(event: DeploymentToSqs): boolean
 }
 
-export type EventHandlerComponent<T> = {
+export interface EventHandlerComponent<T> {
   handle(event: T): Promise<EventHandlerResult>
   canHandle(event: T): boolean
   name: EventHandlerName
 }
 
-export type EntityStatusFetcher = {
+export interface EntityStatusFetcher {
   fetchBundleManifestData(
     entityId: string,
     platform: string
@@ -85,19 +85,28 @@ export type EntityStatusFetcher = {
   fetchLODsStatus(entityId: string, platform: string): Promise<Registry.SimplifiedStatus>
 }
 
-export type RegistryOrchestratorComponent = {
+export interface RegistryOrchestratorComponent {
   persistAndRotateStates(registry: Omit<Registry.DbEntity, 'status'>): Promise<Registry.DbEntity>
 }
 
-export type ICacheStorage = IBaseComponent & {
+export interface ICacheStorage extends IBaseComponent {
   get<T>(key: string): Promise<T[]>
   set<T>(key: string, value: T): Promise<void>
   purge(key: string): Promise<void>
   flush(pattern: string): Promise<void>
 }
 
-export type QueuesStatusManagerComponent = {
+export interface QueuesStatusManagerComponent {
   markAsQueued(platform: 'windows' | 'mac' | 'webgl', entityId: string): Promise<void>
   markAsFinished(platform: 'windows' | 'mac' | 'webgl', entityId: string): Promise<void>
   getAllPendingEntities(platform: 'windows' | 'mac' | 'webgl'): Promise<EntityStatusInQueue[]>
+}
+
+export interface IProfilesCacheComponent {
+  get(pointer: string): Entity | undefined
+  getMany(pointers: string[]): Map<string, Entity>
+  setIfNewer(pointer: string, profile: Entity): boolean
+  setManyIfNewer(profiles: Entity[]): void
+  has(pointer: string): boolean
+  getAllPointers(): string[]
 }

@@ -1,12 +1,15 @@
-import { LRUCache } from 'lru-cache'
 import { ICacheStorage } from '../types'
+import { createNormalizedLRUCache, ILRUNormalizedCache } from './lru-cache'
 
-const TWENTY_FOUR_HOURS_IN_MILLISECONDS = 1000 * 60 * 60 * 24
+const FOUR_HOURS_IN_MILLISECONDS = 1000 * 60 * 60 * 4
 
 export function createInMemoryCacheComponent(): ICacheStorage {
-  const cache = new LRUCache<string, { value: any; expiresAt?: number }>({
-    max: 1000,
-    ttl: TWENTY_FOUR_HOURS_IN_MILLISECONDS
+  const cache: ILRUNormalizedCache<{ value: any; expiresAt?: number }> = createNormalizedLRUCache<{
+    value: any
+    expiresAt?: number
+  }>({
+    maxItems: 1000,
+    ttlMs: FOUR_HOURS_IN_MILLISECONDS
   })
 
   async function start() {}
@@ -43,7 +46,7 @@ export function createInMemoryCacheComponent(): ICacheStorage {
   }
 
   async function set<T>(key: string, value: T): Promise<void> {
-    const expiresAt = Date.now() + TWENTY_FOUR_HOURS_IN_MILLISECONDS
+    const expiresAt = Date.now() + FOUR_HOURS_IN_MILLISECONDS
     cache.set(key, { value, expiresAt })
   }
 
