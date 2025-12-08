@@ -16,18 +16,13 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   })
 
   pgm.createIndex('failed_profile_fetches', 'LOWER(pointer)', { name: 'idx_failed_fetches_pointer' })
-  pgm.createIndex('failed_profile_fetches', 'timestamp', { name: 'idx_failed_fetches_timestamp' })
+  pgm.createIndex('failed_profile_fetches', 'LOWER(entity_id)', { name: 'idx_failed_fetches_entity_id' })
   pgm.createIndex('failed_profile_fetches', 'retry_count', { name: 'idx_failed_fetches_retry_count' })
-  pgm.createIndex('failed_profile_fetches', 'last_retry_at', {
-    name: 'idx_failed_fetches_last_retry',
-    where: 'last_retry_at IS NOT NULL'
-  })
 }
 
 export async function down(pgm: MigrationBuilder): Promise<void> {
-  pgm.dropIndex('failed_profile_fetches', 'last_retry_at', { name: 'idx_failed_fetches_last_retry', ifExists: true })
-  pgm.dropIndex('failed_profile_fetches', 'retry_count', { name: 'idx_failed_fetches_retry_count', ifExists: true })
-  pgm.dropIndex('failed_profile_fetches', 'timestamp', { name: 'idx_failed_fetches_timestamp', ifExists: true })
+  pgm.dropIndex('failed_profile_fetches', 'LOWER(entity_id)', { name: 'idx_failed_fetches_entity_id', ifExists: true })
   pgm.dropIndex('failed_profile_fetches', 'LOWER(pointer)', { name: 'idx_failed_fetches_pointer', ifExists: true })
+  pgm.dropIndex('failed_profile_fetches', 'retry_count', { name: 'idx_failed_fetches_retry_count', ifExists: true })
   pgm.dropTable('failed_profile_fetches', { ifExists: true })
 }
