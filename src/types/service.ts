@@ -6,7 +6,8 @@ import {
   EventHandlerName,
   MessageProcessorResult,
   EventHandlerResult,
-  Registry
+  Registry,
+  Sync
 } from './types'
 import { Entity, EthAddress } from '@dcl/schemas'
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
@@ -43,6 +44,18 @@ export interface DbComponent {
   insertHistoricalRegistry(registry: Registry.DbEntity): Promise<Registry.DbEntity>
   getSortedHistoricalRegistriesByOwner(owner: EthAddress): Promise<Registry.DbEntity[]>
   getHistoricalRegistryById(id: string): Promise<Registry.DbEntity | null>
+  // profiles
+  upsertProfileIfNewer(profile: Sync.ProfileDbEntity): Promise<boolean>
+  getProfileByPointer(pointer: string): Promise<Sync.ProfileDbEntity | null>
+  getProfilesByPointers(pointers: string[]): Promise<Sync.ProfileDbEntity[]>
+  getLatestProfileTimestamp(): Promise<number | null>
+  markSnapshotProcessed(hash: string): Promise<void>
+  isSnapshotProcessed(hash: string): Promise<boolean>
+  insertFailedProfileFetch(failed: Sync.FailedProfileDbEntity): Promise<void>
+  deleteFailedProfileFetch(entityId: string): Promise<void>
+  updateFailedProfileFetchRetry(entityId: string, retryCount: number, errorMessage?: string): Promise<void>
+  getFailedProfileFetches(limit: number, maxRetryCount?: number): Promise<Sync.FailedProfileDbEntity[]>
+  getFailedProfileFetchByEntityId(entityId: string): Promise<Sync.FailedProfileDbEntity | null>
 }
 
 export type QueueMessage = any
