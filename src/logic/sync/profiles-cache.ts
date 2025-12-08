@@ -1,5 +1,5 @@
-import { ILRUNormalizedCache } from '../adapters/lru-cache'
-import { IProfilesCacheComponent, Sync } from '../types'
+import { ILRUNormalizedCache } from '../../adapters/lru-cache'
+import { IProfilesCacheComponent, Sync } from '../../types'
 import { Entity } from '@dcl/schemas'
 
 /**

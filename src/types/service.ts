@@ -123,3 +123,9 @@ export interface IProfilesCacheComponent {
   has(pointer: string): boolean
   getAllPointers(): string[]
 }
+
+export interface IEntityDeploymentTrackerComponent {
+  hasBeenProcessed(entityId: string): boolean
+  markAsProcessed(entityId: string): void
+  tryMarkDuplicate(entityId: string): boolean
+}
