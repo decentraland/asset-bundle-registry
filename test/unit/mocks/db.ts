@@ -1,6 +1,6 @@
-import { DbComponent } from '../../../src/types'
+import { IDbComponent } from '../../../src/types'
 
-export function createDbMockComponent(): DbComponent {
+export function createDbMockComponent(): IDbComponent {
   return {
     getSortedRegistriesByPointers: jest.fn(),
     getRegistryById: jest.fn(),

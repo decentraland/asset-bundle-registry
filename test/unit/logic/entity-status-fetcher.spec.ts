@@ -1,5 +1,5 @@
 import { createEntityStatusFetcherComponent, ManifestStatusCode } from '../../../src/logic/entity-status-fetcher'
-import { EntityStatusFetcher, Registry } from '../../../src/types'
+import { IEntityStatusFetcherComponent, Registry } from '../../../src/types'
 import { createConfigMockComponent } from '../mocks/config'
 import { createLogMockComponent } from '../mocks/logs'
 
@@ -31,7 +31,11 @@ describe('entity status fetcher', () => {
 
   describe('bundles status and version', () => {
     it('should fetch COMPLETE bundle status and version for webgl platform', async () => {
-      const sut: EntityStatusFetcher = await createEntityStatusFetcherComponent({ fetch: mockFetch, logs, config })
+      const sut: IEntityStatusFetcherComponent = await createEntityStatusFetcherComponent({
+        fetch: mockFetch,
+        logs,
+        config
+      })
       const platform = 'webgl'
 
       const manifest = createManifest(ManifestStatusCode.SUCCESS, 'v2')
@@ -47,7 +51,11 @@ describe('entity status fetcher', () => {
     })
 
     it('should fetch COMPLETE bundle status and version for non-webgl platform', async () => {
-      const sut: EntityStatusFetcher = await createEntityStatusFetcherComponent({ fetch: mockFetch, logs, config })
+      const sut: IEntityStatusFetcherComponent = await createEntityStatusFetcherComponent({
+        fetch: mockFetch,
+        logs,
+        config
+      })
       const platform = 'android'
 
       const manifest = createManifest(ManifestStatusCode.SUCCESS, 'v3')
@@ -63,7 +71,11 @@ describe('entity status fetcher', () => {
     })
 
     it('should return COMPLETE status and version for manifest with CONVERSION_ERRORS_TOLERATED', async () => {
-      const sut: EntityStatusFetcher = await createEntityStatusFetcherComponent({ fetch: mockFetch, logs, config })
+      const sut: IEntityStatusFetcherComponent = await createEntityStatusFetcherComponent({
+        fetch: mockFetch,
+        logs,
+        config
+      })
 
       const manifest = createManifest(ManifestStatusCode.CONVERSION_ERRORS_TOLERATED, 'v4')
       mockFetch.fetch.mockResolvedValue({
@@ -77,7 +89,11 @@ describe('entity status fetcher', () => {
     })
 
     it('should return COMPLETE status and version for manifest with ALREADY_CONVERTED', async () => {
-      const sut: EntityStatusFetcher = await createEntityStatusFetcherComponent({ fetch: mockFetch, logs, config })
+      const sut: IEntityStatusFetcherComponent = await createEntityStatusFetcherComponent({
+        fetch: mockFetch,
+        logs,
+        config
+      })
 
       const manifest = createManifest(ManifestStatusCode.ALREADY_CONVERTED, 'v5')
       mockFetch.fetch.mockResolvedValue({
@@ -91,7 +107,11 @@ describe('entity status fetcher', () => {
     })
 
     it('should return FAILED status and version for manifest with error status', async () => {
-      const sut: EntityStatusFetcher = await createEntityStatusFetcherComponent({ fetch: mockFetch, logs, config })
+      const sut: IEntityStatusFetcherComponent = await createEntityStatusFetcherComponent({
+        fetch: mockFetch,
+        logs,
+        config
+      })
 
       const manifest = createManifest(ManifestStatusCode.ASSET_BUNDLE_BUILD_FAIL, 'v6')
       mockFetch.fetch.mockResolvedValue({
@@ -105,7 +125,11 @@ describe('entity status fetcher', () => {
     })
 
     it('should throw error when manifest is not found (404)', async () => {
-      const sut: EntityStatusFetcher = await createEntityStatusFetcherComponent({ fetch: mockFetch, logs, config })
+      const sut: IEntityStatusFetcherComponent = await createEntityStatusFetcherComponent({
+        fetch: mockFetch,
+        logs,
+        config
+      })
 
       mockFetch.fetch.mockResolvedValue({
         ok: false,
@@ -116,7 +140,11 @@ describe('entity status fetcher', () => {
     })
 
     it('should throw error for non-404 fetch failures', async () => {
-      const sut: EntityStatusFetcher = await createEntityStatusFetcherComponent({ fetch: mockFetch, logs, config })
+      const sut: IEntityStatusFetcherComponent = await createEntityStatusFetcherComponent({
+        fetch: mockFetch,
+        logs,
+        config
+      })
 
       mockFetch.fetch.mockResolvedValue({
         ok: false,
@@ -129,7 +157,11 @@ describe('entity status fetcher', () => {
 
   describe('LODs status', () => {
     it('should return COMPLETE when all LODs exist', async () => {
-      const sut: EntityStatusFetcher = await createEntityStatusFetcherComponent({ fetch: mockFetch, logs, config })
+      const sut: IEntityStatusFetcherComponent = await createEntityStatusFetcherComponent({
+        fetch: mockFetch,
+        logs,
+        config
+      })
 
       mockFetch.fetch.mockResolvedValue({ ok: true })
 
@@ -139,7 +171,11 @@ describe('entity status fetcher', () => {
     })
 
     it('should return FAILED when any LOD is missing', async () => {
-      const sut: EntityStatusFetcher = await createEntityStatusFetcherComponent({ fetch: mockFetch, logs, config })
+      const sut: IEntityStatusFetcherComponent = await createEntityStatusFetcherComponent({
+        fetch: mockFetch,
+        logs,
+        config
+      })
 
       mockFetch.fetch
         .mockResolvedValueOnce({ ok: true })
@@ -151,7 +187,11 @@ describe('entity status fetcher', () => {
     })
 
     it('should retry on network errors and succeed eventually', async () => {
-      const sut: EntityStatusFetcher = await createEntityStatusFetcherComponent({ fetch: mockFetch, logs, config })
+      const sut: IEntityStatusFetcherComponent = await createEntityStatusFetcherComponent({
+        fetch: mockFetch,
+        logs,
+        config
+      })
 
       const manifest = createManifest(ManifestStatusCode.SUCCESS, 'v7')
       mockFetch.fetch.mockRejectedValueOnce(new Error('ECONNRESET')).mockResolvedValueOnce({
@@ -166,7 +206,11 @@ describe('entity status fetcher', () => {
     })
 
     it('should fail after max retries', async () => {
-      const sut: EntityStatusFetcher = await createEntityStatusFetcherComponent({ fetch: mockFetch, logs, config })
+      const sut: IEntityStatusFetcherComponent = await createEntityStatusFetcherComponent({
+        fetch: mockFetch,
+        logs,
+        config
+      })
 
       mockFetch.fetch.mockRejectedValue(new Error('ECONNRESET'))
 
@@ -175,7 +219,11 @@ describe('entity status fetcher', () => {
     })
 
     it('should use platform suffix for non-webgl platforms', async () => {
-      const sut: EntityStatusFetcher = await createEntityStatusFetcherComponent({ fetch: mockFetch, logs, config })
+      const sut: IEntityStatusFetcherComponent = await createEntityStatusFetcherComponent({
+        fetch: mockFetch,
+        logs,
+        config
+      })
       const platform = 'android'
 
       mockFetch.fetch.mockResolvedValue({ ok: true })

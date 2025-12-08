@@ -1,8 +1,8 @@
 import { SQL } from 'sql-template-strings'
 import { SQLStatement } from 'sql-template-strings'
-import { AppComponents, DbComponent } from '../src/types'
+import { AppComponents, IDbComponent } from '../src/types'
 
-export function extendDbComponent({ db, pg }: Pick<AppComponents, 'db' | 'pg'>): DbComponent & {
+export function extendDbComponent({ db, pg }: Pick<AppComponents, 'db' | 'pg'>): IDbComponent & {
   deleteHistoricalRegistries: (ids: string[]) => Promise<void>
   close: () => Promise<void>
 } {

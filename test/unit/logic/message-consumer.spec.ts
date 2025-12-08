@@ -4,7 +4,7 @@ import { createMessageProcessorMockComponent } from '../mocks/message-processor'
 import { createLogMockComponent } from '../mocks/logs'
 import { sleep } from '../../../src/utils/timer'
 import { IBaseComponent } from '@well-known-components/interfaces'
-import { MessageConsumerComponent } from '../../../src/types'
+import { IMessageConsumerComponent } from '../../../src/types'
 
 jest.mock('../../../src/utils/timer', () => ({
   sleep: jest.fn()
@@ -14,7 +14,7 @@ describe('message consumer', () => {
   const queue = createQueueMockComponent()
   const messageProcessor = createMessageProcessorMockComponent()
   const logs = createLogMockComponent()
-  let sut: MessageConsumerComponent
+  let sut: IMessageConsumerComponent
 
   const mockStartOptions: IBaseComponent.ComponentStartOptions = {
     started: jest.fn(),
