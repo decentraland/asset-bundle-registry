@@ -149,8 +149,8 @@ export async function createSynchronizerComponent(
   }
 
   async function start(_startOptions?: any): Promise<void> {
-    const isSinchronizerDisabled = (await config.getString('DISABLE_PROFILE_SYNC')) === 'true'
-    if (isSinchronizerDisabled) {
+    const shouldStartSynchronizer = (await config.getString('DISABLE_PROFILE_SYNC')) === 'true'
+    if (shouldStartSynchronizer) {
       logger.info('Profile sync is disabled, skipping')
       return
     }
