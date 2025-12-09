@@ -3,7 +3,7 @@ import { ICatalystComponent, IProfileSanitizerComponent, Sync } from '../../../.
 import { createConfigMockComponent } from '../../mocks/config'
 import { createCatalystMockComponent } from '../../mocks/catalyst'
 import { createProfileSanitizerComponent } from '../../../../src/logic/sync/profile-sanitizer'
-import { createAvatar, createProfile, createProfileEntity } from '../../mocks/data/profiles'
+import { createAvatar, createAvatarInfo, createProfile, createProfileEntity } from '../../mocks/data/profiles'
 import { Entity, Profile, EntityType } from '@dcl/schemas'
 
 const MOCK_PROFILE_IMAGES_URL = 'https://profiles.mock.org'
@@ -139,43 +139,15 @@ describe('profile sanitizer', () => {
 
     describe('when profiles have avatars with avatar property', () => {
       let entities: Entity[]
+      let avatarA: any
+      let avatarB: any
 
       beforeEach(() => {
+        avatarA = createAvatar({ hasClaimedName: false, name: 'test1', avatar: createAvatarInfo() })
+        avatarB = createAvatar({ hasClaimedName: true, name: 'test2', avatar: createAvatarInfo() })
         entities = [
-          createProfileEntity({
-            id: 'bafz',
-            metadata: {
-              avatars: [
-                {
-                  hasClaimedName: false,
-                  name: 'test1',
-                  avatar: {
-                    bodyShape: 'dcl://base-avatars/BaseFemale',
-                    eyes: { color: { r: 0.5, g: 0.5, b: 0.5 } },
-                    hair: { color: { r: 0.3, g: 0.3, b: 0.3 } },
-                    skin: { color: { r: 0.8, g: 0.7, b: 0.6 } }
-                  }
-                }
-              ]
-            }
-          }),
-          createProfileEntity({
-            id: 'bafy',
-            metadata: {
-              avatars: [
-                {
-                  hasClaimedName: true,
-                  name: 'test2',
-                  avatar: {
-                    bodyShape: 'dcl://base-avatars/BaseMale',
-                    eyes: { color: { r: 0.6, g: 0.6, b: 0.6 } },
-                    hair: { color: { r: 0.4, g: 0.4, b: 0.4 } },
-                    skin: { color: { r: 0.9, g: 0.8, b: 0.7 } }
-                  }
-                }
-              ]
-            }
-          })
+          createProfileEntity({ id: 'bafz', metadata: { avatars: [avatarA] } }),
+          createProfileEntity({ id: 'bafy', metadata: { avatars: [avatarB] } })
         ]
       })
 
@@ -196,82 +168,55 @@ describe('profile sanitizer', () => {
       it('should preserve all other avatar properties', () => {
         const result = component.getProfilesWithSnapshotsAsUrls(entities)
 
-        expect(result[0].metadata.avatars[0].hasClaimedName).toBe(false)
-        expect(result[0].metadata.avatars[0].name).toBe('test1')
-        expect(result[0].metadata.avatars[0].avatar?.bodyShape).toBe('dcl://base-avatars/BaseFemale')
-        expect(result[1].metadata.avatars[0].hasClaimedName).toBe(true)
-        expect(result[1].metadata.avatars[0].name).toBe('test2')
-        expect(result[1].metadata.avatars[0].avatar?.bodyShape).toBe('dcl://base-avatars/BaseMale')
+        const expectedAvatarA = {
+          ...avatarA,
+          avatar: { ...avatarA.avatar, snapshots: result[0].metadata.avatars[0].avatar?.snapshots }
+        }
+        const expectedAvatarB = {
+          ...avatarB,
+          avatar: { ...avatarB.avatar, snapshots: result[1].metadata.avatars[0].avatar?.snapshots }
+        }
+        expect(result[0].metadata.avatars[0]).toEqual(expectedAvatarA)
+        expect(result[1].metadata.avatars[0]).toEqual(expectedAvatarB)
       })
 
       it('should preserve all other entity properties', () => {
         const result = component.getProfilesWithSnapshotsAsUrls(entities)
 
-        expect(result[0].id).toBe('bafz')
-        expect(result[0].version).toBe(entities[0].version)
-        expect(result[0].type).toBe(entities[0].type)
-        expect(result[0].timestamp).toBe(entities[0].timestamp)
-        expect(result[0].pointers).toEqual(entities[0].pointers)
-        expect(result[0].content).toEqual(entities[0].content)
+        expect(result[0]).toEqual({
+          ...entities[0],
+          metadata: { avatars: [result[0].metadata.avatars[0]] }
+        })
       })
     })
 
     describe('when profiles have avatars without avatar property', () => {
       let entities: Entity[]
+      let simpleAvatar: any
 
       beforeEach(() => {
-        entities = [
-          createProfileEntity({
-            id: 'bafz',
-            metadata: {
-              avatars: [
-                {
-                  hasClaimedName: false,
-                  name: 'test1'
-                }
-              ]
-            }
-          })
-        ]
+        simpleAvatar = createAvatar({ hasClaimedName: false, name: 'test1' })
+        entities = [createProfileEntity({ id: 'bafz', metadata: { avatars: [simpleAvatar] } })]
       })
 
       it('should return profiles with avatars unchanged', () => {
         const result = component.getProfilesWithSnapshotsAsUrls(entities)
 
         expect(result).toHaveLength(1)
-        expect(result[0].metadata.avatars[0]).toEqual({
-          hasClaimedName: false,
-          name: 'test1'
-        })
+        expect(result[0].metadata.avatars[0]).toEqual(simpleAvatar)
         expect(result[0].metadata.avatars[0].avatar).toBeUndefined()
       })
     })
 
     describe('when profiles have multiple avatars with mixed avatar properties', () => {
       let entities: Entity[]
+      let avatarWithInfo: any
+      let avatarWithoutInfo: any
 
       beforeEach(() => {
-        entities = [
-          createProfileEntity({
-            id: 'bafz',
-            metadata: {
-              avatars: [
-                {
-                  hasClaimedName: false,
-                  name: 'test1',
-                  avatar: {
-                    bodyShape: 'dcl://base-avatars/BaseFemale',
-                    eyes: { color: { r: 0.5, g: 0.5, b: 0.5 } }
-                  }
-                },
-                {
-                  hasClaimedName: true,
-                  name: 'test2'
-                }
-              ]
-            }
-          })
-        ]
+        avatarWithInfo = createAvatar({ hasClaimedName: false, name: 'test1', avatar: createAvatarInfo() })
+        avatarWithoutInfo = createAvatar({ hasClaimedName: true, name: 'test2' })
+        entities = [createProfileEntity({ id: 'bafz', metadata: { avatars: [avatarWithInfo, avatarWithoutInfo] } })]
       })
 
       it('should add snapshots only to avatars with avatar property', () => {
@@ -282,11 +227,8 @@ describe('profile sanitizer', () => {
           face256: 'https://profiles.mock.org/entities/bafz/face.png',
           body: 'https://profiles.mock.org/entities/bafz/body.png'
         })
+        expect(result[0].metadata.avatars[1]).toEqual(avatarWithoutInfo)
         expect(result[0].metadata.avatars[1].avatar).toBeUndefined()
-        expect(result[0].metadata.avatars[1]).toEqual({
-          hasClaimedName: true,
-          name: 'test2'
-        })
       })
     })
   })
@@ -339,42 +281,40 @@ describe('profile sanitizer', () => {
       let profiles: Profile[]
       let ethAddressA: string
       let ethAddressB: string
+      let avatarA: any
+      let avatarB: any
 
       beforeEach(() => {
         ethAddressA = '0x123'
         ethAddressB = '0x456'
-        profiles = [
-          createProfile({
-            avatars: [
-              createAvatar({
-                ethAddress: ethAddressA,
-                version: 1000
-              })
-            ]
-          }),
-          createProfile({
-            avatars: [
-              createAvatar({
-                ethAddress: ethAddressB,
-                version: 2000
-              })
-            ]
-          })
-        ]
+        avatarA = createAvatar({ ethAddress: ethAddressA, version: 1000 })
+        avatarB = createAvatar({ ethAddress: ethAddressB, version: 2000 })
+        profiles = [createProfile({ avatars: [avatarA] }), createProfile({ avatars: [avatarB] })]
       })
 
       it('should return all profiles as entities', () => {
         const result = component.mapProfilesToEntities(profiles)
 
-        expect(result).toHaveLength(2)
-        expect(result[0].id).toBe(ethAddressA)
-        expect(result[0].pointers).toEqual([ethAddressA.toLowerCase()])
-        expect(result[0].timestamp).toBe(1000)
-        expect(result[0].metadata.avatars).toEqual(profiles[0].avatars)
-        expect(result[1].id).toBe(ethAddressB)
-        expect(result[1].pointers).toEqual([ethAddressB.toLowerCase()])
-        expect(result[1].timestamp).toBe(2000)
-        expect(result[1].metadata.avatars).toEqual(profiles[1].avatars)
+        expect(result).toEqual([
+          {
+            version: 'v3',
+            id: ethAddressA,
+            type: EntityType.PROFILE,
+            pointers: [ethAddressA.toLowerCase()],
+            timestamp: 1000,
+            content: [],
+            metadata: { avatars: [avatarA] }
+          },
+          {
+            version: 'v3',
+            id: ethAddressB,
+            type: EntityType.PROFILE,
+            pointers: [ethAddressB.toLowerCase()],
+            timestamp: 2000,
+            content: [],
+            metadata: { avatars: [avatarB] }
+          }
+        ])
       })
     })
   })

@@ -4,6 +4,7 @@ import { AppComponents, IDbComponent } from '../src/types'
 
 export function extendDbComponent({ db, pg }: Pick<AppComponents, 'db' | 'pg'>): IDbComponent & {
   deleteHistoricalRegistries: (ids: string[]) => Promise<void>
+  deleteProfiles: (pointers: string[]) => Promise<void>
   close: () => Promise<void>
 } {
   return {
@@ -12,6 +13,14 @@ export function extendDbComponent({ db, pg }: Pick<AppComponents, 'db' | 'pg'>):
       const query: SQLStatement = SQL`
             DELETE FROM historical_registries
             WHERE LOWER(id) = ANY(${ids.map((id) => id.toLocaleLowerCase())}::varchar(255)[])
+          `
+
+      await pg.query(query)
+    },
+    deleteProfiles: async (pointers: string[]) => {
+      const query: SQLStatement = SQL`
+            DELETE FROM profiles
+            WHERE LOWER(pointer) = ANY(${pointers.map((p) => p.toLocaleLowerCase())}::varchar(255)[])
           `
 
       await pg.query(query)

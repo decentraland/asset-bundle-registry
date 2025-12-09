@@ -70,6 +70,7 @@ export type TestComponents = BaseComponents & {
   messageConsumer: IMessageConsumerComponent
   extendedDb: IDbComponent & {
     deleteHistoricalRegistries: (ids: string[]) => Promise<void>
+    deleteProfiles: (pointers: string[]) => Promise<void>
     close: () => Promise<void>
   }
 }

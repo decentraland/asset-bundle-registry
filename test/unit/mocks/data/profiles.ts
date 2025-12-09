@@ -1,40 +1,16 @@
-import { Entity, EntityType, Profile, Avatar } from '@dcl/schemas'
+import { Entity, EntityType, Profile, Avatar, AvatarInfo } from '@dcl/schemas'
 import { Sync } from '../../../../src/types'
 
-export function createProfileDbEntity(
-  overrides: Partial<Sync.ProfileDbEntity> = { metadata: {}, type: EntityType.PROFILE }
-): Sync.ProfileDbEntity {
+export function createAvatarInfo(overrides: Partial<AvatarInfo> = {}): AvatarInfo {
   return {
-    id: 'test',
-    type: EntityType.PROFILE,
-    pointer: 'test',
-    timestamp: 1,
-    localTimestamp: 1,
-    content: [],
-    metadata: {
-      name: 'test',
-      description: 'test',
-      image: 'test',
-      ...overrides.metadata
-    },
-    ...overrides
-  }
-}
-
-export function createProfileEntity(overrides: Partial<Entity> = { metadata: {} }): Entity {
-  return {
-    version: 'v3',
-    type: EntityType.PROFILE,
-    id: 'test',
-    timestamp: 1,
-    pointers: ['test'],
-    content: [],
-    metadata: {
-      name: 'test',
-      description: 'test',
-      image: 'test',
-      ...overrides.metadata
-    },
+    bodyShape: 'dcl://base-avatars/BaseFemale',
+    eyes: { color: { r: 0.5, g: 0.5, b: 0.5 } },
+    hair: { color: { r: 0.3, g: 0.3, b: 0.3 } },
+    skin: { color: { r: 0.8, g: 0.7, b: 0.6 } },
+    wearables: [],
+    forceRender: [],
+    emotes: [],
+    snapshots: { face256: '', body: '' },
     ...overrides
   }
 }
@@ -48,45 +24,46 @@ export function createAvatar(overrides: Partial<Avatar> = {}): Avatar {
     description: '',
     version: 0,
     tutorialStep: 0,
-    avatar: {
-      bodyShape: 'dcl://base-avatars/BaseFemale',
-      eyes: {
-        color: {
-          r: 0.5,
-          g: 0.5,
-          b: 0.5
-        }
-      },
-      hair: {
-        color: {
-          r: 0.3,
-          g: 0.3,
-          b: 0.3
-        }
-      },
-      skin: {
-        color: {
-          r: 0.8,
-          g: 0.7,
-          b: 0.6
-        }
-      },
-      wearables: [],
-      forceRender: [],
-      emotes: [],
-      snapshots: {
-        face256: '',
-        body: ''
-      }
-    },
+    ...overrides
+  } as Avatar
+}
+
+export function createFullAvatar(overrides: Partial<Avatar> = {}): Avatar {
+  return createAvatar({
+    avatar: createAvatarInfo(),
+    ...overrides
+  })
+}
+
+export function createProfileEntity(overrides: Partial<Entity> = {}): Entity {
+  return {
+    version: 'v3',
+    type: EntityType.PROFILE,
+    id: 'bafkreitest',
+    timestamp: 1,
+    pointers: ['0x0000000000000000000000000000000000000000'],
+    content: [],
+    metadata: { avatars: [createAvatar()] },
+    ...overrides
+  }
+}
+
+export function createProfileDbEntity(overrides: Partial<Sync.ProfileDbEntity> = {}): Sync.ProfileDbEntity {
+  return {
+    id: 'bafkreitest',
+    type: EntityType.PROFILE,
+    pointer: '0x0000000000000000000000000000000000000000',
+    timestamp: 1,
+    localTimestamp: 1,
+    content: [],
+    metadata: { avatars: [createAvatar()] },
     ...overrides
   }
 }
 
 export function createProfile(overrides: Partial<Profile> = {}): Profile {
-  const defaultAvatar = createAvatar(overrides.avatars?.[0])
   return {
-    avatars: overrides.avatars || [defaultAvatar],
+    avatars: [createAvatar()],
     ...overrides
   }
 }

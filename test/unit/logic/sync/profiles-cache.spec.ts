@@ -51,10 +51,19 @@ describe('profiles cache', () => {
     })
 
     it('setManyIfNewer should set values and return true', () => {
-      const entities = [createProfileEntity({ timestamp: 2 }), createProfileEntity({ timestamp: 3 })]
+      const entities = [
+        createProfileEntity({ timestamp: 2, id: 'test1', pointers: ['0xtest1'] }),
+        createProfileEntity({ timestamp: 3, id: 'test2', pointers: ['0xtest2'] })
+      ]
       component.setManyIfNewer(entities)
-      expect(cacheMock.set).toHaveBeenCalledWith('test', { profile: entities[0], localTimestamp: expect.any(Number) })
-      expect(cacheMock.set).toHaveBeenCalledWith('test', { profile: entities[1], localTimestamp: expect.any(Number) })
+      expect(cacheMock.set).toHaveBeenCalledWith('0xtest1', {
+        profile: entities[0],
+        localTimestamp: expect.any(Number)
+      })
+      expect(cacheMock.set).toHaveBeenCalledWith('0xtest2', {
+        profile: entities[1],
+        localTimestamp: expect.any(Number)
+      })
     })
   })
 

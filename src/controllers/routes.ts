@@ -8,8 +8,8 @@ import { bearerTokenMiddleware, errorHandler } from '@dcl/platform-server-common
 import { createRegistryHandler } from './handlers/post-registry'
 import { flushCacheHandler } from '../logic/handlers/flush-cache-handler'
 import { getEntityVersionsHandler } from './handlers/get-entity-versions'
-import { getProfilesHandler } from '../logic/handlers/get-profiles'
-import { getProfilesMetadataHandler } from '../logic/handlers/get-profiles-metadata'
+import { getProfilesHandler } from './handlers/get-profiles'
+import { getProfilesMetadataHandler } from './handlers/get-profiles-metadata'
 
 export async function setupRouter(globalContext: GlobalContext): Promise<Router<GlobalContext>> {
   const router = new Router<GlobalContext>()
