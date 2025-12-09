@@ -6,6 +6,7 @@ import {
   EventHandlerName,
   MessageProcessorResult,
   EventHandlerResult,
+  ProfileResponse,
   Registry,
   Sync,
   ProfileMetadata
@@ -163,6 +164,7 @@ export interface IFailedProfilesRetrierComponent {
 export interface IProfileSanitizerComponent {
   getMetadata(profile: Entity): ProfileMetadata
   getProfilesWithSnapshotsAsUrls(profiles: Entity[]): Entity[]
+  mapToResponse(profiles: Entity[]): ProfileResponse[]
   sanitizeProfiles(
     minimalProfiles: Sync.ProfileDeployment[] | Sync.FailedProfileFetch[],
     notFoundProfilesHandler: (profile: Sync.ProfileDeployment) => Promise<void>

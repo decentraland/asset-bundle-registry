@@ -1,5 +1,5 @@
 import { Entity, Profile } from '@dcl/schemas'
-import { AppComponents, IProfileSanitizerComponent, Sync, ProfileMetadata } from '../../types'
+import { AppComponents, IProfileSanitizerComponent, ProfileResponse, Sync, ProfileMetadata } from '../../types'
 import { withRetry, withTimeout } from '../../utils/async-utils'
 
 const THIRTY_SECONDS_IN_MS = 30000
@@ -94,9 +94,17 @@ export async function createProfileSanitizerComponent({
     })
   }
 
+  function mapToResponse(profiles: Entity[]): ProfileResponse[] {
+    return profiles.map((profile) => ({
+      timestamp: profile.timestamp,
+      avatars: (profile.metadata as Profile).avatars
+    }))
+  }
+
   return {
     sanitizeProfiles,
     getMetadata,
-    getProfilesWithSnapshotsAsUrls
+    getProfilesWithSnapshotsAsUrls,
+    mapToResponse
   }
 }

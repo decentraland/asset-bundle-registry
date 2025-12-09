@@ -1,4 +1,4 @@
-import { Entity, EntityType, EthAddress } from '@dcl/schemas'
+import { Entity, EntityType, EthAddress, Profile } from '@dcl/schemas'
 
 export namespace Sync {
   export type ProfileDbEntity = Omit<Entity, 'version' | 'pointers'> & {
@@ -86,6 +86,8 @@ export type ProfileMetadata = {
   name: string
   thumbnailUrl: string
 }
+
+export type ProfileResponse = Profile & { timestamp: number }
 
 type StatusByPlatform = {
   mac: Registry.SimplifiedStatus
