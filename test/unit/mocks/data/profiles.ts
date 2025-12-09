@@ -67,3 +67,17 @@ export function createProfile(overrides: Partial<Profile> = {}): Profile {
     ...overrides
   }
 }
+
+export function createFailedProfileDbEntity(
+  overrides: Partial<Sync.FailedProfileDbEntity> = {}
+): Sync.FailedProfileDbEntity {
+  return {
+    entityId: 'bafkreitest',
+    pointer: '0x0000000000000000000000000000000000000000',
+    timestamp: 1,
+    authChain: [],
+    firstFailedAt: 1,
+    retryCount: 0,
+    ...overrides
+  }
+}

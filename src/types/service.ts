@@ -158,3 +158,9 @@ export interface IProfileRetrieverComponent {
   getProfile(pointer: string): Promise<Entity | null>
   getProfiles(pointers: string[]): Promise<Map<string, Entity>>
 }
+
+export interface IFailedProfilesRetrierComponent {
+  retryFailedProfiles(abortSignal: AbortSignal): Promise<void>
+}
+
+export interface ISynchronizerComponent extends IBaseComponent {}
