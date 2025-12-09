@@ -2,8 +2,6 @@ import { EntityType } from '@dcl/schemas'
 import { getDeployedEntitiesStreamFromPointerChanges } from '@dcl/snapshots-fetcher'
 import { AppComponents, IProfilesSynchronizerComponent } from '../../types'
 
-const ONE_SECOND_IN_MS = 1000
-
 export async function createPointerChangesHandlerComponent({
   config,
   logs,
@@ -27,7 +25,7 @@ export async function createPointerChangesHandlerComponent({
       },
       {
         fromTimestamp: fromTimestamp,
-        pointerChangesWaitTime: ONE_SECOND_IN_MS // wait time between API calls
+        pointerChangesWaitTime: 0 // we want to control the loop
       },
       CATALYST_LOAD_BALANCER + '/content'
     )
@@ -58,8 +56,6 @@ export async function createPointerChangesHandlerComponent({
           continue
         }
 
-        // TODO: GET /pointer-changes should already return the complete entity data
-        // the type seems to be wrong in the stream.
         const sanitizedProfile = await profileSanitizer.sanitizeProfiles(
           [
             {
