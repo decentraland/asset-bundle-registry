@@ -8,6 +8,8 @@ import { bearerTokenMiddleware, errorHandler } from '@dcl/platform-server-common
 import { createRegistryHandler } from './handlers/post-registry'
 import { flushCacheHandler } from '../logic/handlers/flush-cache-handler'
 import { getEntityVersionsHandler } from './handlers/get-entity-versions'
+import { getProfilesHandler } from '../logic/handlers/get-profiles'
+import { getProfilesMetadataHandler } from '../logic/handlers/get-profiles-metadata'
 
 export async function setupRouter(globalContext: GlobalContext): Promise<Router<GlobalContext>> {
   const router = new Router<GlobalContext>()
@@ -29,6 +31,8 @@ export async function setupRouter(globalContext: GlobalContext): Promise<Router<
   router.get('/entities/status/:id', getEntityStatusHandler)
   router.get('/entities/status', signedFetchMiddleware, getEntitiesStatusHandler)
   router.get('/queues/status', getQueuesStatuses)
+  router.post('/profiles', getProfilesHandler)
+  router.post('/profiles/metadata', getProfilesMetadataHandler)
 
   const adminToken = await globalContext.components.config.getString('API_ADMIN_TOKEN')
 

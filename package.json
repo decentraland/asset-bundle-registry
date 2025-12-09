@@ -25,10 +25,12 @@
   "dependencies": {
     "@aws-sdk/client-sns": "^3.696.0",
     "@aws-sdk/client-sqs": "^3.693.0",
+    "@dcl/catalyst-storage": "^4.3.0",
     "@dcl/crypto": "^3.4.5",
     "@dcl/platform-crypto-middleware": "^1.1.0",
     "@dcl/platform-server-commons": "^0.0.4",
     "@dcl/schemas": "^18.1.0",
+    "@dcl/snapshots-fetcher": "https://sdk-team-cdn.decentraland.org/@dcl/snapshots-fetcher/branch/feat/metrics-optional/dcl-snapshots-fetcher-9.1.1-20068199605.commit-de50808.tgz",
     "@well-known-components/env-config-provider": "^1.2.0",
     "@well-known-components/fetch-component": "^3.0.0",
     "@well-known-components/http-server": "^2.1.0",

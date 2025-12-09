@@ -142,3 +142,19 @@ export interface IProfileSanitizerComponent {
   getProfilesWithSnapshotsAsUrls(profiles: Entity[]): Entity[]
   mapProfilesToEntities(profiles: Profile[]): Entity[]
 }
+
+export interface IEntityPersisterComponent {
+  persistEntity(entity: Entity): Promise<void>
+  setBootstrapComplete(): void
+  isBootstrapComplete(): boolean
+  waitForDrain(): Promise<void>
+}
+
+export interface IProfilesSynchronizerComponent {
+  syncProfiles(fromTimestamp: number, abortSignal: AbortSignal): Promise<number>
+}
+
+export interface IProfileRetrieverComponent {
+  getProfile(pointer: string): Promise<Entity | null>
+  getProfiles(pointers: string[]): Promise<Map<string, Entity>>
+}
