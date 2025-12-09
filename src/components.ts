@@ -24,6 +24,7 @@ import { createRedisComponent } from './adapters/redis'
 import { createInMemoryCacheComponent } from './adapters/memory-cache'
 import { createWorldsAdapter } from './adapters/worlds'
 import { createQueuesStatusManagerComponent } from './logic/queues-status-manager'
+import { createProfileSanitizerComponent } from './logic/sync/profile-sanitizer'
 
 // Initialize all the components of the app
 export async function initComponents(): Promise<AppComponents> {
@@ -88,6 +89,7 @@ export async function initComponents(): Promise<AppComponents> {
     : createInMemoryCacheComponent()
 
   const catalyst = await createCatalystAdapter({ logs, fetch, config })
+  const profileSanitizer = await createProfileSanitizerComponent({ catalyst, config })
   const worlds = await createWorldsAdapter({ logs, config, fetch })
   const registryOrchestrator = createRegistryOrchestratorComponent({ logs, db, metrics })
   const entityStatusFetcher = await createEntityStatusFetcherComponent({ fetch, logs, config })
@@ -122,6 +124,7 @@ export async function initComponents(): Promise<AppComponents> {
     entityStatusFetcher,
     workerManager,
     memoryStorage,
-    queuesStatusManager
+    queuesStatusManager,
+    profileSanitizer
   }
 }

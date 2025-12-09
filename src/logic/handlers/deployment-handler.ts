@@ -1,5 +1,5 @@
 import { Entity } from '@dcl/schemas'
-import { AppComponents, EventHandlerComponent, EventHandlerName, EventHandlerResult, Registry } from '../../types'
+import { AppComponents, IEventHandlerComponent, EventHandlerName, EventHandlerResult, Registry } from '../../types'
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
 import { Authenticator } from '@dcl/crypto'
 
@@ -12,7 +12,7 @@ export const createDeploymentEventHandler = ({
 }: Pick<
   AppComponents,
   'registryOrchestrator' | 'catalyst' | 'worlds' | 'db' | 'logs'
->): EventHandlerComponent<DeploymentToSqs> => {
+>): IEventHandlerComponent<DeploymentToSqs> => {
   const HANDLER_NAME = EventHandlerName.DEPLOYMENT
   const logger = logs.getLogger('deployment-handler')
 

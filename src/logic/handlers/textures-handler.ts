@@ -1,5 +1,5 @@
 import { AssetBundleConversionFinishedEvent, Entity } from '@dcl/schemas'
-import { AppComponents, EventHandlerComponent, EventHandlerName, EventHandlerResult, Registry } from '../../types'
+import { AppComponents, IEventHandlerComponent, EventHandlerName, EventHandlerResult, Registry } from '../../types'
 import { ManifestStatusCode } from '../entity-status-fetcher'
 
 export const createTexturesEventHandler = ({
@@ -12,7 +12,7 @@ export const createTexturesEventHandler = ({
 }: Pick<
   AppComponents,
   'logs' | 'db' | 'catalyst' | 'worlds' | 'registryOrchestrator' | 'queuesStatusManager'
->): EventHandlerComponent<AssetBundleConversionFinishedEvent> => {
+>): IEventHandlerComponent<AssetBundleConversionFinishedEvent> => {
   const HANDLER_NAME = EventHandlerName.TEXTURES
   const logger = logs.getLogger('textures-handler')
 

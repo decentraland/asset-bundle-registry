@@ -7,12 +7,14 @@ import {
   MessageProcessorResult,
   EventHandlerResult,
   Registry,
-  Sync
+  Sync,
+  ProfileMetadata
 } from './types'
 import { Entity, EthAddress } from '@dcl/schemas'
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
+import { Profile } from 'dcl-catalyst-client/dist/client/specs/lambdas-client'
 
-export interface DbComponent {
+export interface IDbComponent {
   getSortedRegistriesByOwner(owner: EthAddress): Promise<Registry.DbEntity[]>
   getSortedRegistriesByPointers(
     pointers: string[],
@@ -60,37 +62,38 @@ export interface DbComponent {
 
 export type QueueMessage = any
 
-export interface QueueComponent {
+export interface IQueueComponent {
   send(message: QueueMessage): Promise<void>
   receiveMessages(amount: number): Promise<Message[]>
   deleteMessage(receiptHandle: string): Promise<void>
 }
 
-export interface MessageConsumerComponent extends IBaseComponent {}
+export interface IMessageConsumerComponent extends IBaseComponent {}
 
-export interface MessageProcessorComponent {
+export interface IMessageProcessorComponent {
   process(message: any): Promise<MessageProcessorResult>
 }
 
-export interface CatalystComponent {
+export interface ICatalystComponent {
   getEntityById(id: string, options?: CatalystFetchOptions): Promise<Entity | null>
   getEntitiesByIds(ids: string[], options?: CatalystFetchOptions): Promise<Entity[]>
   getEntityByPointers(pointers: string[]): Promise<Entity[]>
   getContent(id: string): Promise<Entity | undefined>
+  getProfiles(pointers: string[]): Promise<Profile[]>
 }
 
-export interface WorldsComponent {
+export interface IWorldsComponent {
   getWorld(worldId: string, worldContentServerUrl?: string): Promise<Entity | null>
   isWorldDeployment(event: DeploymentToSqs): boolean
 }
 
-export interface EventHandlerComponent<T> {
+export interface IEventHandlerComponent<T> {
   handle(event: T): Promise<EventHandlerResult>
   canHandle(event: T): boolean
   name: EventHandlerName
 }
 
-export interface EntityStatusFetcher {
+export interface IEntityStatusFetcherComponent {
   fetchBundleManifestData(
     entityId: string,
     platform: string
@@ -98,7 +101,7 @@ export interface EntityStatusFetcher {
   fetchLODsStatus(entityId: string, platform: string): Promise<Registry.SimplifiedStatus>
 }
 
-export interface RegistryOrchestratorComponent {
+export interface IRegistryOrchestratorComponent {
   persistAndRotateStates(registry: Omit<Registry.DbEntity, 'status'>): Promise<Registry.DbEntity>
 }
 
@@ -109,7 +112,7 @@ export interface ICacheStorage extends IBaseComponent {
   flush(pattern: string): Promise<void>
 }
 
-export interface QueuesStatusManagerComponent {
+export interface IQueuesStatusManagerComponent {
   markAsQueued(platform: 'windows' | 'mac' | 'webgl', entityId: string): Promise<void>
   markAsFinished(platform: 'windows' | 'mac' | 'webgl', entityId: string): Promise<void>
   getAllPendingEntities(platform: 'windows' | 'mac' | 'webgl'): Promise<EntityStatusInQueue[]>
@@ -128,4 +131,14 @@ export interface IEntityDeploymentTrackerComponent {
   hasBeenProcessed(entityId: string): boolean
   markAsProcessed(entityId: string): void
   tryMarkDuplicate(entityId: string): boolean
+}
+
+export interface IProfileSanitizerComponent {
+  sanitizeProfiles(
+    minimalProfiles: Sync.ProfileDeployment[],
+    notFoundProfilesHandler: (profile: Sync.ProfileDeployment | Sync.FailedProfileDbEntity) => Promise<void>
+  ): Promise<Entity[]>
+  getMetadata(profile: Entity): ProfileMetadata
+  getProfilesWithSnapshotsAsUrls(profiles: Entity[]): Entity[]
+  mapProfilesToEntities(profiles: Profile[]): Entity[]
 }

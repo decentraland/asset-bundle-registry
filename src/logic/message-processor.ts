@@ -1,9 +1,9 @@
 import { AssetBundleConversionFinishedEvent, AssetBundleConversionManuallyQueuedEvent } from '@dcl/schemas'
 import {
   AppComponents,
-  EventHandlerComponent,
+  IEventHandlerComponent,
   EventHandlerName,
-  MessageProcessorComponent,
+  IMessageProcessorComponent,
   MessageProcessorResult,
   EventHandlerResult,
   RetryMessageData
@@ -24,10 +24,10 @@ export async function createMessageProcessorComponent({
 }: Pick<
   AppComponents,
   'catalyst' | 'worlds' | 'registryOrchestrator' | 'queuesStatusManager' | 'db' | 'logs' | 'config'
->): Promise<MessageProcessorComponent> {
+>): Promise<IMessageProcessorComponent> {
   const MAX_RETRIES: number = (await config.getNumber('MAX_RETRIES')) || 3
   const log = logs.getLogger('message-processor')
-  const processors: EventHandlerComponent<
+  const processors: IEventHandlerComponent<
     DeploymentToSqs | AssetBundleConversionManuallyQueuedEvent | AssetBundleConversionFinishedEvent
   >[] = [
     createDeploymentEventHandler({ catalyst, worlds, registryOrchestrator, db, logs }),
@@ -59,7 +59,7 @@ export async function createMessageProcessorComponent({
     log.debug('Processing', { message })
 
     const handlers:
-      | EventHandlerComponent<
+      | IEventHandlerComponent<
           DeploymentToSqs | AssetBundleConversionManuallyQueuedEvent | AssetBundleConversionFinishedEvent
         >[]
       | undefined = processors.filter(

@@ -1,4 +1,4 @@
-import { AppComponents, EventHandlerComponent, EventHandlerName } from '../../../src/types'
+import { AppComponents, IEventHandlerComponent, EventHandlerName } from '../../../src/types'
 import { createLogMockComponent } from '../mocks/logs'
 import { createConfigMockComponent } from '../mocks/config'
 import { createMessageProcessorComponent } from '../../../src/logic/message-processor'
@@ -22,19 +22,19 @@ describe('message processor', () => {
   ;(config.getNumber as jest.Mock).mockResolvedValue(3) // MAX_RETRIES = 3
 
   // Create mock handlers
-  const deploymentHandler: EventHandlerComponent<DeploymentToSqs> = {
+  const deploymentHandler: IEventHandlerComponent<DeploymentToSqs> = {
     name: EventHandlerName.DEPLOYMENT,
     handle: jest.fn(),
     canHandle: jest.fn()
   }
 
-  const texturesHandler: EventHandlerComponent<AssetBundleConversionFinishedEvent> = {
+  const texturesHandler: IEventHandlerComponent<AssetBundleConversionFinishedEvent> = {
     name: EventHandlerName.TEXTURES,
     handle: jest.fn(),
     canHandle: jest.fn()
   }
 
-  const statusHandler: EventHandlerComponent<DeploymentToSqs | AssetBundleConversionManuallyQueuedEvent> = {
+  const statusHandler: IEventHandlerComponent<DeploymentToSqs | AssetBundleConversionManuallyQueuedEvent> = {
     name: EventHandlerName.STATUS,
     handle: jest.fn(),
     canHandle: jest.fn()

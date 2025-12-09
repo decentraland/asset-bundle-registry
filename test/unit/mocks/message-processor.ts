@@ -1,6 +1,6 @@
-import { MessageProcessorComponent } from '../../../src/types'
+import { IMessageProcessorComponent } from '../../../src/types'
 
-export function createMessageProcessorMockComponent(): MessageProcessorComponent {
+export function createMessageProcessorMockComponent(): IMessageProcessorComponent {
   return {
     process: jest.fn()
   }

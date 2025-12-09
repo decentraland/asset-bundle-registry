@@ -1,11 +1,11 @@
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
-import { AppComponents, EventHandlerComponent, EventHandlerName, EventHandlerResult } from '../../types'
+import { AppComponents, IEventHandlerComponent, EventHandlerName, EventHandlerResult } from '../../types'
 import { AssetBundleConversionManuallyQueuedEvent, Events } from '@dcl/schemas'
 
 export const createStatusEventHandler = ({
   logs,
   queuesStatusManager
-}: Pick<AppComponents, 'logs' | 'queuesStatusManager'>): EventHandlerComponent<
+}: Pick<AppComponents, 'logs' | 'queuesStatusManager'>): IEventHandlerComponent<
   DeploymentToSqs | AssetBundleConversionManuallyQueuedEvent
 > => {
   const HANDLER_NAME = EventHandlerName.STATUS

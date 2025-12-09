@@ -6,9 +6,9 @@ import {
   SendMessageCommand
 } from '@aws-sdk/client-sqs'
 
-import { QueueMessage, QueueComponent } from '../types'
+import { QueueMessage, IQueueComponent } from '../types'
 
-export async function createSqsAdapter(endpoint: string): Promise<QueueComponent> {
+export async function createSqsAdapter(endpoint: string): Promise<IQueueComponent> {
   const client = new SQSClient({ endpoint })
 
   async function send(message: QueueMessage): Promise<void> {
