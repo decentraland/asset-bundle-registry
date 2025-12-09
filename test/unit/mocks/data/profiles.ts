@@ -1,4 +1,25 @@
 import { Entity, EntityType, Profile, Avatar } from '@dcl/schemas'
+import { Sync } from '../../../../src/types'
+
+export function createProfileDbEntity(
+  overrides: Partial<Sync.ProfileDbEntity> = { metadata: {}, type: EntityType.PROFILE }
+): Sync.ProfileDbEntity {
+  return {
+    id: 'test',
+    type: EntityType.PROFILE,
+    pointer: 'test',
+    timestamp: 1,
+    localTimestamp: 1,
+    content: [],
+    metadata: {
+      name: 'test',
+      description: 'test',
+      image: 'test',
+      ...overrides.metadata
+    },
+    ...overrides
+  }
+}
 
 export function createProfileEntity(overrides: Partial<Entity> = { metadata: {} }): Entity {
   return {
