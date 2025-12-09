@@ -1,6 +1,6 @@
 import { ILRUNormalizedCache } from '../../../../src/adapters/lru-cache'
 import { IProfilesCacheComponent, Sync } from '../../../../src/types'
-import { createLRUNormalizedCacheMock } from '../../mocks/lru-normalized-cache'
+import { createLRUNormalizedCacheMock } from '../../mocks/lru-cache'
 import { createProfilesCacheComponent } from '../../../../src/logic/sync/profiles-cache'
 import { createProfileEntity } from '../../mocks/data/profiles'
 import { Entity } from '@dcl/schemas'
