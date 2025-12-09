@@ -1,12 +1,8 @@
+import { Entity } from '@dcl/schemas'
 import { Sync } from '../../src/types'
 import { createRequestMaker } from '../utils'
 import { test } from '../components'
-import {
-  createProfileDbEntity,
-  createProfileEntity,
-  createFullAvatar,
-  createAvatarInfo
-} from '../unit/mocks/data/profiles'
+import { createProfileDbEntity, createProfileEntity, createFullAvatar } from '../unit/mocks/data/profiles'
 
 test('POST /profiles endpoints', async function ({ components }) {
   let fetchLocally: any
@@ -35,10 +31,13 @@ test('POST /profiles endpoints', async function ({ components }) {
   }
 
   describe('POST /profiles/metadata', function () {
-    describe('when profiles exist in the database', function () {
-      it('should return the profile metadata', async function () {
-        const pointer = '0xmetadata11111111111111111111111111111'
-        const profile = createProfileDbEntity({
+    describe('when a single profile exists in the database', function () {
+      let pointer: string
+      let profile: Sync.ProfileDbEntity
+
+      beforeEach(async function () {
+        pointer = '0xmetadata11111111111111111111111111111'
+        profile = createProfileDbEntity({
           id: 'bafkreimetadata1',
           pointer,
           metadata: {
@@ -46,6 +45,9 @@ test('POST /profiles endpoints', async function ({ components }) {
           }
         })
         await createProfileOnDatabase(profile)
+      })
+
+      it('should return the profile metadata', async function () {
         const response = await fetchLocally('POST', '/profiles/metadata', undefined, { ids: [pointer] })
         const parsedResponse = await response.json()
 
@@ -56,10 +58,15 @@ test('POST /profiles endpoints', async function ({ components }) {
         expect(parsedResponse[0].hasClaimedName).toBe(true)
         expect(parsedResponse[0].thumbnailUrl).toContain(profile.id)
       })
+    })
 
-      it('should return metadata for multiple profiles', async function () {
-        const pointerA = '0xmetadatamulti1111111111111111111111'
-        const pointerB = '0xmetadatamulti2222222222222222222222'
+    describe('when multiple profiles exist in the database', function () {
+      let pointerA: string
+      let pointerB: string
+
+      beforeEach(async function () {
+        pointerA = '0xmetadatamulti1111111111111111111111'
+        pointerB = '0xmetadatamulti2222222222222222222222'
         await createProfileOnDatabase(
           createProfileDbEntity({
             id: 'bafkreimultiA',
@@ -74,6 +81,9 @@ test('POST /profiles endpoints', async function ({ components }) {
             metadata: { avatars: [createFullAvatar({ ethAddress: pointerB, name: 'UserB' })] }
           })
         )
+      })
+
+      it('should return metadata for all profiles', async function () {
         const response = await fetchLocally('POST', '/profiles/metadata', undefined, { ids: [pointerA, pointerB] })
         const parsedResponse = await response.json()
 
@@ -83,14 +93,20 @@ test('POST /profiles endpoints', async function ({ components }) {
     })
 
     describe('when profile is not in database but exists in catalyst', function () {
-      it('should fetch from catalyst and return metadata', async function () {
-        const pointer = '0xcatalystmeta111111111111111111111111'
-        const catalystProfile = createProfileEntity({
+      let pointer: string
+      let catalystProfile: Entity
+
+      beforeEach(function () {
+        pointer = '0xcatalystmeta111111111111111111111111'
+        catalystProfile = createProfileEntity({
           id: 'bafkreicatalystmeta',
           pointers: [pointer],
           metadata: { avatars: [createFullAvatar({ ethAddress: pointer, name: 'CatalystUser', hasClaimedName: true })] }
         })
         jest.spyOn(components.catalyst, 'getEntityByPointers').mockResolvedValueOnce([catalystProfile])
+      })
+
+      it('should fetch from catalyst and return metadata', async function () {
         const response = await fetchLocally('POST', '/profiles/metadata', undefined, { ids: [pointer] })
         const parsedResponse = await response.json()
 
@@ -102,12 +118,15 @@ test('POST /profiles endpoints', async function ({ components }) {
     })
 
     describe('when no profiles are found', function () {
-      it('should return an empty array', async function () {
-        jest.spyOn(components.catalyst, 'getEntityByPointers').mockResolvedValueOnce([])
+      let pointer: string
 
-        const response = await fetchLocally('POST', '/profiles/metadata', undefined, {
-          ids: ['0xnonexistent1111111111111111111111111']
-        })
+      beforeEach(function () {
+        pointer = '0xnonexistent1111111111111111111111111'
+        jest.spyOn(components.catalyst, 'getEntityByPointers').mockResolvedValueOnce([])
+      })
+
+      it('should return an empty array', async function () {
+        const response = await fetchLocally('POST', '/profiles/metadata', undefined, { ids: [pointer] })
         const parsedResponse = await response.json()
 
         expect(response.status).toBe(200)
@@ -117,10 +136,13 @@ test('POST /profiles endpoints', async function ({ components }) {
   })
 
   describe('POST /profiles', function () {
-    describe('when profiles exist in the database', function () {
-      it('should return the profile with snapshot URLs', async function () {
-        const pointer = '0xprofiledb111111111111111111111111111'
-        const profile = createProfileDbEntity({
+    describe('when a single profile exists in the database', function () {
+      let pointer: string
+      let profile: Sync.ProfileDbEntity
+
+      beforeEach(async function () {
+        pointer = '0xprofiledb111111111111111111111111111'
+        profile = createProfileDbEntity({
           id: 'bafkreiprofiledb1',
           pointer,
           metadata: {
@@ -128,6 +150,9 @@ test('POST /profiles endpoints', async function ({ components }) {
           }
         })
         await createProfileOnDatabase(profile)
+      })
+
+      it('should return the profile with snapshot URLs', async function () {
         const response = await fetchLocally('POST', '/profiles', undefined, { ids: [pointer] })
         const parsedResponse = await response.json()
 
@@ -137,22 +162,32 @@ test('POST /profiles endpoints', async function ({ components }) {
         expect(parsedResponse[0].metadata.avatars[0].avatar.snapshots.face256).toContain(profile.id)
         expect(parsedResponse[0].metadata.avatars[0].avatar.snapshots.body).toContain(profile.id)
       })
+    })
 
-      it('should return multiple profiles with snapshot URLs', async function () {
-        const pointerA = '0xprofilemulti11111111111111111111111'
-        const pointerB = '0xprofilemulti22222222222222222222222'
-        const profileA = createProfileDbEntity({
+    describe('when multiple profiles exist in the database', function () {
+      let pointerA: string
+      let pointerB: string
+      let profileA: Sync.ProfileDbEntity
+      let profileB: Sync.ProfileDbEntity
+
+      beforeEach(async function () {
+        pointerA = '0xprofilemulti11111111111111111111111'
+        pointerB = '0xprofilemulti22222222222222222222222'
+        profileA = createProfileDbEntity({
           id: 'bafkreiprofileA',
           pointer: pointerA,
           metadata: { avatars: [createFullAvatar({ ethAddress: pointerA })] }
         })
-        const profileB = createProfileDbEntity({
+        profileB = createProfileDbEntity({
           id: 'bafkreiprofileB',
           pointer: pointerB,
           metadata: { avatars: [createFullAvatar({ ethAddress: pointerB })] }
         })
         await createProfileOnDatabase(profileA)
         await createProfileOnDatabase(profileB)
+      })
+
+      it('should return all profiles with snapshot URLs', async function () {
         const response = await fetchLocally('POST', '/profiles', undefined, { ids: [pointerA, pointerB] })
         const parsedResponse = await response.json()
 
@@ -164,14 +199,20 @@ test('POST /profiles endpoints', async function ({ components }) {
     })
 
     describe('when profile is not in database but exists in catalyst', function () {
-      it('should fetch from catalyst and return profile with snapshot URLs', async function () {
-        const pointer = '0xcatalystprofile1111111111111111111'
-        const catalystProfile = createProfileEntity({
+      let pointer: string
+      let catalystProfile: Entity
+
+      beforeEach(function () {
+        pointer = '0xcatalystprofile1111111111111111111'
+        catalystProfile = createProfileEntity({
           id: 'bafkreicatalystprofile',
           pointers: [pointer],
           metadata: { avatars: [createFullAvatar({ ethAddress: pointer, name: 'CatalystUser' })] }
         })
         jest.spyOn(components.catalyst, 'getEntityByPointers').mockResolvedValueOnce([catalystProfile])
+      })
+
+      it('should fetch from catalyst and return profile with snapshot URLs', async function () {
         const response = await fetchLocally('POST', '/profiles', undefined, { ids: [pointer] })
         const parsedResponse = await response.json()
 
@@ -184,12 +225,15 @@ test('POST /profiles endpoints', async function ({ components }) {
     })
 
     describe('when no profiles are found', function () {
-      it('should return an empty array', async function () {
-        jest.spyOn(components.catalyst, 'getEntityByPointers').mockResolvedValueOnce([])
+      let pointer: string
 
-        const response = await fetchLocally('POST', '/profiles', undefined, {
-          ids: ['0xnonexistentprofile11111111111111111']
-        })
+      beforeEach(function () {
+        pointer = '0xnonexistentprofile11111111111111111'
+        jest.spyOn(components.catalyst, 'getEntityByPointers').mockResolvedValueOnce([])
+      })
+
+      it('should return an empty array', async function () {
+        const response = await fetchLocally('POST', '/profiles', undefined, { ids: [pointer] })
         const parsedResponse = await response.json()
 
         expect(response.status).toBe(200)
