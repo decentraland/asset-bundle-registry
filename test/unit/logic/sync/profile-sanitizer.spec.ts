@@ -6,7 +6,7 @@ import { createProfileSanitizerComponent } from '../../../../src/logic/sync/prof
 import { createAvatar, createProfile, createProfileEntity } from '../../mocks/data/profiles'
 import { Entity, Profile, EntityType } from '@dcl/schemas'
 
-const MOCK_PROFILES_IMAGE_URL = 'https://profiles.mock.org'
+const MOCK_PROFILE_IMAGES_URL = 'https://profiles.mock.org'
 
 describe('profile sanitizer', () => {
   let catalystMock: ICatalystComponent
@@ -16,7 +16,7 @@ describe('profile sanitizer', () => {
   beforeEach(async () => {
     catalystMock = createCatalystMockComponent()
     configMock = createConfigMockComponent()
-    ;(configMock.requireString as jest.Mock).mockResolvedValue(MOCK_PROFILES_IMAGE_URL)
+    ;(configMock.requireString as jest.Mock).mockResolvedValue(MOCK_PROFILE_IMAGES_URL)
     component = await createProfileSanitizerComponent({ catalyst: catalystMock, config: configMock })
   })
 

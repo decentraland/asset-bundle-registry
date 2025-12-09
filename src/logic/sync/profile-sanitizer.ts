@@ -8,7 +8,7 @@ export async function createProfileSanitizerComponent({
   catalyst,
   config
 }: Pick<AppComponents, 'catalyst' | 'config'>): Promise<IProfileSanitizerComponent> {
-  const PROFILES_IMAGE_URL = await config.requireString('PROFILES_IMAGE_URL')
+  const PROFILE_IMAGES_URL = await config.requireString('PROFILE_IMAGES_URL')
 
   async function sanitizeProfiles(
     minimalProfiles: Sync.ProfileDeployment[],
@@ -33,8 +33,8 @@ export async function createProfileSanitizerComponent({
 
   function buildProfilesSnapshots(entityId: string): { body: string; face: string } {
     return {
-      body: `${PROFILES_IMAGE_URL}/entities/${entityId}/body.png`,
-      face: `${PROFILES_IMAGE_URL}/entities/${entityId}/face.png`
+      body: `${PROFILE_IMAGES_URL}/entities/${entityId}/body.png`,
+      face: `${PROFILE_IMAGES_URL}/entities/${entityId}/face.png`
     }
   }
 
