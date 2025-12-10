@@ -35,7 +35,7 @@ test('POST /profiles/metadata endpoint', async function ({ components }) {
     let profile: Sync.ProfileDbEntity
 
     beforeEach(async function () {
-      pointer = '0xmetadata11111111111111111111111111111'
+      pointer = '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0'
       profile = createProfileDbEntity({
         id: 'bafkreimetadata1',
         pointer,
@@ -64,8 +64,8 @@ test('POST /profiles/metadata endpoint', async function ({ components }) {
     let pointerB: string
 
     beforeEach(async function () {
-      pointerA = '0xmetadatamulti1111111111111111111111'
-      pointerB = '0xmetadatamulti2222222222222222222222'
+      pointerA = '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0'
+      pointerB = '0x8ba1f109551bD432803012645aac136c22C9290'
       await createProfileOnDatabase(
         createProfileDbEntity({
           id: 'bafkreimultiA',
@@ -96,7 +96,7 @@ test('POST /profiles/metadata endpoint', async function ({ components }) {
     let catalystProfile: Entity
 
     beforeEach(function () {
-      pointer = '0xcatalystmeta111111111111111111111111'
+      pointer = '0x1234567890123456789012345678901234567890'
       catalystProfile = createProfileEntity({
         id: 'bafkreicatalystmeta',
         pointers: [pointer],
@@ -120,7 +120,7 @@ test('POST /profiles/metadata endpoint', async function ({ components }) {
     let pointer: string
 
     beforeEach(function () {
-      pointer = '0xnonexistent1111111111111111111111111'
+      pointer = '0xabcdefabcdefabcdefabcdefabcdefabcdefabcd'
       jest.spyOn(components.catalyst, 'getEntityByPointers').mockResolvedValueOnce([])
     })
 
