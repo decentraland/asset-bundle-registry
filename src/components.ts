@@ -8,7 +8,7 @@ import { createLogComponent } from '@well-known-components/logger'
 import { createFetchComponent } from '@well-known-components/fetch-component'
 import { createMetricsComponent } from '@well-known-components/metrics'
 import { metricDeclarations } from './metrics'
-import { AppComponents, GlobalContext } from './types'
+import { AppComponents, GlobalContext, Sync } from './types'
 import { createPgComponent } from '@well-known-components/pg-component'
 import { createDbAdapter } from './adapters/db'
 import { createSqsAdapter } from './adapters/sqs'
@@ -25,6 +25,12 @@ import { createInMemoryCacheComponent } from './adapters/memory-cache'
 import { createWorldsAdapter } from './adapters/worlds'
 import { createQueuesStatusManagerComponent } from './logic/queues-status-manager'
 import { createProfileSanitizerComponent } from './logic/sync/profile-sanitizer'
+import { createEntityDeploymentTrackerComponent } from './logic/sync/entity-deployment-tracker'
+import { createProfilesCacheComponent } from './logic/sync/profiles-cache'
+import { createSnapshotContentStorage } from './logic/sync/snapshots-content-storage'
+import { createNormalizedLRUCache } from './adapters/lru-cache'
+import { createEntityPersisterComponent } from './logic/sync/entity-persister'
+import { createProfileRetrieverComponent } from './logic/profile-retriever'
 
 // Initialize all the components of the app
 export async function initComponents(): Promise<AppComponents> {
@@ -88,8 +94,17 @@ export async function initComponents(): Promise<AppComponents> {
     ? await createRedisComponent(redisHostUrl, { logs })
     : createInMemoryCacheComponent()
 
+  const entityDeploymentTracker = await createEntityDeploymentTrackerComponent({ config })
+  const profilesLRUCache = createNormalizedLRUCache<Sync.CacheEntry>({
+    maxItems: (await config.getNumber('MAX_PROFILES_CACHE_SIZE')) || 1000,
+    ttlMs: undefined
+  })
+  const profilesCache = createProfilesCacheComponent(profilesLRUCache)
+  const snapshotContentStorage = await createSnapshotContentStorage({ logs, config })
   const catalyst = await createCatalystAdapter({ logs, fetch, config })
+  const profileRetriever = createProfileRetrieverComponent({ logs, db, profilesCache, catalyst })
   const profileSanitizer = await createProfileSanitizerComponent({ catalyst, config })
+  const entityPersister = createEntityPersisterComponent({ logs, db, profilesCache, entityDeploymentTracker })
   const worlds = await createWorldsAdapter({ logs, config, fetch })
   const registryOrchestrator = createRegistryOrchestratorComponent({ logs, db, metrics })
   const entityStatusFetcher = await createEntityStatusFetcherComponent({ fetch, logs, config })
@@ -125,6 +140,11 @@ export async function initComponents(): Promise<AppComponents> {
     workerManager,
     memoryStorage,
     queuesStatusManager,
-    profileSanitizer
+    profileRetriever,
+    profileSanitizer,
+    entityDeploymentTracker,
+    profilesCache,
+    snapshotContentStorage,
+    entityPersister
   }
 }

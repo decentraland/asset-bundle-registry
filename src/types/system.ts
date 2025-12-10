@@ -18,9 +18,14 @@ import {
   ICacheStorage,
   IWorldsComponent,
   IQueuesStatusManagerComponent,
-  IProfileSanitizerComponent
+  IProfileSanitizerComponent,
+  IEntityDeploymentTrackerComponent,
+  IProfilesCacheComponent,
+  IEntityPersisterComponent,
+  IProfileRetrieverComponent
 } from './service'
 import { metricDeclarations } from '../metrics'
+import { IContentStorageComponent } from '@dcl/catalyst-storage'
 
 export type GlobalContext = {
   components: BaseComponents
@@ -39,6 +44,8 @@ export type BaseComponents = {
   registryOrchestrator: IRegistryOrchestratorComponent
   queuesStatusManager: IQueuesStatusManagerComponent
   memoryStorage: ICacheStorage
+  profileSanitizer: IProfileSanitizerComponent
+  profileRetriever: IProfileRetrieverComponent
 }
 
 // components used in runtime
@@ -50,7 +57,10 @@ export type AppComponents = BaseComponents & {
   messageConsumer: IMessageConsumerComponent
   workerManager: IBaseComponent
   worlds: IWorldsComponent
-  profileSanitizer: IProfileSanitizerComponent
+  entityDeploymentTracker: IEntityDeploymentTrackerComponent
+  profilesCache: IProfilesCacheComponent
+  snapshotContentStorage: IContentStorageComponent
+  entityPersister: IEntityPersisterComponent
 }
 
 // components used in tests
@@ -60,6 +70,7 @@ export type TestComponents = BaseComponents & {
   messageConsumer: IMessageConsumerComponent
   extendedDb: IDbComponent & {
     deleteHistoricalRegistries: (ids: string[]) => Promise<void>
+    deleteProfiles: (pointers: string[]) => Promise<void>
     close: () => Promise<void>
   }
 }
