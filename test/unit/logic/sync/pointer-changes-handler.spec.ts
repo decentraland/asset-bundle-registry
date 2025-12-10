@@ -36,6 +36,7 @@ describe('pointer-changes-handler', () => {
     mockProfileSanitizer = createProfileSanitizerMockComponent()
     mockEntityPersister = createEntityPersisterMockComponent()
     mockEntityDeploymentTracker = createEntityDeploymentTrackerMockComponent()
+
     component = await createPointerChangesHandlerComponent({
       config: mockConfig,
       logs: mockLogs,

@@ -4,6 +4,9 @@ import { createAvatar } from './profiles'
 /* Snapshots fetcher implementation of pointer changes response
  * ensures that the hash must pass in order to be streamed:
  * const baHash = await hashV1(file as any)
+ *
+ * Required fields by PointerChangesSyncDeployment schema:
+ * - entityId, entityType, pointers, localTimestamp, entityTimestamp, authChain
  */
 export function createValidPointerChangesResponse(
   overrides: Partial<{
