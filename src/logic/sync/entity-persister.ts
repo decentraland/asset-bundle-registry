@@ -52,12 +52,22 @@ export function createEntityPersisterComponent({
     // if service is bootstrapping, queue the persistence for later
     // otherwise, persist directly
     if (bootstrapComplete) {
-      await db.upsertProfileIfNewer(dbEntity).catch((error) => {
-        logger.error('Failed to persist profile to database', {
+      await db.upsertProfileIfNewer(dbEntity).catch(async (error) => {
+        logger.error('Failed to persist profile to database, adding it to the queue', {
           entityId: entity.id,
           pointer: entity.pointers[0],
           error: error.message
         })
+
+        await dbPersistenceQueue
+          .add(() => db.upsertProfileIfNewer(dbEntity))
+          .catch((error) => {
+            logger.error('Failed to queue profile persistence', {
+              entityId: entity.id,
+              pointer: entity.pointers[0],
+              error: error.message
+            })
+          })
       })
     } else {
       await dbPersistenceQueue
