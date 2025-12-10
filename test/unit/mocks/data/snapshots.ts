@@ -1,8 +1,6 @@
 import { SnapshotMetadata } from '@dcl/snapshots-fetcher/dist/types'
 
-export function createSnapshotMetadata(
-  overrides: Partial<SnapshotMetadata> = {}
-): SnapshotMetadata {
+export function createSnapshotMetadata(overrides: Partial<SnapshotMetadata> = {}): SnapshotMetadata {
   return {
     hash: 'bafkreisnapshotdefaulthash1234567890abcdefghijklmnopqrstuv',
     timeRange: {

@@ -195,7 +195,6 @@ describe('pointer-changes-handler', () => {
             })
             firstSanitizedEntity = parseToEntity(firstProfileEntity)
             secondSanitizedEntity = parseToEntity(secondProfileEntity)
-
             ;(mockFetch.fetch as jest.Mock).mockResolvedValueOnce({
               json: jest.fn().mockResolvedValue({ deltas: [firstProfileEntity, secondProfileEntity] }),
               status: 200,
@@ -244,7 +243,6 @@ describe('pointer-changes-handler', () => {
           })
           firstSanitizedEntity = parseToEntity(firstPageEntity)
           secondSanitizedEntity = parseToEntity(secondPageEntity)
-
           ;(mockFetch.fetch as jest.Mock)
             .mockResolvedValueOnce({
               json: jest.fn().mockResolvedValue({
@@ -298,7 +296,6 @@ describe('pointer-changes-handler', () => {
             entityTimestamp: 3000
           })
           firstSanitizedEntity = parseToEntity(firstProfileEntity)
-
           ;(mockFetch.fetch as jest.Mock).mockResolvedValueOnce({
             json: jest.fn().mockResolvedValue({ deltas: [firstProfileEntity, secondProfileEntity] }),
             status: 200,
