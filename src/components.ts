@@ -35,6 +35,7 @@ import { createFailedProfilesRetrierComponent } from './logic/sync/failed-profil
 import { createSnapshotsHandlerComponent } from './logic/sync/snapshots-handler'
 import { createPointerChangesHandlerComponent } from './logic/sync/pointer-changes-handler'
 import { createSynchronizerComponent } from './logic/sync/synchronizer'
+import { createSchemaValidatorComponent } from '@dcl/schema-validator-component'
 
 // Initialize all the components of the app
 export async function initComponents(): Promise<AppComponents> {
@@ -154,6 +155,8 @@ export async function initComponents(): Promise<AppComponents> {
   const messageConsumer = createMessagesConsumerComponent({ logs, queue, messageProcessor })
   const workerManager = createWorkerManagerComponent({ metrics, logs })
 
+  const schemaValidator = createSchemaValidatorComponent({ ensureJsonContentType: false })
+
   return {
     config,
     fetch,
@@ -182,6 +185,7 @@ export async function initComponents(): Promise<AppComponents> {
     failedProfilesRetrier,
     snapshotsHandler,
     pointerChangesHandler,
-    synchronizer
+    synchronizer,
+    schemaValidator
   }
 }

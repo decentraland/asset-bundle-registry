@@ -10,8 +10,10 @@ import { flushCacheHandler } from '../logic/handlers/flush-cache-handler'
 import { getEntityVersionsHandler } from './handlers/get-entity-versions'
 import { getProfilesHandler } from './handlers/get-profiles'
 import { getProfilesMetadataHandler } from './handlers/get-profiles-metadata'
+import { GetProfilesSchema } from './schemas/get-profiles'
 
 export async function setupRouter(globalContext: GlobalContext): Promise<Router<GlobalContext>> {
+  const { schemaValidator } = globalContext.components
   const router = new Router<GlobalContext>()
   router.use(errorHandler)
 
@@ -31,8 +33,12 @@ export async function setupRouter(globalContext: GlobalContext): Promise<Router<
   router.get('/entities/status/:id', getEntityStatusHandler)
   router.get('/entities/status', signedFetchMiddleware, getEntitiesStatusHandler)
   router.get('/queues/status', getQueuesStatuses)
-  router.post('/profiles', getProfilesHandler)
-  router.post('/profiles/metadata', getProfilesMetadataHandler)
+  router.post('/profiles', schemaValidator.withSchemaValidatorMiddleware(GetProfilesSchema), getProfilesHandler)
+  router.post(
+    '/profiles/metadata',
+    schemaValidator.withSchemaValidatorMiddleware(GetProfilesSchema),
+    getProfilesMetadataHandler
+  )
 
   const adminToken = await globalContext.components.config.getString('API_ADMIN_TOKEN')
 

@@ -1161,6 +1161,13 @@
     destroy "^1.2.0"
     file-type "15"
 
+"@dcl/core-commons@0.5.1":
+  version "0.5.1"
+  resolved "https://registry.yarnpkg.com/@dcl/core-commons/-/core-commons-0.5.1.tgz#a0fe702ac3dfe09b8253ef319f1ba8be63cfbfff"
+  integrity sha512-958pmcxYQ3YI8olTH09IMf4w35MjPWAo48+k0uf97b3IiySGz0akjidawY0wK8oVbE849umgDiQSf3keiJJaew==
+  dependencies:
+    "@well-known-components/interfaces" "^1.5.2"
+
 "@dcl/crypto@^3.4.0", "@dcl/crypto@^3.4.3", "@dcl/crypto@^3.4.5":
   version "3.4.5"
   resolved "https://registry.yarnpkg.com/@dcl/crypto/-/crypto-3.4.5.tgz#95ca2beab46fa3494b4d38f009bf0d49c87ba235"
@@ -1209,6 +1216,16 @@
     "@well-known-components/http-server" "^2.0.0"
     "@well-known-components/interfaces" "^1.4.2"
     node-fetch "^2.7.0"
+
+"@dcl/schema-validator-component@^0.2.1":
+  version "0.2.1"
+  resolved "https://registry.yarnpkg.com/@dcl/schema-validator-component/-/schema-validator-component-0.2.1.tgz#196e548ff4970d68b6b9fc55eaa1343e5d51f975"
+  integrity sha512-kFJU/3Ew7FWRZUXmX64BfYwhA0tU8nl8aiRzzRnee3EiIHyY699xtyUCC9fv/zGWjK6grKSfhDG8uEl8hs+EBQ==
+  dependencies:
+    "@dcl/core-commons" "0.5.1"
+    "@well-known-components/interfaces" "^1.5.2"
+    ajv "^8.17.1"
+    ajv-formats "^3.0.1"
 
 "@dcl/schemas@^11.5.0":
   version "11.12.0"
@@ -2420,7 +2437,7 @@
     on-finished "^2.4.1"
     path-to-regexp "^6.2.1"
 
-"@well-known-components/interfaces@^1.1.1", "@well-known-components/interfaces@^1.4.0":
+"@well-known-components/interfaces@^1.1.1", "@well-known-components/interfaces@^1.4.0", "@well-known-components/interfaces@^1.5.2":
   version "1.5.2"
   resolved "https://registry.yarnpkg.com/@well-known-components/interfaces/-/interfaces-1.5.2.tgz#ef7001a19d410459e65b216dd948d15be19e4efa"
   integrity sha512-TzKQblOci2Azczk1DZ4JL5aJW7hwq7kHrFMO4lCRMmW51bA71BtiZlq0WP72Dln067xTSoHQAU4WHCFJlGYvEQ==
@@ -2497,6 +2514,13 @@ ajv-errors@^3.0.0:
   resolved "https://registry.yarnpkg.com/ajv-errors/-/ajv-errors-3.0.0.tgz#e54f299f3a3d30fe144161e5f0d8d51196c527bc"
   integrity sha512-V3wD15YHfHz6y0KdhYFjyy9vWtEVALT9UrxfN3zqlI6dMioHnJrqOYfyPKol3oqrnCM9uwkcdCwkJ0WUcbLMTQ==
 
+ajv-formats@^3.0.1:
+  version "3.0.1"
+  resolved "https://registry.yarnpkg.com/ajv-formats/-/ajv-formats-3.0.1.tgz#3d5dc762bca17679c3c2ea7e90ad6b7532309578"
+  integrity sha512-8iUql50EUR+uUcdRQ3HDqa6EVyo3docL8g5WJ3FNcWmu62IbkGUue/pEyLBW8VGKKucTPgqeks4fIU1DA4yowQ==
+  dependencies:
+    ajv "^8.0.0"
+
 ajv-keywords@^5.1.0:
   version "5.1.0"
   resolved "https://registry.yarnpkg.com/ajv-keywords/-/ajv-keywords-5.1.0.tgz#69d4d385a4733cdbeab44964a1170a88f87f0e16"
@@ -2514,7 +2538,7 @@ ajv@^6.12.4:
     json-schema-traverse "^0.4.1"
     uri-js "^4.2.2"
 
-ajv@^8.11.0:
+ajv@^8.0.0, ajv@^8.11.0, ajv@^8.17.1:
   version "8.17.1"
   resolved "https://registry.yarnpkg.com/ajv/-/ajv-8.17.1.tgz#37d9a5c776af6bc92d7f4f9510eba4c0a60d11a6"
   integrity sha512-B/gBuNg5SiMTrPkC+A2+cW0RszwxYmn6VYxB/inlBStS5nx6xHIt/ehKRhIMhqusl7a8LjQoZnjCs5vhwxOQ1g==
