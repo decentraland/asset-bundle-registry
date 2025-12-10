@@ -30,14 +30,13 @@ export async function createPointerChangesHandlerComponent({
       CATALYST_LOAD_BALANCER + '/content'
     )
 
-    let lastEntityIdHandled = ''
     let lastProfileTimestampProcessed = 0
     const iterator = entitiesStream[Symbol.asyncIterator]()
 
     try {
       while (!abortSignal.aborted) {
         const result = await iterator.next()
-        if (result.done || !result.value || result.value.entityId === lastEntityIdHandled) {
+        if (result.done || !result.value) {
           break
         }
 
@@ -83,7 +82,6 @@ export async function createPointerChangesHandlerComponent({
         }
 
         await entityPersister.persistEntity(sanitizedProfile[0])
-        lastEntityIdHandled = entity.entityId
         lastProfileTimestampProcessed = entity.entityTimestamp
       }
     } finally {
