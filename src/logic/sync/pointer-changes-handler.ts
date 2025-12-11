@@ -42,7 +42,7 @@ export async function createPointerChangesHandlerComponent({
 
         const entity = result.value
 
-        if (entity.entityType !== EntityType.PROFILE.toLowerCase()) {
+        if (entity.entityType !== EntityType.PROFILE) {
           continue
         }
 
