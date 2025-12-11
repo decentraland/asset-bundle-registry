@@ -22,7 +22,10 @@ import {
   IEntityDeploymentTrackerComponent,
   IProfilesCacheComponent,
   IEntityPersisterComponent,
-  IProfileRetrieverComponent
+  IProfileRetrieverComponent,
+  IFailedProfilesRetrierComponent,
+  IProfilesSynchronizerComponent,
+  ISynchronizerComponent
 } from './service'
 import { metricDeclarations } from '../metrics'
 import { IContentStorageComponent } from '@dcl/catalyst-storage'
@@ -46,6 +49,7 @@ export type BaseComponents = {
   memoryStorage: ICacheStorage
   profileSanitizer: IProfileSanitizerComponent
   profileRetriever: IProfileRetrieverComponent
+  synchronizer: ISynchronizerComponent
 }
 
 // components used in runtime
@@ -61,6 +65,9 @@ export type AppComponents = BaseComponents & {
   profilesCache: IProfilesCacheComponent
   snapshotContentStorage: IContentStorageComponent
   entityPersister: IEntityPersisterComponent
+  snapshotsHandler: IProfilesSynchronizerComponent
+  pointerChangesHandler: IProfilesSynchronizerComponent
+  failedProfilesRetrier: IFailedProfilesRetrierComponent
 }
 
 // components used in tests

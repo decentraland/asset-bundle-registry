@@ -31,6 +31,10 @@ import { createSnapshotContentStorage } from './logic/sync/snapshots-content-sto
 import { createNormalizedLRUCache } from './adapters/lru-cache'
 import { createEntityPersisterComponent } from './logic/sync/entity-persister'
 import { createProfileRetrieverComponent } from './logic/profile-retriever'
+import { createFailedProfilesRetrierComponent } from './logic/sync/failed-profiles-retrier'
+import { createSnapshotsHandlerComponent } from './logic/sync/snapshots-handler'
+import { createPointerChangesHandlerComponent } from './logic/sync/pointer-changes-handler'
+import { createSynchronizerComponent } from './logic/sync/synchronizer'
 
 // Initialize all the components of the app
 export async function initComponents(): Promise<AppComponents> {
@@ -105,6 +109,35 @@ export async function initComponents(): Promise<AppComponents> {
   const profileRetriever = createProfileRetrieverComponent({ logs, db, profilesCache, catalyst })
   const profileSanitizer = await createProfileSanitizerComponent({ catalyst, config })
   const entityPersister = createEntityPersisterComponent({ logs, db, profilesCache, entityDeploymentTracker })
+  const snapshotsHandler = await createSnapshotsHandlerComponent({
+    config,
+    logs,
+    fetch,
+    db,
+    profileSanitizer,
+    entityPersister,
+    snapshotContentStorage
+  })
+  const pointerChangesHandler = await createPointerChangesHandlerComponent({
+    config,
+    logs,
+    fetch,
+    db,
+    profileSanitizer,
+    entityPersister,
+    entityDeploymentTracker
+  })
+  const failedProfilesRetrier = createFailedProfilesRetrierComponent({ logs, db, profileSanitizer, entityPersister })
+  const synchronizer = await createSynchronizerComponent({
+    logs,
+    config,
+    entityPersister,
+    memoryStorage,
+    db,
+    snapshotsHandler,
+    pointerChangesHandler,
+    failedProfilesRetrier
+  })
   const worlds = await createWorldsAdapter({ logs, config, fetch })
   const registryOrchestrator = createRegistryOrchestratorComponent({ logs, db, metrics })
   const entityStatusFetcher = await createEntityStatusFetcherComponent({ fetch, logs, config })
@@ -145,6 +178,10 @@ export async function initComponents(): Promise<AppComponents> {
     entityDeploymentTracker,
     profilesCache,
     snapshotContentStorage,
-    entityPersister
+    entityPersister,
+    failedProfilesRetrier,
+    snapshotsHandler,
+    pointerChangesHandler,
+    synchronizer
   }
 }
