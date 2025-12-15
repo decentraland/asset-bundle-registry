@@ -39,7 +39,7 @@
     "@well-known-components/metrics": "^2.1.0",
     "@well-known-components/pg-component": "^1.1.0",
     "bloom-filters": "^3.0.4",
-    "dcl-catalyst-client": "^21.8.0",
+    "dcl-catalyst-client": "^21.10.1",
     "lru-cache": "9.1.2",
     "redis": "^4.7.0",
     "sql-template-strings": "^2.2.2"

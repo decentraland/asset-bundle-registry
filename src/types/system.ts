@@ -68,6 +68,7 @@ export type AppComponents = BaseComponents & {
   snapshotsHandler: IProfilesSynchronizerComponent
   pointerChangesHandler: IProfilesSynchronizerComponent
   failedProfilesRetrier: IFailedProfilesRetrierComponent
+  ownershipValidatorJob: IBaseComponent
 }
 
 // components used in tests
