@@ -11,10 +11,9 @@ export async function getProfilesHandler(
   const pointers: string[] = body.ids
 
   const profilesMap = await profileRetriever.getProfiles(pointers)
-  const parsedProfiles = profileSanitizer.getProfilesWithSnapshotsAsUrls(Array.from(profilesMap.values()))
 
   return {
-    body: parsedProfiles,
+    body: profileSanitizer.mapEntitiesToProfiles(Array.from(profilesMap.values())),
     headers: {
       'Content-Type': 'application/json'
     }
