@@ -1,5 +1,5 @@
 import { Entity, EntityType, Profile } from '@dcl/schemas'
-import { AppComponents, IProfileSanitizerComponent, Sync, ProfileMetadata } from '../../types'
+import { AppComponents, IProfileSanitizerComponent, Sync, ProfileMetadataDTO } from '../../types'
 import { withRetry, withTimeout } from '../../utils/timer'
 
 const THIRTY_SECONDS_IN_MS = 30000
@@ -38,7 +38,7 @@ export async function createProfileSanitizerComponent({
     }
   }
 
-  function getMetadata(profile: Entity): ProfileMetadata {
+  function getMetadata(profile: Entity): ProfileMetadataDTO {
     const avatar = (profile.metadata as Profile).avatars[0]
     return {
       pointer: profile.pointers[0],

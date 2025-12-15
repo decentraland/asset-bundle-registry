@@ -1,8 +1,16 @@
-import { HandlerContextWithPath } from '../../types'
+import { Entity, Profile } from '@dcl/schemas'
+import { HandlerContextWithPath, ProfileDTO } from '../../types'
 
 export async function getProfilesHandler(
   context: HandlerContextWithPath<'profileRetriever' | 'profileSanitizer', '/profiles'>
 ) {
+  const mapToResponse = (profiles: Entity[]): ProfileDTO[] => {
+    return profileSanitizer.getProfilesWithSnapshotsAsUrls(profiles).map((profile) => ({
+      timestamp: profile.timestamp,
+      avatars: (profile.metadata as Profile).avatars
+    }))
+  }
+
   const {
     components: { profileRetriever, profileSanitizer }
   } = context
@@ -11,10 +19,9 @@ export async function getProfilesHandler(
   const pointers: string[] = body.ids
 
   const profilesMap = await profileRetriever.getProfiles(pointers)
-  const parsedProfiles = profileSanitizer.getProfilesWithSnapshotsAsUrls(Array.from(profilesMap.values()))
 
   return {
-    body: parsedProfiles,
+    body: mapToResponse(Array.from(profilesMap.values())),
     headers: {
       'Content-Type': 'application/json'
     }
