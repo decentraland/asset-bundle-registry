@@ -8,7 +8,8 @@ import {
   EventHandlerResult,
   Registry,
   Sync,
-  ProfileMetadataDTO
+  ProfileMetadataDTO,
+  ProfileDTO
 } from './types'
 import { Entity, EthAddress } from '@dcl/schemas'
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
@@ -139,8 +140,7 @@ export interface IProfileSanitizerComponent {
     notFoundProfilesHandler: (profile: Sync.ProfileDeployment | Sync.FailedProfileDbEntity) => Promise<void>
   ): Promise<Entity[]>
   getMetadata(profile: Entity): ProfileMetadataDTO
-  getProfilesWithSnapshotsAsUrls(profiles: Entity[]): Entity[]
-  mapProfilesToEntities(profiles: Profile[]): Entity[]
+  mapEntitiesToProfiles(profiles: Entity[]): ProfileDTO[]
 }
 
 export interface IEntityPersisterComponent {

@@ -1,10 +1,29 @@
-import { Entity } from '@dcl/schemas'
+import { Entity, EntityType } from '@dcl/schemas'
 import { Sync } from '../../src/types'
 import { createRequestMaker } from '../utils'
 import { test } from '../components'
 import { createProfileDbEntity, createProfileEntity, createFullAvatar } from '../unit/mocks/data/profiles'
 
-test('POST /profile endpoint', async function ({ components }) {
+function profileDbEntityToEntity(profileDb: Sync.ProfileDbEntity): Entity {
+  return {
+    version: 'v3' as const,
+    id: profileDb.id,
+    type: EntityType.PROFILE,
+    pointers: [profileDb.pointer],
+    timestamp: profileDb.timestamp,
+    content: profileDb.content,
+    metadata: profileDb.metadata
+  }
+}
+
+function normalizeProfileDTOs(profiles: any[]): any[] {
+  return profiles.map((p) => ({
+    ...p,
+    timestamp: typeof p.timestamp === 'string' ? Number(p.timestamp) : p.timestamp
+  }))
+}
+
+test('POST /profiles endpoint', async function ({ components }) {
   let fetchLocally: any
   const profilesToCleanUp: string[] = []
 
@@ -50,11 +69,10 @@ test('POST /profile endpoint', async function ({ components }) {
       const response = await fetchLocally('POST', '/profiles', undefined, { ids: [pointer] })
       const parsedResponse = await response.json()
 
+      const expectedProfile = components.profileSanitizer.mapEntitiesToProfiles([profileDbEntityToEntity(profile)])
+
       expect(response.status).toBe(200)
-      expect(parsedResponse).toHaveLength(1)
-      expect(parsedResponse[0].id).toBe(profile.id)
-      expect(parsedResponse[0].metadata.avatars[0].avatar.snapshots.face256).toContain(profile.id)
-      expect(parsedResponse[0].metadata.avatars[0].avatar.snapshots.body).toContain(profile.id)
+      expect(normalizeProfileDTOs(parsedResponse)).toEqual(expectedProfile)
     })
   })
 
@@ -85,10 +103,17 @@ test('POST /profile endpoint', async function ({ components }) {
       const response = await fetchLocally('POST', '/profiles', undefined, { ids: [pointerA, pointerB] })
       const parsedResponse = await response.json()
 
+      const expectedProfiles = components.profileSanitizer.mapEntitiesToProfiles([
+        profileDbEntityToEntity(profileA),
+        profileDbEntityToEntity(profileB)
+      ])
+
       expect(response.status).toBe(200)
-      expect(parsedResponse).toHaveLength(2)
-      expect(parsedResponse.find((p: any) => p.id === profileA.id)).toBeDefined()
-      expect(parsedResponse.find((p: any) => p.id === profileB.id)).toBeDefined()
+      // Sort by timestamp for consistent comparison
+      const normalizedResponse = normalizeProfileDTOs(parsedResponse)
+      normalizedResponse.sort((a: any, b: any) => a.timestamp - b.timestamp)
+      expectedProfiles.sort((a, b) => a.timestamp - b.timestamp)
+      expect(normalizedResponse).toEqual(expectedProfiles)
     })
   })
 
@@ -110,10 +135,10 @@ test('POST /profile endpoint', async function ({ components }) {
       const response = await fetchLocally('POST', '/profiles', undefined, { ids: [pointer] })
       const parsedResponse = await response.json()
 
+      const expectedProfile = components.profileSanitizer.mapEntitiesToProfiles([catalystProfile])
+
       expect(response.status).toBe(200)
-      expect(parsedResponse).toHaveLength(1)
-      expect(parsedResponse[0].id).toBe(catalystProfile.id)
-      expect(parsedResponse[0].metadata.avatars[0].avatar.snapshots.face256).toContain(catalystProfile.id)
+      expect(normalizeProfileDTOs(parsedResponse)).toEqual(expectedProfile)
       expect(components.catalyst.getEntityByPointers).toHaveBeenCalledWith([pointer])
     })
   })

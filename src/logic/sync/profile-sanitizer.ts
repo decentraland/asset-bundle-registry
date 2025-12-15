@@ -1,5 +1,5 @@
-import { Entity, EntityType, Profile } from '@dcl/schemas'
-import { AppComponents, IProfileSanitizerComponent, Sync, ProfileMetadataDTO } from '../../types'
+import { Entity, Profile } from '@dcl/schemas'
+import { AppComponents, IProfileSanitizerComponent, Sync, ProfileMetadataDTO, ProfileDTO } from '../../types'
 import { withRetry, withTimeout } from '../../utils/timer'
 
 const THIRTY_SECONDS_IN_MS = 30000
@@ -77,28 +77,16 @@ export async function createProfileSanitizerComponent({
     })
   }
 
-  function mapProfilesToEntities(profiles: Profile[]): Entity[] {
-    return profiles.map((profile) => {
-      const avatar = profile.avatars![0]
-      const ethAddress = avatar.ethAddress as string
-      return {
-        version: 'v3' as const,
-        id: ethAddress,
-        type: EntityType.PROFILE,
-        pointers: [ethAddress.toLowerCase()],
-        timestamp: avatar.version || Date.now(),
-        content: [],
-        metadata: {
-          avatars: profile.avatars
-        }
-      }
-    })
+  function mapEntitiesToProfiles(profiles: Entity[]): ProfileDTO[] {
+    return getProfilesWithSnapshotsAsUrls(profiles).map((profile) => ({
+      timestamp: profile.timestamp,
+      avatars: (profile.metadata as Profile).avatars
+    }))
   }
 
   return {
     sanitizeProfiles,
     getMetadata,
-    getProfilesWithSnapshotsAsUrls,
-    mapProfilesToEntities
+    mapEntitiesToProfiles
   }
 }

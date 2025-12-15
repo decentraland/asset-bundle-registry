@@ -4,7 +4,6 @@ export function createProfileSanitizerMockComponent(): IProfileSanitizerComponen
   return {
     sanitizeProfiles: jest.fn(),
     getMetadata: jest.fn(),
-    getProfilesWithSnapshotsAsUrls: jest.fn(),
-    mapProfilesToEntities: jest.fn()
+    mapEntitiesToProfiles: jest.fn()
   }
 }
