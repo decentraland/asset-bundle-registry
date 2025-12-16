@@ -135,7 +135,9 @@ export async function createOwnershipValidatorJob(
 
       if (originalProfile && sanitizedProfile && shouldUpdateProfile(originalProfile, sanitizedProfile)) {
         logger.info('Profile update required', {
-          pointer
+          pointer,
+          originalProfile: JSON.stringify(originalProfile),
+          sanitizedProfile: JSON.stringify(sanitizedProfile)
         })
 
         const curatedProfile = await fetchEntityAndAdjustOwnership(pointer, {
@@ -163,7 +165,7 @@ export async function createOwnershipValidatorJob(
     }
 
     try {
-      logger.debug('Starting ownership validation cycle')
+      logger.debug('Ownership validation cycle started')
 
       // Get all pointers from hot cache (Frequently accessed profiles)
       const allPointers = profilesCache.getAllPointers()
@@ -172,8 +174,6 @@ export async function createOwnershipValidatorJob(
         logger.debug('No profiles found in cache to validate')
         return
       }
-
-      logger.info('Validating profile ownership', { totalProfiles: allPointers.length })
 
       let totalUpdated = 0
 
@@ -198,26 +198,22 @@ export async function createOwnershipValidatorJob(
         updatedProfiles: totalUpdated
       })
     } catch (error: any) {
-      logger.error('Error during ownership validation cycle', { error: error.message })
+      logger.error('Ownership validation cycle failed', { error: error.message })
     }
   }
 
   async function start(): Promise<void> {
-    logger.info('Starting ownership validator')
+    logger.info('Ownership validator scheduled')
     isRunning = true
 
     // Initial delay before first validation (let sync stabilize)
     setTimeout(() => {
       if (isRunning) {
-        runValidationCycle().catch((error) => {
-          logger.error('Error in initial validation cycle', { error: error.message })
-        })
+        void runValidationCycle()
 
         // Set up periodic validation
         validationInterval = setInterval(() => {
-          runValidationCycle().catch((error) => {
-            logger.error('Error in validation cycle', { error: error.message })
-          })
+          void runValidationCycle()
         }, VALIDATION_INTERVAL_MS)
       }
     }, VALIDATION_INTERVAL_MS)
@@ -226,7 +222,6 @@ export async function createOwnershipValidatorJob(
   }
 
   async function stop(): Promise<void> {
-    logger.info('Stopping ownership validator')
     isRunning = false
 
     if (validationInterval) {
