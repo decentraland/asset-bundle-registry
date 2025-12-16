@@ -35,6 +35,7 @@ import { createFailedProfilesRetrierComponent } from './logic/sync/failed-profil
 import { createSnapshotsHandlerComponent } from './logic/sync/snapshots-handler'
 import { createPointerChangesHandlerComponent } from './logic/sync/pointer-changes-handler'
 import { createSynchronizerComponent } from './logic/sync/synchronizer'
+import { createOwnershipValidatorJob } from './logic/sync/ownership-validator-job'
 
 // Initialize all the components of the app
 export async function initComponents(): Promise<AppComponents> {
@@ -138,6 +139,14 @@ export async function initComponents(): Promise<AppComponents> {
     pointerChangesHandler,
     failedProfilesRetrier
   })
+  const ownershipValidatorJob = await createOwnershipValidatorJob({
+    logs,
+    config,
+    catalyst,
+    profilesCache,
+    profileSanitizer,
+    db
+  })
   const worlds = await createWorldsAdapter({ logs, config, fetch })
   const registryOrchestrator = createRegistryOrchestratorComponent({ logs, db, metrics })
   const entityStatusFetcher = await createEntityStatusFetcherComponent({ fetch, logs, config })
@@ -182,6 +191,7 @@ export async function initComponents(): Promise<AppComponents> {
     failedProfilesRetrier,
     snapshotsHandler,
     pointerChangesHandler,
-    synchronizer
+    synchronizer,
+    ownershipValidatorJob
   }
 }
