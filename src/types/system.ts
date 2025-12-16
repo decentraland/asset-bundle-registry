@@ -29,6 +29,7 @@ import {
 } from './service'
 import { metricDeclarations } from '../metrics'
 import { IContentStorageComponent } from '@dcl/catalyst-storage'
+import { ISchemaValidatorComponent } from '@dcl/schema-validator-component'
 
 export type GlobalContext = {
   components: BaseComponents
@@ -50,6 +51,7 @@ export type BaseComponents = {
   profileSanitizer: IProfileSanitizerComponent
   profileRetriever: IProfileRetrieverComponent
   synchronizer: ISynchronizerComponent
+  schemaValidator: ISchemaValidatorComponent<GlobalContext>
 }
 
 // components used in runtime
