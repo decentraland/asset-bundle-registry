@@ -128,7 +128,6 @@ export async function initComponents(): Promise<AppComponents> {
     logs,
     config,
     entityPersister,
-    memoryStorage,
     db,
     snapshotsHandler,
     pointerChangesHandler,
