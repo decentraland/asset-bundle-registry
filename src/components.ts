@@ -39,12 +39,7 @@ import { createOwnershipValidatorJob } from './logic/sync/ownership-validator-jo
 
 // Initialize all the components of the app
 export async function initComponents(): Promise<AppComponents> {
-  const config = await createDotEnvConfigComponent(
-    { path: ['.env.default', '.env'] },
-    {
-      LOG_LEVEL: 'ALL'
-    }
-  )
+  const config = await createDotEnvConfigComponent({ path: ['.env.default', '.env'] })
   const logs = await createLogComponent({ config })
 
   const logger = logs.getLogger('components')
@@ -108,7 +103,7 @@ export async function initComponents(): Promise<AppComponents> {
   const snapshotContentStorage = await createSnapshotContentStorage({ logs, config })
   const catalyst = await createCatalystAdapter({ logs, fetch, config })
   const profileRetriever = createProfileRetrieverComponent({ logs, db, profilesCache, catalyst })
-  const profileSanitizer = await createProfileSanitizerComponent({ catalyst, config })
+  const profileSanitizer = await createProfileSanitizerComponent({ catalyst, config, logs })
   const entityPersister = createEntityPersisterComponent({ logs, db, profilesCache, entityDeploymentTracker })
   const snapshotsHandler = await createSnapshotsHandlerComponent({
     config,

@@ -46,14 +46,14 @@ export async function createPointerChangesHandlerComponent({
           continue
         }
 
-        logger.info("Streamed profile, won't be processed if already processed", {
-          entityId: entity.entityId,
-          pointer: entity.pointers[0]
-        })
-
         if (entityDeploymentTracker.hasBeenProcessed(entity.entityId)) {
           continue
         }
+
+        logger.info('Streamed profile, processing it', {
+          entityId: entity.entityId,
+          pointer: entity.pointers[0]
+        })
 
         const sanitizedProfile = await profileSanitizer.sanitizeProfiles(
           [

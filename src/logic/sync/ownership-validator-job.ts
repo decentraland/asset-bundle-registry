@@ -18,7 +18,7 @@ export async function createOwnershipValidatorJob(
   components: Pick<AppComponents, 'logs' | 'config' | 'catalyst' | 'profilesCache' | 'profileSanitizer' | 'db'>
 ): Promise<IBaseComponent> {
   const { logs, config, catalyst, profilesCache, profileSanitizer, db } = components
-  const logger = logs.getLogger('ownership-validator-jon')
+  const logger = logs.getLogger('ownership-validator-job')
   const VALIDATION_INTERVAL_MS =
     (await config.getNumber('PROFILES_OWNERSHIP_VALIDATION_INTERVAL_MS')) || FIVE_MINUTES_MS
 
@@ -135,9 +135,7 @@ export async function createOwnershipValidatorJob(
 
       if (originalProfile && sanitizedProfile && shouldUpdateProfile(originalProfile, sanitizedProfile)) {
         logger.info('Profile update required', {
-          pointer,
-          originalProfile: JSON.stringify(originalProfile),
-          sanitizedProfile: JSON.stringify(sanitizedProfile)
+          pointer
         })
 
         const curatedProfile = await fetchEntityAndAdjustOwnership(pointer, {
@@ -148,7 +146,7 @@ export async function createOwnershipValidatorJob(
         })
 
         if (!curatedProfile) {
-          logger.error('Failed to get curated profile', { pointer })
+          logger.error('Failed to update profile with new ownership', { pointer })
           continue
         }
         await updateProfileInAllLayers(curatedProfile)

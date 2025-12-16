@@ -81,18 +81,23 @@ export async function createSynchronizerComponent(
     { abortSignal, interval }: { abortSignal: AbortSignal; interval: number }
   ): Promise<void> {
     while (running && !abortSignal.aborted) {
-      logger.info('Starting sync profiles loop')
       await callToLoop(abortSignal).catch((error) => {
         logger.error('Error in loop', { error: error.message })
       })
       if (!abortSignal.aborted && running) {
-        // Create a cancellable timeout that respects the abort signal
         await new Promise<void>((resolve) => {
-          const timeoutId = setTimeout(() => resolve(), interval)
-          abortSignal.addEventListener('abort', () => {
+          // eslint-disable-next-line prefer-const
+          let timeoutId: NodeJS.Timeout
+          const abortHandler = () => {
             clearTimeout(timeoutId)
+            abortSignal.removeEventListener('abort', abortHandler)
             resolve()
-          })
+          }
+          abortSignal.addEventListener('abort', abortHandler)
+          timeoutId = setTimeout(() => {
+            abortSignal.removeEventListener('abort', abortHandler)
+            resolve()
+          }, interval)
         })
       }
     }
