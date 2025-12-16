@@ -7,7 +7,7 @@ import { Profile } from 'dcl-catalyst-client/dist/client/specs/lambdas-client'
 const FIVE_MINUTES_MS = 5 * 60 * 1000 // 5 minutes
 const BATCH_SIZE = 50 // Process profiles in batches
 
-export type ValidatableProperties = {
+type ValidatableProperties = {
   wearables: string[]
   emotes: { urn?: string; slot?: number }[]
   name?: string
@@ -129,7 +129,8 @@ export async function createOwnershipValidatorJob(
 
     // Compare with current cached profiles
     for (const pointer of pointers) {
-      const originalProfile = profileSanitizer.mapEntitiesToProfiles([profilesCache.get(pointer) as Entity])[0]
+      const cachedProfile = profilesCache.get(pointer)
+      const originalProfile = cachedProfile ? profileSanitizer.mapEntitiesToProfiles([cachedProfile])[0] : null
       const sanitizedProfile = sanitizedMap.get(pointer)
 
       if (originalProfile && sanitizedProfile && shouldUpdateProfile(originalProfile, sanitizedProfile)) {
