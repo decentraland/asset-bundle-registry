@@ -1,23 +1,26 @@
-import { IConfigComponent } from '@well-known-components/interfaces'
+import { IConfigComponent, ILoggerComponent } from '@well-known-components/interfaces'
 import { ICatalystComponent, IProfileSanitizerComponent, Sync } from '../../../../src/types'
 import { createConfigMockComponent } from '../../mocks/config'
 import { createCatalystMockComponent } from '../../mocks/catalyst'
 import { createProfileSanitizerComponent } from '../../../../src/logic/sync/profile-sanitizer'
 import { createAvatar, createAvatarInfo, createProfileEntity } from '../../mocks/data/profiles'
 import { Entity } from '@dcl/schemas'
+import { createLogMockComponent } from '../../mocks/logs'
 
 const MOCK_PROFILE_IMAGES_URL = 'https://profiles.mock.org'
 
 describe('profile sanitizer', () => {
   let catalystMock: ICatalystComponent
   let configMock: IConfigComponent
+  let logsMock: ILoggerComponent
   let component: IProfileSanitizerComponent
 
   beforeEach(async () => {
     catalystMock = createCatalystMockComponent()
     configMock = createConfigMockComponent()
+    logsMock = createLogMockComponent()
     ;(configMock.requireString as jest.Mock).mockResolvedValue(MOCK_PROFILE_IMAGES_URL)
-    component = await createProfileSanitizerComponent({ catalyst: catalystMock, config: configMock })
+    component = await createProfileSanitizerComponent({ catalyst: catalystMock, config: configMock, logs: logsMock })
   })
 
   describe('when sanitizing profiles', () => {
