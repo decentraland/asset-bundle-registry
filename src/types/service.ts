@@ -59,6 +59,7 @@ export interface IDbComponent {
   updateFailedProfileFetchRetry(entityId: string, retryCount: number, errorMessage?: string): Promise<void>
   getFailedProfileFetches(limit: number, maxRetryCount?: number): Promise<Sync.FailedProfileDbEntity[]>
   getFailedProfileFetchByEntityId(entityId: string): Promise<Sync.FailedProfileDbEntity | null>
+  removeDanglingFailedProfileFetches(): Promise<void>
 }
 
 export type QueueMessage = any

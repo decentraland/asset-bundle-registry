@@ -466,6 +466,18 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
     return result.rows
   }
 
+  async function removeDanglingFailedProfileFetches(): Promise<void> {
+    const query = SQL`
+      DELETE FROM failed_profile_fetches fpf
+      USING profiles p
+      WHERE LOWER(fpf.pointer) = LOWER(p.pointer)
+      AND fpf.timestamp < p.timestamp
+      RETURNING fpf.entity_id
+    `
+
+    await pg.query(query)
+  }
+
   async function deleteFailedProfileFetch(entityId: string): Promise<void> {
     const query = SQL`
       DELETE FROM failed_profile_fetches
@@ -537,6 +549,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
     deleteFailedProfileFetch,
     updateFailedProfileFetchRetry,
     getFailedProfileFetches,
-    getFailedProfileFetchByEntityId
+    getFailedProfileFetchByEntityId,
+    removeDanglingFailedProfileFetches
   }
 }

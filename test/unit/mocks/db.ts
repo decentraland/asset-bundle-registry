@@ -25,6 +25,7 @@ export function createDbMockComponent(): IDbComponent {
     deleteFailedProfileFetch: jest.fn(),
     updateFailedProfileFetchRetry: jest.fn(),
     getFailedProfileFetches: jest.fn(),
-    getFailedProfileFetchByEntityId: jest.fn()
+    getFailedProfileFetchByEntityId: jest.fn(),
+    removeDanglingFailedProfileFetches: jest.fn()
   }
 }
