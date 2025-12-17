@@ -1,6 +1,5 @@
 import { IBaseComponent, IConfigComponent, ILoggerComponent } from '@well-known-components/interfaces'
 import {
-  ICacheStorage,
   IDbComponent,
   IEntityPersisterComponent,
   IFailedProfilesRetrierComponent,
@@ -11,11 +10,10 @@ import { createConfigMockComponent } from '../../mocks/config'
 import { createLogMockComponent } from '../../mocks/logs'
 import { createDbMockComponent } from '../../mocks/db'
 import { createEntityPersisterMockComponent } from '../../mocks/entity-persister'
-import { createMemoryStorageMockComponent } from '../../mocks/memory-storage'
 import { createSnapshotsHandlerMockComponent } from '../../mocks/snapshots-handler'
 import { createPointerChangesHandlerMockComponent } from '../../mocks/pointer-changes-handler'
 import { createFailedProfilesRetrierMockComponent } from '../../mocks/failed-profiles-retrier'
-import { createSynchronizerComponent, GENESIS_TIMESTAMP, SYNC_STATE_KEY } from '../../../../src/logic/sync/synchronizer'
+import { createSynchronizerComponent, GENESIS_TIMESTAMP } from '../../../../src/logic/sync/synchronizer'
 
 function createStartOptions(): IBaseComponent.ComponentStartOptions {
   return {
@@ -30,7 +28,6 @@ describe('synchronizer', () => {
   let mockLogs: ILoggerComponent
   let mockDb: IDbComponent
   let mockEntityPersister: IEntityPersisterComponent
-  let mockMemoryStorage: ICacheStorage
   let mockSnapshotsHandler: IProfilesSynchronizerComponent
   let mockPointerChangesHandler: IProfilesSynchronizerComponent
   let mockFailedProfilesRetrier: IFailedProfilesRetrierComponent
@@ -43,7 +40,6 @@ describe('synchronizer', () => {
     mockLogs = createLogMockComponent()
     mockDb = createDbMockComponent()
     mockEntityPersister = createEntityPersisterMockComponent()
-    mockMemoryStorage = createMemoryStorageMockComponent()
     mockSnapshotsHandler = createSnapshotsHandlerMockComponent()
     mockPointerChangesHandler = createPointerChangesHandlerMockComponent()
     mockFailedProfilesRetrier = createFailedProfilesRetrierMockComponent()
@@ -69,7 +65,6 @@ describe('synchronizer', () => {
           logs: mockLogs,
           config: mockConfig,
           entityPersister: mockEntityPersister,
-          memoryStorage: mockMemoryStorage,
           db: mockDb,
           snapshotsHandler: mockSnapshotsHandler,
           pointerChangesHandler: mockPointerChangesHandler,
@@ -81,7 +76,6 @@ describe('synchronizer', () => {
         await component.start(createStartOptions())
 
         expect(mockDb.getLatestProfileTimestamp).not.toHaveBeenCalled()
-        expect(mockMemoryStorage.get).not.toHaveBeenCalled()
       })
     })
 
@@ -89,7 +83,6 @@ describe('synchronizer', () => {
       beforeEach(async () => {
         ;(mockConfig.getString as jest.Mock).mockResolvedValue(undefined)
         ;(mockDb.getLatestProfileTimestamp as jest.Mock).mockResolvedValue(null)
-        ;(mockMemoryStorage.get as jest.Mock).mockResolvedValue(undefined)
         ;(mockPointerChangesHandler.syncProfiles as jest.Mock).mockResolvedValue(GENESIS_TIMESTAMP)
         ;(mockFailedProfilesRetrier.retryFailedProfiles as jest.Mock).mockResolvedValue(undefined)
 
@@ -97,7 +90,6 @@ describe('synchronizer', () => {
           logs: mockLogs,
           config: mockConfig,
           entityPersister: mockEntityPersister,
-          memoryStorage: mockMemoryStorage,
           db: mockDb,
           snapshotsHandler: mockSnapshotsHandler,
           pointerChangesHandler: mockPointerChangesHandler,
@@ -105,29 +97,11 @@ describe('synchronizer', () => {
         })
       })
 
-      describe('and cursor is stored in memory', () => {
-        let memoryCursor: number
-
-        beforeEach(() => {
-          memoryCursor = Date.now() - 1000
-          ;(mockMemoryStorage.get as jest.Mock).mockResolvedValueOnce([memoryCursor])
-        })
-
-        it('should load cursor from memory and start sync', async () => {
-          await component.start(createStartOptions())
-          await jest.advanceTimersByTimeAsync(100)
-
-          expect(mockMemoryStorage.get).toHaveBeenCalledWith(SYNC_STATE_KEY)
-          expect(mockPointerChangesHandler.syncProfiles).toHaveBeenCalledWith(memoryCursor, expect.any(AbortSignal))
-        })
-      })
-
-      describe('and cursor is not in memory but exists in database', () => {
+      describe('and cursor is retrieved from database', () => {
         let dbCursor: number
 
         beforeEach(() => {
           dbCursor = Date.now() - 2000
-          ;(mockMemoryStorage.get as jest.Mock).mockResolvedValueOnce(undefined)
           ;(mockDb.getLatestProfileTimestamp as jest.Mock).mockResolvedValue(dbCursor)
         })
 
@@ -140,9 +114,8 @@ describe('synchronizer', () => {
         })
       })
 
-      describe('and cursor is not stored anywhere', () => {
+      describe('and cursor is not stored in database', () => {
         beforeEach(() => {
-          ;(mockMemoryStorage.get as jest.Mock).mockResolvedValueOnce(undefined)
           ;(mockDb.getLatestProfileTimestamp as jest.Mock).mockResolvedValue(null)
         })
 
@@ -163,7 +136,6 @@ describe('synchronizer', () => {
     beforeEach(async () => {
       ;(mockConfig.getString as jest.Mock).mockResolvedValue(undefined)
       ;(mockDb.getLatestProfileTimestamp as jest.Mock).mockResolvedValue(null)
-      ;(mockMemoryStorage.get as jest.Mock).mockResolvedValue(undefined)
       ;(mockPointerChangesHandler.syncProfiles as jest.Mock).mockResolvedValue(GENESIS_TIMESTAMP)
       ;(mockFailedProfilesRetrier.retryFailedProfiles as jest.Mock).mockResolvedValue(undefined)
       ;(mockEntityPersister.waitForDrain as jest.Mock).mockResolvedValue(undefined)
@@ -172,7 +144,6 @@ describe('synchronizer', () => {
         logs: mockLogs,
         config: mockConfig,
         entityPersister: mockEntityPersister,
-        memoryStorage: mockMemoryStorage,
         db: mockDb,
         snapshotsHandler: mockSnapshotsHandler,
         pointerChangesHandler: mockPointerChangesHandler,
@@ -207,8 +178,7 @@ describe('synchronizer', () => {
       beforeEach(async () => {
         oldCursor = Date.now() - ONE_WEEK_MS - ONE_DAY_MS
         snapshotResultCursor = Date.now() - ONE_DAY_MS
-        ;(mockMemoryStorage.get as jest.Mock).mockResolvedValueOnce([oldCursor])
-        ;(mockDb.getLatestProfileTimestamp as jest.Mock).mockResolvedValue(null)
+        ;(mockDb.getLatestProfileTimestamp as jest.Mock).mockResolvedValue(oldCursor)
         ;(mockSnapshotsHandler.syncProfiles as jest.Mock).mockResolvedValueOnce(snapshotResultCursor)
         ;(mockPointerChangesHandler.syncProfiles as jest.Mock).mockResolvedValue(snapshotResultCursor)
 
@@ -216,7 +186,6 @@ describe('synchronizer', () => {
           logs: mockLogs,
           config: mockConfig,
           entityPersister: mockEntityPersister,
-          memoryStorage: mockMemoryStorage,
           db: mockDb,
           snapshotsHandler: mockSnapshotsHandler,
           pointerChangesHandler: mockPointerChangesHandler,
@@ -240,13 +209,6 @@ describe('synchronizer', () => {
           expect.any(AbortSignal)
         )
       })
-
-      it('should save cursor to memory after snapshots', async () => {
-        await component.start(createStartOptions())
-        await jest.advanceTimersByTimeAsync(100)
-
-        expect(mockMemoryStorage.set).toHaveBeenCalledWith(SYNC_STATE_KEY, snapshotResultCursor)
-      })
     })
 
     describe('when cursor is recent', () => {
@@ -254,15 +216,13 @@ describe('synchronizer', () => {
 
       beforeEach(async () => {
         recentCursor = Date.now() - ONE_DAY_MS
-        ;(mockMemoryStorage.get as jest.Mock).mockResolvedValueOnce([recentCursor])
-        ;(mockDb.getLatestProfileTimestamp as jest.Mock).mockResolvedValue(null)
+        ;(mockDb.getLatestProfileTimestamp as jest.Mock).mockResolvedValue(recentCursor)
         ;(mockPointerChangesHandler.syncProfiles as jest.Mock).mockResolvedValue(recentCursor)
 
         component = await createSynchronizerComponent({
           logs: mockLogs,
           config: mockConfig,
           entityPersister: mockEntityPersister,
-          memoryStorage: mockMemoryStorage,
           db: mockDb,
           snapshotsHandler: mockSnapshotsHandler,
           pointerChangesHandler: mockPointerChangesHandler,
