@@ -18,12 +18,28 @@ export function createFailedProfilesRetrierComponent({
 
       const failedDeployments: Sync.FailedProfileDbEntity[] = await db.getFailedProfileFetches(FIFTY_ITEMS)
 
-      if (failedDeployments.length === 0) {
+      const profilesToRetry: Sync.FailedProfileDbEntity[] = []
+      for (const failedDeployment of failedDeployments) {
+        const currentStoredProfile = await db.getProfileByPointer(failedDeployment.pointer)
+
+        if (currentStoredProfile && currentStoredProfile.timestamp > failedDeployment.timestamp) {
+          logger.info('A newer profile already exists in database, skipping retry', {
+            entityId: failedDeployment.entityId,
+            pointer: failedDeployment.pointer
+          })
+          await db.deleteFailedProfileFetch(failedDeployment.entityId)
+          continue
+        } else {
+          profilesToRetry.push(failedDeployment)
+        }
+      }
+
+      if (profilesToRetry.length === 0) {
         logger.info('No failed profiles to retry')
         return
       }
 
-      logger.info('Retrying failed profiles', { count: failedDeployments.length })
+      logger.info('Retrying failed profiles', { count: profilesToRetry.length })
       const sanitizedProfiles = await profileSanitizer.sanitizeProfiles(failedDeployments, (profile) => {
         return db.insertFailedProfileFetch({
           entityId: profile.entityId,
@@ -41,6 +57,10 @@ export function createFailedProfilesRetrierComponent({
         }
         await entityPersister.persistEntity(sanitizedProfile)
         await db.deleteFailedProfileFetch(sanitizedProfile.id)
+        logger.info('Profile successfully retried', {
+          entityId: sanitizedProfile.id,
+          pointer: sanitizedProfile.pointers[0]
+        })
       }
     } catch (error: any) {
       logger.error('Error retrying failed profiles', { error: error.message })

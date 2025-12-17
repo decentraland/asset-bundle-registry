@@ -6,8 +6,10 @@ const THIRTY_SECONDS_IN_MS = 30000
 
 export async function createProfileSanitizerComponent({
   catalyst,
-  config
-}: Pick<AppComponents, 'catalyst' | 'config'>): Promise<IProfileSanitizerComponent> {
+  config,
+  logs
+}: Pick<AppComponents, 'catalyst' | 'config' | 'logs'>): Promise<IProfileSanitizerComponent> {
+  const logger = logs.getLogger('profile-sanitizer')
   const PROFILE_IMAGES_URL = await config.requireString('PROFILE_IMAGES_URL')
 
   async function sanitizeProfiles(
@@ -19,8 +21,9 @@ export async function createProfileSanitizerComponent({
     }
 
     const entityIdsToFetch = Array.from(new Set(minimalProfiles.map((p) => p.entityId)))
-    const profilesFetched = await withRetry(() =>
-      withTimeout(catalyst.getEntitiesByIds(entityIdsToFetch), THIRTY_SECONDS_IN_MS)
+    const profilesFetched = await withRetry(
+      () => withTimeout(catalyst.getEntitiesByIds(entityIdsToFetch), THIRTY_SECONDS_IN_MS),
+      { logger }
     )
 
     const missingProfiles = minimalProfiles.filter((p) => !profilesFetched.some((pf) => pf.id === p.entityId))

@@ -1239,10 +1239,10 @@
     ajv-errors "^3.0.0"
     ajv-keywords "^5.1.0"
 
-"@dcl/snapshots-fetcher@^9.2.0":
-  version "9.2.0"
-  resolved "https://registry.yarnpkg.com/@dcl/snapshots-fetcher/-/snapshots-fetcher-9.2.0.tgz#89ebaa6aab7873a0f02fbafcb3f2ec678a195420"
-  integrity sha512-/8F9d8K766m/FT58a+7a2VjOzZuxayNylwtx3eWdTR+FOQj3Klfv93WftLG4JCQ6BAg0Ntk9cg0+RzWUiVoAFA==
+"@dcl/snapshots-fetcher@^9.2.1":
+  version "9.2.1"
+  resolved "https://registry.yarnpkg.com/@dcl/snapshots-fetcher/-/snapshots-fetcher-9.2.1.tgz#da57f87b7430c4a333e84a74f1a43d23774ae1a5"
+  integrity sha512-QsgNAlHPokfKkYvqssy+09kwlGofudhGi8OlvoatxLFgwMRBWlBFvEzw+iGYGbfFTbzffDseTP9yEMuJIvo9sA==
   dependencies:
     "@dcl/catalyst-storage" "^4.0.0"
     "@dcl/hashing" "^3.0.3"

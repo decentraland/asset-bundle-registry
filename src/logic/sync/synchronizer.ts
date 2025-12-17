@@ -2,7 +2,6 @@ import { AppComponents, ISynchronizerComponent } from '../../types'
 import { withRetry } from '../../utils/timer'
 
 export const GENESIS_TIMESTAMP = 1577836800000 // 2020-01-01T00:00:00Z
-export const SYNC_STATE_KEY = 'profile-sync:cursor'
 const FIVE_SECONDS_MS = 5000 // 5 seconds
 const TEN_MINUTES_MS = 10 * 60 * 1000 // 10 minutes
 const ONE_DAY_MS = 24 * 60 * 60 * 1000
@@ -13,23 +12,14 @@ export async function createSynchronizerComponent(
     | 'logs'
     | 'config'
     | 'entityPersister'
-    | 'memoryStorage'
     | 'db'
     | 'snapshotsHandler'
     | 'pointerChangesHandler'
     | 'failedProfilesRetrier'
   >
 ): Promise<ISynchronizerComponent> {
-  const {
-    logs,
-    config,
-    entityPersister,
-    memoryStorage,
-    db,
-    snapshotsHandler,
-    pointerChangesHandler,
-    failedProfilesRetrier
-  } = components
+  const { logs, config, entityPersister, db, snapshotsHandler, pointerChangesHandler, failedProfilesRetrier } =
+    components
   const logger = logs.getLogger('synchronizer')
 
   const POINTER_CHANGES_POLL_INTERVAL_MS =
@@ -45,14 +35,8 @@ export async function createSynchronizerComponent(
   async function loadLastCursor(): Promise<number> {
     let lastCursor: number = GENESIS_TIMESTAMP
     try {
-      const storedCursor: number[] | undefined = await memoryStorage.get<number>(SYNC_STATE_KEY)
-      if (!!storedCursor && !!storedCursor[0]) {
-        lastCursor = storedCursor[0]
-        logger.info('Loaded last cursor from memory', { lastCursor })
-      } else {
-        lastCursor = (await db.getLatestProfileTimestamp()) ?? lastCursor
-        logger.info('Loaded last cursor from database', { lastCursor })
-      }
+      lastCursor = (await db.getLatestProfileTimestamp()) ?? lastCursor
+      logger.info('Loaded last cursor from database', { lastCursor })
     } catch (error: any) {
       logger.warn('Failed to load last cursor', { error: error.message })
     } finally {
@@ -81,18 +65,23 @@ export async function createSynchronizerComponent(
     { abortSignal, interval }: { abortSignal: AbortSignal; interval: number }
   ): Promise<void> {
     while (running && !abortSignal.aborted) {
-      logger.info('Starting sync profiles loop')
       await callToLoop(abortSignal).catch((error) => {
         logger.error('Error in loop', { error: error.message })
       })
       if (!abortSignal.aborted && running) {
-        // Create a cancellable timeout that respects the abort signal
         await new Promise<void>((resolve) => {
-          const timeoutId = setTimeout(() => resolve(), interval)
-          abortSignal.addEventListener('abort', () => {
+          // eslint-disable-next-line prefer-const
+          let timeoutId: NodeJS.Timeout
+          const abortHandler = () => {
             clearTimeout(timeoutId)
+            abortSignal.removeEventListener('abort', abortHandler)
             resolve()
-          })
+          }
+          abortSignal.addEventListener('abort', abortHandler)
+          timeoutId = setTimeout(() => {
+            abortSignal.removeEventListener('abort', abortHandler)
+            resolve()
+          }, interval)
         })
       }
     }
@@ -116,7 +105,6 @@ export async function createSynchronizerComponent(
         logger.info('Processing snapshots before starting pointer-changes loop')
         cursor =
           (await withRetry(async () => await snapshotsHandler.syncProfiles(fromTimestamp, abortSignal))) ?? cursor
-        cursor && (await memoryStorage.set(SYNC_STATE_KEY, cursor))
         logger.info('Snapshots processing completed, starting pointer-changes loop', { cursor })
       }
 
@@ -125,7 +113,6 @@ export async function createSynchronizerComponent(
           const newCursor = await pointerChangesHandler.syncProfiles(cursor, signal)
           if (newCursor && newCursor > cursor) {
             cursor = newCursor
-            await memoryStorage.set(SYNC_STATE_KEY, cursor)
           }
         },
         { abortSignal, interval: POINTER_CHANGES_POLL_INTERVAL_MS }

@@ -55,7 +55,8 @@ describe('ownership validator job', () => {
 
     profileSanitizer = await createProfileSanitizerComponent({
       catalyst: mockCatalyst,
-      config: mockConfig
+      config: mockConfig,
+      logs: mockLogs
     })
   })
 

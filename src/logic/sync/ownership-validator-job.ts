@@ -18,7 +18,7 @@ export async function createOwnershipValidatorJob(
   components: Pick<AppComponents, 'logs' | 'config' | 'catalyst' | 'profilesCache' | 'profileSanitizer' | 'db'>
 ): Promise<IBaseComponent> {
   const { logs, config, catalyst, profilesCache, profileSanitizer, db } = components
-  const logger = logs.getLogger('ownership-validator-jon')
+  const logger = logs.getLogger('ownership-validator-job')
   const VALIDATION_INTERVAL_MS =
     (await config.getNumber('PROFILES_OWNERSHIP_VALIDATION_INTERVAL_MS')) || FIVE_MINUTES_MS
 
@@ -146,7 +146,7 @@ export async function createOwnershipValidatorJob(
         })
 
         if (!curatedProfile) {
-          logger.error('Failed to get curated profile', { pointer })
+          logger.error('Failed to update profile with new ownership', { pointer })
           continue
         }
         await updateProfileInAllLayers(curatedProfile)
@@ -163,7 +163,7 @@ export async function createOwnershipValidatorJob(
     }
 
     try {
-      logger.debug('Starting ownership validation cycle')
+      logger.debug('Ownership validation cycle started')
 
       // Get all pointers from hot cache (Frequently accessed profiles)
       const allPointers = profilesCache.getAllPointers()
@@ -172,8 +172,6 @@ export async function createOwnershipValidatorJob(
         logger.debug('No profiles found in cache to validate')
         return
       }
-
-      logger.info('Validating profile ownership', { totalProfiles: allPointers.length })
 
       let totalUpdated = 0
 
@@ -198,26 +196,22 @@ export async function createOwnershipValidatorJob(
         updatedProfiles: totalUpdated
       })
     } catch (error: any) {
-      logger.error('Error during ownership validation cycle', { error: error.message })
+      logger.error('Ownership validation cycle failed', { error: error.message })
     }
   }
 
   async function start(): Promise<void> {
-    logger.info('Starting ownership validator')
+    logger.info('Ownership validator scheduled')
     isRunning = true
 
     // Initial delay before first validation (let sync stabilize)
     setTimeout(() => {
       if (isRunning) {
-        runValidationCycle().catch((error) => {
-          logger.error('Error in initial validation cycle', { error: error.message })
-        })
+        void runValidationCycle()
 
         // Set up periodic validation
         validationInterval = setInterval(() => {
-          runValidationCycle().catch((error) => {
-            logger.error('Error in validation cycle', { error: error.message })
-          })
+          void runValidationCycle()
         }, VALIDATION_INTERVAL_MS)
       }
     }, VALIDATION_INTERVAL_MS)
@@ -226,7 +220,6 @@ export async function createOwnershipValidatorJob(
   }
 
   async function stop(): Promise<void> {
-    logger.info('Stopping ownership validator')
     isRunning = false
 
     if (validationInterval) {
