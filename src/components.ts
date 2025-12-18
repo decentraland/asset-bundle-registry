@@ -103,7 +103,14 @@ export async function initComponents(): Promise<AppComponents> {
   const snapshotContentStorage = await createSnapshotContentStorage({ logs, config })
   const catalyst = await createCatalystAdapter({ logs, fetch, config })
   const entityPersister = createEntityPersisterComponent({ logs, db, profilesCache, entityDeploymentTracker })
-  const profileRetriever = createProfileRetrieverComponent({ logs, db, profilesCache, entityPersister, catalyst })
+  const profileRetriever = createProfileRetrieverComponent({
+    logs,
+    db,
+    metrics,
+    profilesCache,
+    entityPersister,
+    catalyst
+  })
   const profileSanitizer = await createProfileSanitizerComponent({ catalyst, config, logs })
   const snapshotsHandler = await createSnapshotsHandlerComponent({
     config,

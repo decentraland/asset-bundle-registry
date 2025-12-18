@@ -1,4 +1,4 @@
-import { ILoggerComponent } from '@well-known-components/interfaces'
+import { ILoggerComponent, IMetricsComponent } from '@well-known-components/interfaces'
 import {
   ICatalystComponent,
   IDbComponent,
@@ -15,6 +15,8 @@ import { createProfilesCacheMockComponent } from '../mocks/profiles-cache'
 import { createProfileDbEntity, createProfileEntity } from '../mocks/data/profiles'
 import { Entity } from '@dcl/schemas'
 import { createEntityPersisterMockComponent } from '../mocks/entity-persister'
+import { createTestMetricsComponent } from '@well-known-components/metrics'
+import { metricDeclarations } from '../../../src/metrics'
 
 describe('profile retriever', () => {
   let mockLogs: ILoggerComponent
@@ -22,6 +24,7 @@ describe('profile retriever', () => {
   let mockDb: IDbComponent
   let mockCatalyst: ICatalystComponent
   let mockEntityPersister: IEntityPersisterComponent
+  let mockMetrics: IMetricsComponent<keyof typeof metricDeclarations>
   let component: IProfileRetrieverComponent
 
   beforeEach(() => {
@@ -30,8 +33,10 @@ describe('profile retriever', () => {
     mockDb = createDbMockComponent()
     mockCatalyst = createCatalystMockComponent()
     mockEntityPersister = createEntityPersisterMockComponent()
+    mockMetrics = createTestMetricsComponent(metricDeclarations)
     component = createProfileRetrieverComponent({
       logs: mockLogs,
+      metrics: mockMetrics,
       profilesCache: mockProfilesCache,
       db: mockDb,
       catalyst: mockCatalyst,
