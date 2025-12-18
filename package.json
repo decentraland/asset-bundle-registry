@@ -28,7 +28,7 @@
     "@dcl/catalyst-storage": "^4.3.0",
     "@dcl/crypto": "^3.4.5",
     "@dcl/platform-crypto-middleware": "^1.1.0",
-    "@dcl/platform-server-commons": "^0.0.4",
+    "@dcl/platform-server-commons": "^1.0.0",
     "@dcl/schemas": "^18.1.0",
     "@dcl/snapshots-fetcher": "^9.2.1",
     "@dcl/wkc-http-server": "^1.0.3",

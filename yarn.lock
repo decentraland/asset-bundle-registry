@@ -1201,19 +1201,30 @@
     "@well-known-components/fetch-component" "^2.0.2"
     "@well-known-components/interfaces" "^1.4.2"
 
-"@dcl/platform-server-commons@^0.0.4":
-  version "0.0.4"
-  resolved "https://registry.yarnpkg.com/@dcl/platform-server-commons/-/platform-server-commons-0.0.4.tgz#c4aa7d2d18ff116edb06a23da7a13007aa5d5dd0"
-  integrity sha512-yaWumacDI6kt6LdGxkygzk+GHE9FuP1s3QTMdpq4BRWMP1u0BuFA/yUk4OgcR3pvwW3v07ZSQ/BeYvUx9P1hqw==
+"@dcl/platform-server-commons@^1.0.0":
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/@dcl/platform-server-commons/-/platform-server-commons-1.0.0.tgz#2f4d7e202d00c18b831dd58458bb310f702ada4d"
+  integrity sha512-VWrkUkcShdgzzrmQqQRDIl+onT+xOUVTcmnzlW8yX2kchrr1WloEk0MeUODDIMTApOcoWZsMyyVF22CsqbZWPg==
   dependencies:
-    "@well-known-components/http-server" "^2.0.0"
-    "@well-known-components/interfaces" "^1.4.2"
+    "@dcl/schemas" "^18.0.0"
+    "@dcl/wkc-http-server" "^1.0.3"
+    "@well-known-components/interfaces" "^1.4.3"
     node-fetch "^2.7.0"
 
 "@dcl/schemas@^11.5.0":
   version "11.12.0"
   resolved "https://registry.yarnpkg.com/@dcl/schemas/-/schemas-11.12.0.tgz#f52493b615ebdea8e02819bc2ed4a456239f3747"
   integrity sha512-L04KTucvxSnrHDAl3/rnkzhjfZ785dSSPeKarBVfzyuw41uyQ0Mh4HVFWjX9hC+f/nMpM5Adg5udlT5efmepcA==
+  dependencies:
+    ajv "^8.11.0"
+    ajv-errors "^3.0.0"
+    ajv-keywords "^5.1.0"
+    mitt "^3.0.1"
+
+"@dcl/schemas@^18.0.0":
+  version "18.8.0"
+  resolved "https://registry.yarnpkg.com/@dcl/schemas/-/schemas-18.8.0.tgz#fe8e3fb47d01b848481f54887008118aafee0f51"
+  integrity sha512-1HxbL0azB7N+kMwYyU4/Uqltc+7F8Lv8UcS3dxDNVTPn71gldIDImj58OM9Y3gIyQG5Tauacrlk5cDkXhjMkOA==
   dependencies:
     ajv "^8.11.0"
     ajv-errors "^3.0.0"
@@ -2193,11 +2204,6 @@
   dependencies:
     "@types/node" "*"
 
-"@types/http-errors@^2.0.1":
-  version "2.0.4"
-  resolved "https://registry.yarnpkg.com/@types/http-errors/-/http-errors-2.0.4.tgz#7eb47726c391b7345a6ec35ad7f4de469cf5ba4f"
-  integrity sha512-D0CFMMtydbJAegzOyHjtiKPLlvnm3iTZyZRSZoLq2mRhDdmLfIWOCYPfQJ4cu2erKghU++QvjcUjp/5h7hESpA==
-
 "@types/http-errors@^2.0.4":
   version "2.0.5"
   resolved "https://registry.yarnpkg.com/@types/http-errors/-/http-errors-2.0.5.tgz#5b749ab2b16ba113423feb1a64a95dcd30398472"
@@ -2425,20 +2431,6 @@
   dependencies:
     "@well-known-components/interfaces" "^1.4.1"
     cross-fetch "^3.1.5"
-
-"@well-known-components/http-server@^2.0.0":
-  version "2.1.0"
-  resolved "https://registry.yarnpkg.com/@well-known-components/http-server/-/http-server-2.1.0.tgz#23a18edc82904b3a575452c2d7e618c7da37a07f"
-  integrity sha512-IHD7aLTA+9DYEchQubHDBwc4FmVEmQC+2TWbi8Tz+QlkiQdtndcuba8XHH+EwqlB5sna/EAJGZGXPxS7okcHKA==
-  dependencies:
-    "@types/http-errors" "^2.0.1"
-    destroy "^1.2.0"
-    fp-future "^1.0.1"
-    http-errors "^2.0.0"
-    mitt "^3.0.0"
-    node-fetch "^2.6.9"
-    on-finished "^2.4.1"
-    path-to-regexp "^6.2.1"
 
 "@well-known-components/interfaces@^1.1.1", "@well-known-components/interfaces@^1.4.0":
   version "1.5.2"
