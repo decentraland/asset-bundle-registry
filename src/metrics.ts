@@ -37,6 +37,22 @@ export const metricDeclarations = {
     help: 'Histogram of pointers per request',
     type: IMetricsComponent.HistogramType,
     buckets: [1, 5, 10, 20, 50, 100]
+  },
+  profiles_retrieved_from_cache: {
+    help: 'Count of profiles retrieved from cache',
+    type: IMetricsComponent.CounterType
+  },
+  profiles_retrieved_from_database: {
+    help: 'Count of profiles retrieved from database',
+    type: IMetricsComponent.CounterType
+  },
+  profiles_retrieved_from_catalyst: {
+    help: 'Count of profiles retrieved from catalyst',
+    type: IMetricsComponent.CounterType
+  },
+  profiles_not_found: {
+    help: 'Count of profiles not found',
+    type: IMetricsComponent.CounterType
   }
 }
 

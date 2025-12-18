@@ -2,9 +2,9 @@ import { AppComponents, IProfileRetrieverComponent } from '../types'
 import { Entity, EntityType } from '@dcl/schemas'
 
 export function createProfileRetrieverComponent(
-  components: Pick<AppComponents, 'logs' | 'profilesCache' | 'entityPersister' | 'db' | 'catalyst'>
+  components: Pick<AppComponents, 'logs' | 'metrics' | 'profilesCache' | 'entityPersister' | 'db' | 'catalyst'>
 ): IProfileRetrieverComponent {
-  const { logs, profilesCache, entityPersister, db, catalyst } = components
+  const { logs, metrics, profilesCache, entityPersister, db, catalyst } = components
   const logger = logs.getLogger('profile-retriever')
 
   async function getProfile(pointer: string): Promise<Entity | null> {
@@ -68,6 +68,7 @@ export function createProfileRetrieverComponent(
 
     // Layer 1: Batch fetch from hot cache (L1 cache)
     const { cacheHits, cacheMisses } = getFromCache(pointers)
+    metrics.increment('profiles_retrieved_from_cache', {}, cacheHits.size)
 
     if (cacheMisses.length === 0) {
       return cacheHits
@@ -86,6 +87,7 @@ export function createProfileRetrieverComponent(
       }
       logger.debug('Profiles found in database', { count: profilesFromDB.length })
     }
+    metrics.increment('profiles_retrieved_from_database', {}, profilesFromDB.length)
 
     const pointersFoundInDB = new Set(profilesFromDB.map((p) => p.pointers[0].toLowerCase()))
     const pointersMissingFromDB = cacheMisses.filter((p) => !pointersFoundInDB.has(p))
@@ -102,6 +104,7 @@ export function createProfileRetrieverComponent(
       for (const profile of profilesFromCatalyst) retrievedProfiles.set(profile.pointers[0].toLowerCase(), profile)
       logger.debug('Profiles found in Catalyst', { count: profilesFromCatalyst.length })
     }
+    metrics.increment('profiles_retrieved_from_catalyst', {}, profilesFromCatalyst.length)
 
     logger.info('Profile retrieval complete', {
       requested: pointers.length,
