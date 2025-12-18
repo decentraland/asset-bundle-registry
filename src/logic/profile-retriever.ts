@@ -2,9 +2,9 @@ import { AppComponents, IProfileRetrieverComponent } from '../types'
 import { Entity, EntityType } from '@dcl/schemas'
 
 export function createProfileRetrieverComponent(
-  components: Pick<AppComponents, 'logs' | 'profilesCache' | 'db' | 'catalyst'>
+  components: Pick<AppComponents, 'logs' | 'profilesCache' | 'entityPersister' | 'db' | 'catalyst'>
 ): IProfileRetrieverComponent {
-  const { logs, profilesCache, db, catalyst } = components
+  const { logs, profilesCache, entityPersister, db, catalyst } = components
   const logger = logs.getLogger('profile-retriever')
 
   async function getProfile(pointer: string): Promise<Entity | null> {
@@ -98,7 +98,7 @@ export function createProfileRetrieverComponent(
     logger.debug('Fetching remaining profiles from Catalyst', { count: pointersMissingFromDB.length })
     const profilesFromCatalyst = await getFromCatalyst(pointersMissingFromDB)
     if (profilesFromCatalyst.length > 0) {
-      profilesCache.setManyIfNewer(profilesFromCatalyst)
+      await Promise.all(profilesFromCatalyst.map((p) => entityPersister.persistEntity(p)))
       for (const profile of profilesFromCatalyst) retrievedProfiles.set(profile.pointers[0].toLowerCase(), profile)
       logger.debug('Profiles found in Catalyst', { count: profilesFromCatalyst.length })
     }

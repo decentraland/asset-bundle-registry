@@ -2,6 +2,7 @@ import { ILoggerComponent } from '@well-known-components/interfaces'
 import {
   ICatalystComponent,
   IDbComponent,
+  IEntityPersisterComponent,
   IProfileRetrieverComponent,
   IProfilesCacheComponent,
   Sync
@@ -13,12 +14,14 @@ import { createCatalystMockComponent } from '../mocks/catalyst'
 import { createProfilesCacheMockComponent } from '../mocks/profiles-cache'
 import { createProfileDbEntity, createProfileEntity } from '../mocks/data/profiles'
 import { Entity } from '@dcl/schemas'
+import { createEntityPersisterMockComponent } from '../mocks/entity-persister'
 
 describe('profile retriever', () => {
   let mockLogs: ILoggerComponent
   let mockProfilesCache: IProfilesCacheComponent
   let mockDb: IDbComponent
   let mockCatalyst: ICatalystComponent
+  let mockEntityPersister: IEntityPersisterComponent
   let component: IProfileRetrieverComponent
 
   beforeEach(() => {
@@ -26,11 +29,13 @@ describe('profile retriever', () => {
     mockProfilesCache = createProfilesCacheMockComponent()
     mockDb = createDbMockComponent()
     mockCatalyst = createCatalystMockComponent()
+    mockEntityPersister = createEntityPersisterMockComponent()
     component = createProfileRetrieverComponent({
       logs: mockLogs,
       profilesCache: mockProfilesCache,
       db: mockDb,
-      catalyst: mockCatalyst
+      catalyst: mockCatalyst,
+      entityPersister: mockEntityPersister
     })
 
     jest.clearAllMocks()
@@ -69,6 +74,12 @@ describe('profile retriever', () => {
                 [pointerB, profilesFromCatalyst[1]]
               ])
             )
+          })
+
+          it('should persist the profiles in the entity persister', async () => {
+            await component.getProfiles([pointerA, pointerB])
+            expect(mockEntityPersister.persistEntity).toHaveBeenCalledWith(profilesFromCatalyst[0])
+            expect(mockEntityPersister.persistEntity).toHaveBeenCalledWith(profilesFromCatalyst[1])
           })
         })
       })
