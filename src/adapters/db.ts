@@ -373,7 +373,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
       FROM
         profiles
       WHERE
-        LOWER(pointer) = ANY(${lowerCasePointers}::varchar[])
+        LOWER(pointer) = ANY(${lowerCasePointers}::varchar(255)[])
     `
 
     const result = await pg.query<Sync.ProfileDbEntity>(query)

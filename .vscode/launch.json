@@ -2,14 +2,81 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug API",
+            "name": "Debug Service (TypeScript)",
             "type": "node",
             "request": "launch",
-            "program": "${workspaceFolder}/api/src/index.ts",
-            "preLaunchTask": "tsc: build - api/tsconfig.json",
-            "outFiles": ["${workspaceFolder}/api/dist/**/*.js"],
-            "cwd": "${workspaceRoot}",
-            "internalConsoleOptions": "openOnSessionStart"
+            "runtimeExecutable": "node",
+            "runtimeArgs": [
+                "--trace-warnings",
+                "--abort-on-uncaught-exception",
+                "--unhandled-rejections=strict",
+                "-r",
+                "ts-node/register"
+            ],
+            "program": "${workspaceFolder}/src/index.ts",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "NODE_ENV": "development"
+            },
+            "sourceMaps": true,
+            "skipFiles": ["<node_internals>/**"],
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen"
+        },
+        {
+            "name": "Debug Service (Compiled)",
+            "type": "node",
+            "request": "launch",
+            "runtimeExecutable": "node",
+            "runtimeArgs": [
+                "--trace-warnings",
+                "--abort-on-uncaught-exception",
+                "--unhandled-rejections=strict"
+            ],
+            "program": "${workspaceFolder}/dist/index.js",
+            "preLaunchTask": "build",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "NODE_ENV": "development"
+            },
+            "sourceMaps": true,
+            "outFiles": ["${workspaceFolder}/dist/**/*.js"],
+            "skipFiles": ["<node_internals>/**"],
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen"
+        },
+        {
+            "name": "Debug Tests",
+            "type": "node",
+            "request": "launch",
+            "runtimeExecutable": "yarn",
+            "runtimeArgs": ["test", "--runInBand", "--no-coverage"],
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "NODE_ENV": "test"
+            },
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen",
+            "skipFiles": ["<node_internals>/**"]
+        },
+        {
+            "name": "Debug Current Test File",
+            "type": "node",
+            "request": "launch",
+            "runtimeExecutable": "yarn",
+            "runtimeArgs": [
+                "test",
+                "${relativeFile}",
+                "--runInBand",
+                "--no-coverage"
+            ],
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "NODE_ENV": "test"
+            },
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen",
+            "skipFiles": ["<node_internals>/**"]
         }
     ]
 }

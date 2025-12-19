@@ -1,7 +1,8 @@
-import { ILoggerComponent } from '@well-known-components/interfaces'
+import { ILoggerComponent, IMetricsComponent } from '@well-known-components/interfaces'
 import {
   ICatalystComponent,
   IDbComponent,
+  IEntityPersisterComponent,
   IProfileRetrieverComponent,
   IProfilesCacheComponent,
   Sync
@@ -13,12 +14,17 @@ import { createCatalystMockComponent } from '../mocks/catalyst'
 import { createProfilesCacheMockComponent } from '../mocks/profiles-cache'
 import { createProfileDbEntity, createProfileEntity } from '../mocks/data/profiles'
 import { Entity } from '@dcl/schemas'
+import { createEntityPersisterMockComponent } from '../mocks/entity-persister'
+import { createTestMetricsComponent } from '@well-known-components/metrics'
+import { metricDeclarations } from '../../../src/metrics'
 
 describe('profile retriever', () => {
   let mockLogs: ILoggerComponent
   let mockProfilesCache: IProfilesCacheComponent
   let mockDb: IDbComponent
   let mockCatalyst: ICatalystComponent
+  let mockEntityPersister: IEntityPersisterComponent
+  let mockMetrics: IMetricsComponent<keyof typeof metricDeclarations>
   let component: IProfileRetrieverComponent
 
   beforeEach(() => {
@@ -26,11 +32,15 @@ describe('profile retriever', () => {
     mockProfilesCache = createProfilesCacheMockComponent()
     mockDb = createDbMockComponent()
     mockCatalyst = createCatalystMockComponent()
+    mockEntityPersister = createEntityPersisterMockComponent()
+    mockMetrics = createTestMetricsComponent(metricDeclarations)
     component = createProfileRetrieverComponent({
       logs: mockLogs,
+      metrics: mockMetrics,
       profilesCache: mockProfilesCache,
       db: mockDb,
-      catalyst: mockCatalyst
+      catalyst: mockCatalyst,
+      entityPersister: mockEntityPersister
     })
 
     jest.clearAllMocks()
@@ -69,6 +79,12 @@ describe('profile retriever', () => {
                 [pointerB, profilesFromCatalyst[1]]
               ])
             )
+          })
+
+          it('should persist the profiles in the entity persister', async () => {
+            await component.getProfiles([pointerA, pointerB])
+            expect(mockEntityPersister.persistEntity).toHaveBeenCalledWith(profilesFromCatalyst[0])
+            expect(mockEntityPersister.persistEntity).toHaveBeenCalledWith(profilesFromCatalyst[1])
           })
         })
       })
