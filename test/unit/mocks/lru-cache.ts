@@ -10,6 +10,7 @@ export function createLRUNormalizedCacheMock(): jest.Mocked<ILRUNormalizedCache<
     setMany: jest.fn(),
     clear: jest.fn(),
     size: jest.fn(),
+    maxSize: jest.fn(),
     keys: jest.fn()
   }
 }

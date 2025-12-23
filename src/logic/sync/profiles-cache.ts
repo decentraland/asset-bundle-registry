@@ -1,6 +1,8 @@
 import { ILRUNormalizedCache } from '../../adapters/lru-cache'
-import { IProfilesCacheComponent, Sync } from '../../types'
+import { IProfilesCacheComponent, Sync, AppComponents } from '../../types'
 import { Entity } from '@dcl/schemas'
+
+const FIVE_MINUTES_MS = 5 * 60 * 1000
 
 /**
  * Rapid access in-memory cache (LRU) for most frequently accessed profiles.
@@ -8,9 +10,23 @@ import { Entity } from '@dcl/schemas'
  *
  * @export
  * @param {ILRUNormalizedCache<Sync.CacheEntry>} cache - The underlying LRU cache instance
+ * @param {Pick<AppComponents, 'metrics'>} components - Components including metrics for reporting
  * @return {*}  {IProfilesCacheComponent}
  */
-export function createProfilesCacheComponent(cache: ILRUNormalizedCache<Sync.CacheEntry>): IProfilesCacheComponent {
+export function createProfilesCacheComponent(
+  cache: ILRUNormalizedCache<Sync.CacheEntry>,
+  components: Pick<AppComponents, 'metrics'>
+): IProfilesCacheComponent {
+  const { metrics } = components
+
+  // periodic metrics report
+  setInterval(() => {
+    const currentSize = cache.size()
+    const maxSize = cache.maxSize()
+    metrics.observe('profiles_cache_max_size', {}, maxSize)
+    metrics.observe('profiles_cache_allocated_size', {}, currentSize)
+  }, FIVE_MINUTES_MS)
+
   function get(pointer: string): Entity | undefined {
     const entry = cache.get(pointer.toLowerCase())
     return entry?.profile

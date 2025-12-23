@@ -53,6 +53,14 @@ export const metricDeclarations = {
   profiles_not_found: {
     help: 'Count of profiles not found',
     type: IMetricsComponent.CounterType
+  },
+  profiles_cache_max_size: {
+    help: 'Maximum capacity of the profiles cache',
+    type: IMetricsComponent.GaugeType
+  },
+  profiles_cache_allocated_size: {
+    help: 'Current number of profiles allocated in cache',
+    type: IMetricsComponent.GaugeType
   }
 }
 
