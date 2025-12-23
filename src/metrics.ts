@@ -61,6 +61,11 @@ export const metricDeclarations = {
   profiles_cache_allocated_size: {
     help: 'Current number of profiles allocated in cache',
     type: IMetricsComponent.GaugeType
+  },
+  profiles_pointers_per_request: {
+    help: 'Number of pointers per request',
+    type: IMetricsComponent.HistogramType,
+    buckets: [1, 10, 20, 50, 100, 200, 300, 400, 500]
   }
 }
 
