@@ -1,15 +1,16 @@
 import { HandlerContextWithPath } from '../../types'
 
 export async function getProfilesHandler(
-  context: HandlerContextWithPath<'profileRetriever' | 'profileSanitizer', '/profiles'>
+  context: HandlerContextWithPath<'metrics' | 'profileRetriever' | 'profileSanitizer', '/profiles'>
 ) {
   const {
-    components: { profileRetriever, profileSanitizer }
+    components: { metrics, profileRetriever, profileSanitizer }
   } = context
 
   const body = await context.request.json()
   const pointers: string[] = body.ids
 
+  metrics.observe('profiles_pointers_per_request', {}, pointers.length)
   const profilesMap = await profileRetriever.getProfiles(pointers)
 
   return {

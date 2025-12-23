@@ -4,15 +4,21 @@ import { createLRUNormalizedCacheMock } from '../../mocks/lru-cache'
 import { createProfilesCacheComponent } from '../../../../src/logic/sync/profiles-cache'
 import { createProfileEntity } from '../../mocks/data/profiles'
 import { Entity } from '@dcl/schemas'
+import { createTestMetricsComponent } from '@well-known-components/metrics'
+import { metricDeclarations } from '../../../../src/metrics'
 
 describe('profiles cache', () => {
   let cacheMock: jest.Mocked<ILRUNormalizedCache<Sync.CacheEntry>>
   let component: IProfilesCacheComponent
+  const maxSize = 1000
 
   beforeEach(() => {
     jest.clearAllMocks()
     cacheMock = createLRUNormalizedCacheMock()
-    component = createProfilesCacheComponent(cacheMock)
+    cacheMock.size.mockReturnValue(1)
+    cacheMock.maxSize.mockReturnValue(maxSize)
+    const metrics = createTestMetricsComponent(metricDeclarations)
+    component = createProfilesCacheComponent(cacheMock, { metrics })
   })
 
   describe('when there are no values in the cache', () => {

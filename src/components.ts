@@ -99,7 +99,7 @@ export async function initComponents(): Promise<AppComponents> {
     maxItems: (await config.getNumber('MAX_PROFILES_CACHE_SIZE')) || 1000,
     ttlMs: undefined
   })
-  const profilesCache = createProfilesCacheComponent(profilesLRUCache)
+  const profilesCache = createProfilesCacheComponent(profilesLRUCache, { metrics })
   const snapshotContentStorage = await createSnapshotContentStorage({ logs, config })
   const catalyst = await createCatalystAdapter({ logs, fetch, config })
   const entityPersister = createEntityPersisterComponent({ logs, db, profilesCache, entityDeploymentTracker })

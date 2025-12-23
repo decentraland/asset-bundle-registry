@@ -16,6 +16,7 @@ export interface ILRUNormalizedCache<T> {
   clear(): void
   size(): number
   keys(): string[]
+  maxSize(): number
 }
 
 export function createNormalizedLRUCache<T extends object | boolean>(config: LRUCacheConfig): ILRUNormalizedCache<T> {
@@ -72,6 +73,10 @@ export function createNormalizedLRUCache<T extends object | boolean>(config: LRU
     return Array.from(cache.keys())
   }
 
+  function maxSize(): number {
+    return config.maxItems
+  }
+
   return {
     get,
     set,
@@ -81,6 +86,7 @@ export function createNormalizedLRUCache<T extends object | boolean>(config: LRU
     setMany,
     clear,
     size,
+    maxSize,
     keys
   }
 }
