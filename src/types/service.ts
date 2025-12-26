@@ -1,5 +1,5 @@
-import { Message } from '@aws-sdk/client-sqs'
 import { IBaseComponent } from '@well-known-components/interfaces'
+import { IQueueComponent } from '@dcl/sqs-component'
 import {
   CatalystFetchOptions,
   EntityStatusInQueue,
@@ -61,13 +61,7 @@ export interface IDbComponent {
   getFailedProfileFetchByEntityId(entityId: string): Promise<Sync.FailedProfileDbEntity | null>
 }
 
-export type QueueMessage = any
-
-export interface IQueueComponent {
-  send(message: QueueMessage): Promise<void>
-  receiveMessages(amount: number): Promise<Message[]>
-  deleteMessage(receiptHandle: string): Promise<void>
-}
+export { IQueueComponent }
 
 export interface IMessageConsumerComponent extends IBaseComponent {}
 

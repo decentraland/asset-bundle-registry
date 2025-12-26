@@ -11,8 +11,8 @@ import { metricDeclarations } from './metrics'
 import { AppComponents, GlobalContext, Sync } from './types'
 import { createPgComponent } from '@well-known-components/pg-component'
 import { createDbAdapter } from './adapters/db'
-import { createSqsAdapter } from './adapters/sqs'
-import { createMemoryQueueAdapter } from './adapters/memory-queue'
+import { createSqsComponent } from '@dcl/sqs-component'
+import { createMemoryQueueComponent } from '@dcl/memory-queue-component'
 import { createMessageProcessorComponent } from './logic/message-processor'
 import { createCatalystAdapter } from './adapters/catalyst'
 import { createMessagesConsumerComponent } from './logic/message-consumer'
@@ -39,7 +39,9 @@ import { createOwnershipValidatorJob } from './logic/sync/ownership-validator-jo
 
 // Initialize all the components of the app
 export async function initComponents(): Promise<AppComponents> {
-  const config = await createDotEnvConfigComponent({ path: ['.env.default', '.env'] })
+  const config = await createDotEnvConfigComponent({
+    path: ['.env.default', '.env']
+  })
   const logs = await createLogComponent({ config })
 
   const logger = logs.getLogger('components')
@@ -59,7 +61,12 @@ export async function initComponents(): Promise<AppComponents> {
   const statusChecks = await createStatusCheckComponent({ server, config })
   const fetch = createFetchComponent()
   const metrics = await createMetricsComponent(metricDeclarations, { config })
-  await instrumentHttpServerWithPromClientRegistry({ server, metrics, config, registry: metrics.registry! })
+  await instrumentHttpServerWithPromClientRegistry({
+    server,
+    metrics,
+    config,
+    registry: metrics.registry!
+  })
 
   let databaseUrl: string | undefined = await config.getString('PG_COMPONENT_PSQL_CONNECTION_STRING')
   if (!databaseUrl) {
@@ -87,22 +94,34 @@ export async function initComponents(): Promise<AppComponents> {
   const db = createDbAdapter({ pg })
 
   const sqsEndpoint = await config.getString('AWS_SQS_ENDPOINT')
-  const queue = sqsEndpoint ? await createSqsAdapter(sqsEndpoint) : createMemoryQueueAdapter()
+  const queue = sqsEndpoint ? await createSqsComponent(config) : createMemoryQueueComponent()
 
   const redisHostUrl = await config.getString('REDIS_HOST')
   const memoryStorage = redisHostUrl
     ? await createRedisComponent(redisHostUrl, { logs })
     : createInMemoryCacheComponent()
 
-  const entityDeploymentTracker = await createEntityDeploymentTrackerComponent({ config })
+  const entityDeploymentTracker = await createEntityDeploymentTrackerComponent({
+    config
+  })
   const profilesLRUCache = createNormalizedLRUCache<Sync.CacheEntry>({
     maxItems: (await config.getNumber('MAX_PROFILES_CACHE_SIZE')) || 1000,
     ttlMs: undefined
   })
-  const profilesCache = createProfilesCacheComponent(profilesLRUCache, { metrics })
-  const snapshotContentStorage = await createSnapshotContentStorage({ logs, config })
+  const profilesCache = createProfilesCacheComponent(profilesLRUCache, {
+    metrics
+  })
+  const snapshotContentStorage = await createSnapshotContentStorage({
+    logs,
+    config
+  })
   const catalyst = await createCatalystAdapter({ logs, fetch, config })
-  const entityPersister = createEntityPersisterComponent({ logs, db, profilesCache, entityDeploymentTracker })
+  const entityPersister = createEntityPersisterComponent({
+    logs,
+    db,
+    profilesCache,
+    entityDeploymentTracker
+  })
   const profileRetriever = createProfileRetrieverComponent({
     logs,
     db,
@@ -111,7 +130,11 @@ export async function initComponents(): Promise<AppComponents> {
     entityPersister,
     catalyst
   })
-  const profileSanitizer = await createProfileSanitizerComponent({ catalyst, config, logs })
+  const profileSanitizer = await createProfileSanitizerComponent({
+    catalyst,
+    config,
+    logs
+  })
   const snapshotsHandler = await createSnapshotsHandlerComponent({
     config,
     logs,
@@ -130,7 +153,12 @@ export async function initComponents(): Promise<AppComponents> {
     entityPersister,
     entityDeploymentTracker
   })
-  const failedProfilesRetrier = createFailedProfilesRetrierComponent({ logs, db, profileSanitizer, entityPersister })
+  const failedProfilesRetrier = createFailedProfilesRetrierComponent({
+    logs,
+    db,
+    profileSanitizer,
+    entityPersister
+  })
   const synchronizer = await createSynchronizerComponent({
     logs,
     config,
@@ -149,9 +177,19 @@ export async function initComponents(): Promise<AppComponents> {
     db
   })
   const worlds = await createWorldsAdapter({ logs, config, fetch })
-  const registryOrchestrator = createRegistryOrchestratorComponent({ logs, db, metrics })
-  const entityStatusFetcher = await createEntityStatusFetcherComponent({ fetch, logs, config })
-  const queuesStatusManager = createQueuesStatusManagerComponent({ memoryStorage })
+  const registryOrchestrator = createRegistryOrchestratorComponent({
+    logs,
+    db,
+    metrics
+  })
+  const entityStatusFetcher = await createEntityStatusFetcherComponent({
+    fetch,
+    logs,
+    config
+  })
+  const queuesStatusManager = createQueuesStatusManagerComponent({
+    memoryStorage
+  })
   const messageProcessor = await createMessageProcessorComponent({
     catalyst,
     worlds,
@@ -161,7 +199,11 @@ export async function initComponents(): Promise<AppComponents> {
     logs,
     config
   })
-  const messageConsumer = createMessagesConsumerComponent({ logs, queue, messageProcessor })
+  const messageConsumer = createMessagesConsumerComponent({
+    logs,
+    queue,
+    messageProcessor
+  })
   const workerManager = createWorkerManagerComponent({ metrics, logs })
 
   return {
