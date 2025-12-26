@@ -61,7 +61,7 @@ export function createMessagesConsumerComponent({
               }
             }
 
-            await queue.send(messageToRequeue)
+            await queue.sendMessage(messageToRequeue)
           }
         } catch (error: any) {
           logger.error('Failed while processing message from queue', {

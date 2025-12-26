@@ -26,6 +26,8 @@
     "@aws-sdk/client-sns": "^3.696.0",
     "@aws-sdk/client-sqs": "^3.693.0",
     "@dcl/catalyst-storage": "^4.3.0",
+    "@dcl/memory-queue-component": "^2.0.0",
+    "@dcl/sqs-component": "^2.0.4",
     "@dcl/crypto": "^3.4.5",
     "@dcl/platform-crypto-middleware": "^1.1.0",
     "@dcl/platform-server-commons": "^0.0.4",

@@ -51,7 +51,7 @@ describe('message consumer', () => {
 
       expect(messageProcessor.process).toHaveBeenCalledWith(message)
       expect(queue.deleteMessage).toHaveBeenCalledWith('receipt-123')
-      expect(queue.send).not.toHaveBeenCalled()
+      expect(queue.sendMessage).not.toHaveBeenCalled()
     })
 
     it('should handle failed processing and requeue with retry data', async () => {
@@ -76,7 +76,7 @@ describe('message consumer', () => {
 
       expect(messageProcessor.process).toHaveBeenCalledWith(message)
       expect(queue.deleteMessage).toHaveBeenCalledWith('receipt-123')
-      expect(queue.send).toHaveBeenCalledWith({
+      expect(queue.sendMessage).toHaveBeenCalledWith({
         ...message,
         retry: {
           attempt: 1,
@@ -102,7 +102,7 @@ describe('message consumer', () => {
 
       expect(messageProcessor.process).not.toHaveBeenCalled()
       expect(queue.deleteMessage).toHaveBeenCalledWith('receipt-123')
-      expect(queue.send).not.toHaveBeenCalled()
+      expect(queue.sendMessage).not.toHaveBeenCalled()
     })
 
     it('should handle processor throwing error and remove message from queue', async () => {
@@ -124,7 +124,7 @@ describe('message consumer', () => {
 
       expect(messageProcessor.process).toHaveBeenCalledWith(message)
       expect(queue.deleteMessage).toHaveBeenCalledWith('receipt-123')
-      expect(queue.send).not.toHaveBeenCalled()
+      expect(queue.sendMessage).not.toHaveBeenCalled()
       expect(logs.getLogger().error).toHaveBeenCalledWith(
         'Failed while processing message from queue',
         expect.objectContaining({
@@ -173,7 +173,7 @@ describe('message consumer', () => {
       await sut.stop()
       await processPromise
 
-      expect(queue.send).toHaveBeenCalledWith({
+      expect(queue.sendMessage).toHaveBeenCalledWith({
         ...message,
         retry: {
           attempt: 2,
