@@ -1,14 +1,10 @@
 import { getMostUpdatedRegistryByPointers } from '../../logic/registry-parser'
 import { HandlerContextWithPath, Registry } from '../../types'
 
-export async function getActiveEntityHandler(
-  context: HandlerContextWithPath<'logs' | 'db' | 'metrics', '/entities/active'>
-) {
+export async function getActiveEntityHandler(context: HandlerContextWithPath<'db' | 'metrics', '/entities/active'>) {
   const {
-    components: { db, metrics, logs }
+    components: { db, metrics }
   } = context
-
-  const logger = logs.getLogger('get-active-entities-handler')
 
   const body = await context.request.json()
   const pointers: string[] = body.pointers
@@ -32,10 +28,7 @@ export async function getActiveEntityHandler(
   ])
 
   if (entities.length === 0) {
-    logger.warn('Sample of not found pointers', { pointer: pointers[0], totalPointers: pointers.length })
-    pointers.forEach((_pointer) => {
-      metrics.increment('registries_missmatch_count', {}, 1)
-    })
+    metrics.increment('registries_missmatch_count', {}, pointers.length)
   }
 
   const entitiesByPointers = getMostUpdatedRegistryByPointers<Registry.DbEntity>(entities)

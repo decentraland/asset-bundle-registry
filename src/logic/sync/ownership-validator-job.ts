@@ -164,6 +164,7 @@ export async function createOwnershipValidatorJob(
 
     try {
       logger.debug('Ownership validation cycle started')
+      const startTime = Date.now()
 
       // Get all pointers from hot cache (Frequently accessed profiles)
       const allPointers = profilesCache.getAllPointers()
@@ -193,7 +194,8 @@ export async function createOwnershipValidatorJob(
 
       logger.info('Ownership validation cycle complete', {
         totalProfiles: allPointers.length,
-        updatedProfiles: totalUpdated
+        updatedProfiles: totalUpdated,
+        duration: `${(Date.now() - startTime) / 1000 / 60} minutes`
       })
     } catch (error: any) {
       logger.error('Ownership validation cycle failed', { error: error.message })

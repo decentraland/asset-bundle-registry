@@ -64,10 +64,11 @@ export function createProfileRetrieverComponent(
   }
 
   async function getProfiles(pointers: string[]): Promise<Map<string, Entity>> {
+    const uniquePointers = [...new Set(pointers)]
     let retrievedProfiles = new Map<string, Entity>()
 
     // Layer 1: Batch fetch from hot cache (L1 cache)
-    const { cacheHits, cacheMisses } = getFromCache(pointers)
+    const { cacheHits, cacheMisses } = getFromCache(uniquePointers)
     metrics.increment('profiles_retrieved_from_cache', {}, cacheHits.size)
 
     if (cacheMisses.length === 0) {
@@ -106,10 +107,13 @@ export function createProfileRetrieverComponent(
     }
     metrics.increment('profiles_retrieved_from_catalyst', {}, profilesFromCatalyst.length)
 
+    const notFoundCount = uniquePointers.length - retrievedProfiles.size
+    metrics.increment('profiles_not_found', {}, notFoundCount)
+
     logger.info('Profile retrieval complete', {
-      requested: pointers.length,
+      requested: uniquePointers.length,
       found: retrievedProfiles.size,
-      notFound: pointers.length - retrievedProfiles.size
+      notFound: notFoundCount
     })
 
     return retrievedProfiles
