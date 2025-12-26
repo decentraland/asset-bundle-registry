@@ -32,10 +32,7 @@ export async function getActiveEntityHandler(
   ])
 
   if (entities.length === 0) {
-    logger.warn('Sample of not found pointers', { pointer: pointers[0], totalPointers: pointers.length })
-    pointers.forEach((_pointer) => {
-      metrics.increment('registries_missmatch_count', {}, 1)
-    })
+    metrics.increment('registries_missmatch_count', {}, pointers.length)
   }
 
   const entitiesByPointers = getMostUpdatedRegistryByPointers<Registry.DbEntity>(entities)
