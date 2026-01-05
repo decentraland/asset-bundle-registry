@@ -107,13 +107,14 @@ export function createProfileRetrieverComponent(
     }
     metrics.increment('profiles_retrieved_from_catalyst', {}, profilesFromCatalyst.length)
 
-    const notFoundCount = uniquePointers.length - retrievedProfiles.size
-    metrics.increment('profiles_not_found', {}, notFoundCount)
+    const notFoundPointers: Set<string> = new Set(uniquePointers.filter((p) => !retrievedProfiles.has(p.toLowerCase())))
+    metrics.increment('profiles_not_found', {}, notFoundPointers.size)
 
     logger.info('Profile retrieval complete', {
       requested: uniquePointers.length,
       found: retrievedProfiles.size,
-      notFound: notFoundCount
+      notFound: notFoundPointers.size,
+      notFoundSample: notFoundPointers.size > 0 ? Array.from(notFoundPointers)[0] : 'N/A'
     })
 
     return retrievedProfiles
