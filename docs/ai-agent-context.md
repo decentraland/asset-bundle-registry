@@ -1,6 +1,6 @@
 # AI Agent Context
 
-**Service Purpose:** Orchestrates and tracks the availability of optimized Unity Asset Bundles and LODs for Decentraland content. Acts as a state management service that coordinates between entity deployments, optimization services (Asset Bundle Converter, LODs Generator), and client requests, ensuring optimized content is always available.
+**Service Purpose:** Orchestrates and tracks the availability of optimized Decentraland entities (scenes, worlds, wearables, emotes, and profiles). Acts as a state management service that coordinates between entity deployments, optimization services (Asset Bundle Converter, LODs Generator), and client requests, ensuring optimized content is always available.
 
 **Key Capabilities:**
 
@@ -11,6 +11,7 @@
 - Handles state rotation when entities are redeployed (marks previous as obsolete, creates new registry entry)
 - Manages historical deployment records for audit and analytics
 - Integrates with Catalyst to fetch entity metadata and validate deployments
+- Integrates with Catalyst to periodically fetch and validate profiles
 
 **Communication Pattern:** 
 - Event-driven via AWS SQS/SNS (deployment events, conversion completion events)
@@ -33,12 +34,14 @@
 - Content Server: Catalyst Load Balancer (fetches entity metadata)
 - CDN: Asset Bundle CDN (queries bundle availability)
 - Worlds: Worlds Content Server (for world deployment handling)
+- Catalyst: DAO Catalysts to fetch and validate entities
 
 **Project Structure:**
 
 - `adapters/`: Database, Catalyst, SQS, Redis, Worlds integrations
 - `controllers/`: HTTP handlers for status endpoints, admin operations
 - `logic/`: Message processing, registry orchestration, entity status fetching, worker management
+- `logic/sync`: Components and modules handling Profiles syncing and curation
 - `migrations/`: PostgreSQL schema migrations
 - `scripts/`: Utility scripts for populating registry from CSV/manifests
 

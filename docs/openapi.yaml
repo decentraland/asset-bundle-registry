@@ -49,8 +49,12 @@ tags:
     description: Service health and monitoring endpoints
   - name: Entities
     description: Entity management and asset bundle queries
+  - name: Profiles
+    description: User profile retrieval and metadata endpoints
   - name: Queues
     description: Processing queue status and monitoring
+  - name: Admin
+    description: Administrative endpoints (requires bearer token authentication)
 paths:
   /status:
     get:
@@ -201,6 +205,41 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  /entities/versions:
+    post:
+      tags:
+        - Entities
+      summary: Get entity versions by pointers
+      description: |
+        Returns the version information and bundle status for entities at the given pointers.
+        This endpoint is useful for checking which asset bundle versions are available for specific
+        content locations and their conversion status across different platforms.
+
+        Unlike `/entities/active` which returns full entity data, this endpoint focuses on version
+        metadata and bundle availability status, making it lighter for version checking use cases.
+      operationId: getEntityVersions
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VersionsRequest'
+      responses:
+        '200':
+          description: List of entity version information
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EntityVersionInfo'
+        '400':
+          description: Bad request - no pointers provided
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /queues/status:
     get:
       tags:
@@ -237,15 +276,152 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  /profiles:
+    post:
+      tags:
+        - Profiles
+      summary: Get profiles by addresses
+      description: |
+        Returns validated Catalyst profiles for the given Ethereum addresses. Profiles include
+        avatar information, names, wearables, and snapshot URLs.
+
+        The service maintains a multi-layer cache (memory and database) for fast profile retrieval
+        and periodically validates profile ownership to ensure data freshness.
+
+        Profile snapshots (face and body images) are returned as URLs pointing to the profile
+        images CDN rather than content hashes.
+      operationId: getProfiles
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfilesRequest'
+      responses:
+        '200':
+          description: List of profiles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProfileDTO'
+  /profiles/metadata:
+    post:
+      tags:
+        - Profiles
+      summary: Get profile metadata by addresses
+      description: |
+        Returns lightweight metadata for profiles at the given Ethereum addresses.
+        This endpoint returns only essential profile information (name, claimed name status,
+        thumbnail URL) without full avatar details, making it suitable for displaying
+        profile cards or lists.
+      operationId: getProfilesMetadata
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfilesRequest'
+      responses:
+        '200':
+          description: List of profile metadata
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProfileMetadataDTO'
+  /registry:
+    post:
+      tags:
+        - Admin
+      summary: Create or update registry entries
+      description: |
+        Administrative endpoint for manually creating or updating registry entries.
+        This endpoint fetches entity data from Catalyst and asset bundle status from
+        the CDN to populate the registry.
+
+        **Authentication:** Requires a bearer token configured via `API_ADMIN_TOKEN`
+        environment variable.
+
+        Use this endpoint to manually trigger registry updates for specific entities
+        that may have been missed by the event-driven pipeline.
+      operationId: createRegistry
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegistryRequest'
+      responses:
+        '200':
+          description: Registry operation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistryResponse'
+        '400':
+          description: Bad request - no entity IDs provided
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized - missing or invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /flush-cache:
+    delete:
+      tags:
+        - Admin
+      summary: Flush internal caches
+      description: |
+        Administrative endpoint for flushing internal job caches. This clears
+        cached job status information stored in Redis/memory.
+
+        **Authentication:** Requires a bearer token configured via `API_ADMIN_TOKEN`
+        environment variable.
+
+        Use this endpoint to reset cache state when troubleshooting or after
+        manual database modifications.
+      operationId: flushCache
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Cache flush result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlushCacheResponse'
+        '401':
+          description: Unauthorized - missing or invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 components:
   securitySchemes:
     SignedFetch:
       type: http
       scheme: bearer
       description: |
-        Signed fetch authentication using @dcl/platform-crypto-middleware (ADR-44l). 
-        Requires auth chain headers (x-identity, x-signature, x-timestamp) for signature validation. 
-        See http://adr.decentraland.org/adr/ADR-44l for details.
+        Signed fetch authentication using @dcl/platform-crypto-middleware (ADR-44).
+        Requires auth chain headers (x-identity, x-signature, x-timestamp) for signature validation.
+        See http://adr.decentraland.org/adr/ADR-44 for details.
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: |
+        Bearer token authentication for administrative endpoints. The token must match
+        the `API_ADMIN_TOKEN` environment variable configured on the server.
   schemas:
     Status:
       type: object
@@ -342,63 +518,289 @@ components:
       type: object
       description: Represents the current processing and availability status of an entity's asset bundle conversion
       properties:
-        id:
+        entityId:
           type: string
           description: Unique entity identifier (content identifier/CID)
-        status:
+        complete:
+          type: boolean
+          description: Whether asset bundles are fully converted for all required platforms (Windows and Mac)
+        catalyst:
           type: string
-          enum: [active, inactive, processing]
-          description: |
-            Current status of the entity's asset bundle:
-            - `active`: Successfully converted and ready for client use
-            - `processing`: Currently being converted by the Asset Bundle Converter service
-            - `inactive`: Conversion failed, not yet started, or entity is no longer available
-        lastUpdate:
-          type: string
-          format: date-time
-          description: Timestamp of the last status change or conversion attempt
+          enum: [pending, complete, failed]
+          description: Status of the entity in Catalyst (always 'complete' if entity exists in registry)
+        assetBundles:
+          $ref: '#/components/schemas/PlatformStatus'
+        lods:
+          $ref: '#/components/schemas/PlatformStatus'
+          description: LOD generation status per platform. Not present for world entities.
       required:
-        - id
-        - status
+        - entityId
+        - complete
+        - catalyst
+        - assetBundles
+    PlatformStatus:
+      type: object
+      description: Conversion status per platform (Windows and Mac)
+      properties:
+        mac:
+          type: string
+          enum: [pending, complete, failed]
+          description: Conversion status for Mac platform
+        windows:
+          type: string
+          enum: [pending, complete, failed]
+          description: Conversion status for Windows platform
+      required:
+        - mac
+        - windows
     QueueStatus:
       type: object
-      description: Overall status of the asset bundle conversion processing queues
+      description: Status of pending conversion jobs organized by platform
       properties:
-        queues:
+        windowsPendingJobs:
           type: array
           items:
-            $ref: '#/components/schemas/Queue'
-          description: Array of individual queue statuses (may include different priority queues or entity type queues)
-        totalProcessed:
-          type: number
-          description: Total number of entities successfully processed since service startup
+            type: string
+          description: List of entity IDs with pending Windows asset bundle conversions
+        macPendingJobs:
+          type: array
+          items:
+            type: string
+          description: List of entity IDs with pending Mac asset bundle conversions
+        webglPendingJobs:
+          type: array
+          items:
+            type: string
+          description: List of entity IDs with pending WebGL asset bundle conversions
       required:
-        - queues
-    Queue:
+        - windowsPendingJobs
+        - macPendingJobs
+        - webglPendingJobs
+    VersionsRequest:
       type: object
-      description: Status information for a specific processing queue handling asset bundle conversions
       properties:
+        pointers:
+          type: array
+          items:
+            type: string
+          description: List of pointers to query for version information
+      required:
+        - pointers
+    EntityVersionInfo:
+      type: object
+      description: Version and bundle status information for an entity
+      properties:
+        pointers:
+          type: array
+          items:
+            type: string
+          description: List of pointers where this entity is active
+        versions:
+          $ref: '#/components/schemas/Versions'
+        bundles:
+          $ref: '#/components/schemas/Bundles'
+        status:
+          type: string
+          enum: [complete, pending, failed, obsolete, fallback]
+          description: Current status of the entity in the registry
+      required:
+        - pointers
+        - bundles
+    Versions:
+      type: object
+      description: Asset bundle version information per platform
+      properties:
+        assets:
+          type: object
+          properties:
+            windows:
+              $ref: '#/components/schemas/VersionInfo'
+            mac:
+              $ref: '#/components/schemas/VersionInfo'
+            webgl:
+              $ref: '#/components/schemas/VersionInfo'
+    VersionInfo:
+      type: object
+      description: Version details for a specific platform
+      properties:
+        version:
+          type: string
+          description: Asset bundle version string (e.g., "v4", "v5")
+        buildDate:
+          type: string
+          description: Build date of the asset bundle
+    Bundles:
+      type: object
+      description: Bundle conversion status for assets and LODs across platforms
+      properties:
+        assets:
+          $ref: '#/components/schemas/BundlePlatformStatus'
+        lods:
+          $ref: '#/components/schemas/BundlePlatformStatus'
+      required:
+        - assets
+        - lods
+    BundlePlatformStatus:
+      type: object
+      description: Conversion status for each platform
+      properties:
+        windows:
+          type: string
+          enum: [pending, complete, failed]
+        mac:
+          type: string
+          enum: [pending, complete, failed]
+        webgl:
+          type: string
+          enum: [pending, complete, failed]
+      required:
+        - windows
+        - mac
+        - webgl
+    ProfilesRequest:
+      type: object
+      properties:
+        ids:
+          type: array
+          items:
+            type: string
+          description: List of Ethereum addresses to fetch profiles for
+      required:
+        - ids
+    ProfileDTO:
+      type: object
+      description: Profile data transfer object with avatar information
+      properties:
+        timestamp:
+          type: number
+          description: Unix timestamp (milliseconds) when the profile was deployed
+        avatars:
+          type: array
+          items:
+            $ref: '#/components/schemas/Avatar'
+          description: List of avatar configurations for this profile
+      required:
+        - timestamp
+        - avatars
+    Avatar:
+      type: object
+      description: Avatar configuration including appearance and wearables
+      properties:
+        userId:
+          type: string
+          description: User's Ethereum address
         name:
           type: string
-          description: Identifier for the queue (e.g., "main", "priority", "scenes", "wearables")
-        pending:
-          type: number
-          description: Number of entities waiting to be processed (in queue but not yet started)
-        processing:
-          type: number
-          description: Number of entities currently being converted by the Asset Bundle Converter
-        completed:
-          type: number
-          description: Number of entities successfully converted to asset bundles
-        failed:
-          type: number
-          description: Number of entities that failed conversion (may be retried or require manual intervention)
+          description: Display name for the avatar
+        hasClaimedName:
+          type: boolean
+          description: Whether the user has claimed a unique Decentraland name
+        description:
+          type: string
+          description: User-provided description
+        avatar:
+          type: object
+          description: Avatar appearance configuration
+          properties:
+            bodyShape:
+              type: string
+              description: Body shape URN
+            wearables:
+              type: array
+              items:
+                type: string
+              description: List of equipped wearable URNs
+            emotes:
+              type: array
+              items:
+                type: object
+              description: List of equipped emotes
+            snapshots:
+              type: object
+              properties:
+                face256:
+                  type: string
+                  description: URL to face snapshot image
+                body:
+                  type: string
+                  description: URL to body snapshot image
+            eyes:
+              type: object
+              description: Eye color configuration
+            hair:
+              type: object
+              description: Hair color configuration
+            skin:
+              type: object
+              description: Skin color configuration
+    ProfileMetadataDTO:
+      type: object
+      description: Lightweight profile metadata for display purposes
+      properties:
+        pointer:
+          type: string
+          description: Ethereum address of the profile owner
+        hasClaimedName:
+          type: boolean
+          description: Whether the user has claimed a unique Decentraland name
+        name:
+          type: string
+          description: Display name for the profile
+        thumbnailUrl:
+          type: string
+          description: URL to the profile's face thumbnail image
       required:
+        - pointer
+        - hasClaimedName
         - name
-        - pending
-        - processing
-        - completed
-        - failed
+        - thumbnailUrl
+    RegistryRequest:
+      type: object
+      properties:
+        entityIds:
+          type: array
+          items:
+            type: string
+          description: List of entity IDs (CIDs) to add or update in the registry
+      required:
+        - entityIds
+    RegistryResponse:
+      type: object
+      description: Result of registry creation/update operation
+      properties:
+        successes:
+          type: array
+          items:
+            type: object
+          description: List of successfully processed entities
+        failures:
+          type: array
+          items:
+            type: object
+            properties:
+              entityId:
+                type: string
+                description: Entity ID that failed
+              error:
+                type: string
+                description: Error message describing the failure
+          description: List of entities that failed to process
+      required:
+        - successes
+        - failures
+    FlushCacheResponse:
+      type: object
+      description: Result of cache flush operation
+      properties:
+        ok:
+          type: boolean
+          description: Whether the operation succeeded
+        message:
+          type: string
+          description: Status message
+      required:
+        - ok
+        - message
     Error:
       type: object
       properties:

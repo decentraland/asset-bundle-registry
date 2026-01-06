@@ -1,195 +1,188 @@
-# Asset Bundle Registry
+# Registry Server
 
-A service for orchestrating the availability of Asset Bundles and LODs.
+[![Coverage Status](https://coveralls.io/repos/github/decentraland/asset-bundle-registry/badge.svg)](https://coveralls.io/github/decentraland/asset-bundle-registry)
 
-## Description
+This server is hooked into the event-driven architecture to listen for [Catalysts'](https://github.com/decentraland/catalyst) and [World Content Server's](https://github.com/decentraland/worlds-content-server) entities deployments in order to act as a gateway to retrieve the latest available version of these entities.
 
-The Asset Bundle Registry acts as a gateway, enabling clients to retrieve the available Asset Bundles and LODs for each deployed scene on the Decentraland network. It ensures that optimized textures are always available for a given set of pointers, improving user experience and preventing empty scenes to be seen in-world.
+Each entity has its specific way to determine its own latest version. Most of them depends on [Asset Bundles conversions](https://github.com/decentraland/asset-bundle-converter), therefore this server also listens to the events being reported by these services to make them available to clients once all the optimizations are already in place.
 
-This service integrates with our event-driven architecture, monitoring deployments of Catalyst entities that require optimization before rendering in the reference client. The optimization process is handled by the [Asset Bundle Converter](https://github.com/decentraland/asset-bundle-converter) and [LODs Generator](https://github.com/decentraland/lods-generator).
+## Table of Contents
 
-## Workflow
+- [Features](#features)
+- [Dependencies & Related Services](#dependencies--related-services)
+- [API Documentation](#api-documentation)
+- [Database](#database)
+  - [Schema](#schema)
+  - [Migrations](#migrations)
+- [Getting Started](#getting-started)
+  - [Prerequisites](#prerequisites)
+  - [Installation](#installation)
+  - [Configuration](#configuration)
+  - [Running the Service](#running-the-service)
+- [Testing](#testing)
+  - [Running Tests](#running-tests)
+  - [Test Structure](#test-structure)
+- [AI Agent Context](#ai-agent-context)
 
-1. **Entity Deployment**: An entity requiring optimization before client-side rendering is deployed to a Catalyst.
-2. **Forwarding Events**: The [Deployments-to-SQS](https://github.com/decentraland/deployments-to-sqs) service forwards the deployment to the event-driven architecture using SNS as a bridge.
-3. **Marking for Optimization**: 
-   - This service listens to deployment events (via SQS) and marks the entity as `pending` for optimization.
-   - Simultaneously, the Asset Bundle Converter and LODs Generator receive the deployment in their respective queues for processing.
-4. **Optimization Completion**: 
-   - Once the Asset Bundle Converter completes optimization, it publishes an `AssetBundleConversionFinished` event to the event-driven architecture. ([See event schema](https://github.com/decentraland/schemas/blob/main/src/platform/events/services.ts)).
-5. **State Transition**: 
-   - The Registry listens for `AssetBundleConversionFinished` events. 
-   - Upon receiving confirmation that an entity has been optimized and is ready for client retrieval, the service updates the deployment state from `pending` to `complete`.
-6. **Client Requests**: 
-   - When a client requests textures for a scene, emote, or wearable, the Registry queries its database for the most recent optimized texture and serves it to the client.
+## Features
 
-## Transition to optimized state criteria
+- **Bundles registry**: Provides an endpoint to retrieve latest optimized version of scenes, emotes, wearables and worlds entities.
+- **Bundles state transition**: Listen for events regarding entities deployments and bundles optimizations to transition state of entities stored in the database in order to ensure their latest version is always returned.
+- **Profiles registry**: Provides an endpoint to retrieve validated Catalysts' profiles.
+- **Profiles sync**: Polls entities from all Catalysts to react over new profiles deployments to store them in a multi-layer storage (memory cache and database).
+- **Profiles curation**: Triggers a job every N minutes to validate ownership of all profiles stored in the rapid access cache.
 
-This criteria can evolve and change over time. As of the time of writing, this Registry marks an entity as ready to be retrieved when it receives confirmation that the deployed entity has been optimized for Windows and Mac platforms. At the moment, LODs are not being considered for this state transition.
+## Dependencies & Related Services
 
-## Endpoints
+This service interacts with the following services:
 
-### GET /status
-Returns the service status, version, and commit hash information.
+- **[Deployments to SQS](https://github.com/decentraland/deployments-to-sqs)**: Listens for events triggered by this service to react over new Catalyst deployments
+- **[World Content Server](https://github.com/decentraland/worlds-content-server)**: Listens for events triggered by this server to react over new Worlds deployments
+- **[Asset Bundle Converter](https://github.com/decentraland/asset-bundle-converter)**: Listens for events triggered by these services to react over bundle optimizations
+- **[Catalyst](https://github.com/decentraland/catalyst)**: Used to validate received entities deployments and sanitize profiles stored in the cache
 
-**Response:**
-```json
-{
-  "data": {
-    "version": "1.0.0",
-    "currentTime": 1648744800000,
-    "commitHash": "abc123"
-  }
-}
-```
+External dependencies:
 
-### GET /entities/status/:id
-Returns the optimization status for a specific entity. Requires authentication. Only returns data if the requesting user is the entity deployer.
+- SNS and SQS from AWS Cloud Provider
+- PostgreSQL
+- Redis
 
-**Response:**
-```json
-{
-  "catalyst": "complete",
-  "complete": true,
-  "assetBundles": {
-    "mac": "complete",
-    "windows": "complete"
-  },
-  "lods": {
-    "mac": "complete",
-    "windows": "complete"
-  }
-}
-```
+## API Documentation
 
-**Status Values:**
-- `pending`: Asset is queued for optimization
-- `complete`: Asset has been successfully optimized
-- `failed`: Asset optimization failed
+The API is fully documented using the [OpenAPI standard](https://swagger.io/specification/). Its schema is located at [docs/openapi.yaml](docs/openapi.yaml).
 
-### GET /entities/status
-Returns the optimization status for all entities owned by the authenticated user.
+## Database
 
-**Response:**
-```json
-[
-  {
-    "catalyst": "complete",
-    "complete": true,
-    "assetBundles": {
-      "mac": "complete",
-      "windows": "complete"
-    },
-    "lods": {
-      "mac": "complete",
-      "windows": "complete"
-    }
-  }
-  // ... more entities
-]
-```
+### Schema
 
-### POST /registry
-Admin endpoint for registering new entities for optimization. Requires authentication using `API_ADMIN_TOKEN` environment variable.
+See [docs/database-schemas.md](docs/database-schemas.md) for detailed schema, column definitions, and relationships
 
-**Request Body:**
-```json
-{
-  "entityIds": ["bafkreig..."]
-}
-```
+### Migrations
 
-**Response:**
-```json
-{
-  "failures": [
-    {
-      "entityId": "bafkreig...",
-      "error": "Error message"
-    }
-  ],
-  "successes": [
-    "bafkreig..."
-  ]
-}
-```
+The service uses `node-pg-migrate` for database migrations. These migrations are located in `src/migrations/`. The service automatically runs the migrations when starting up.
 
-## Set-up
+It also exposes [scripts](./src/scripts/README.md) to nurture the database with deployments exported from Catalyst.
 
-### Environment Variables
+#### Create a new migration
 
-Required environment variables:
-
-- `PG_COMPONENT_PSQL_CONNECTION_STRING` or individual PostgreSQL connection variables:
-  - `PG_COMPONENT_PSQL_USER`
-  - `PG_COMPONENT_PSQL_DATABASE`
-  - `PG_COMPONENT_PSQL_PORT`
-  - `PG_COMPONENT_PSQL_HOST`
-  - `PG_COMPONENT_PSQL_PASSWORD`
-- `CATALYST_LOADBALANCER_HOST`
-- `ASSET_BUNDLE_CDN_URL`
-- `AWS_SNS_ARN`
-- `AWS_SNS_ENDPOINT`
-- `AWS_SQS_ENDPOINT`
-
-### Database through docker-compose
-
-To start a new, fresh database, run the following command:
-
-`docker-compose up`
-
-## Scripts
-
-The `/src/scripts` directory contains utility scripts for populating the Asset Bundle Registry with entities. These scripts run locally but interact with remote Asset Bundle Registry instances.
-
-Available scripts:
-- `yarn scripts:populate-items <csv_file_path>`: Process wearables/emotes from a CSV file
-  - Automatically generates `{filename}-failures.csv` for any failed entities
-  - The failures file maintains the same CSV format as the input
-  - To retry failed entities, run the script again with the failures file:
-    ```bash
-    # First attempt with original file
-    yarn scripts:populate-items wearables.csv
-    # Retry any failures
-    yarn scripts:populate-items wearables-failures.csv
-    ```
-- `yarn scripts:populate-scenes`: Process scenes from World Manifest
-
-For detailed information about script usage, environment variables, and file formats, see [Scripts Documentation](src/scripts/README.md).
-
-## Development
-
-### Environment Variables
-
-Copy `.env.default` to `.env` and set the required variables:
+Migrations are created by running the create command:
 
 ```bash
-cp .env.default .env
+yarn migrate create name-of-the-migration
 ```
 
-### Install
+This will result in the creation of a migration file inside of the `src/migrations/` directory. This migration file MUST contain the migration set up and rollback procedures.
+
+#### Manually applying migrations
+
+If required, these migrations can be run manually.
+
+To run them manually:
 
 ```bash
-yarn
+yarn migrate up
 ```
 
-### Build
+To rollback them manually:
+
+```bash
+yarn migrate down
+```
+
+## Getting Started
+
+### Prerequisites
+
+Before running this service, ensure you have the following installed:
+
+- **Node.js**: Version 20.x or higher (LTS recommended)
+- **Yarn**: Version 1.22.x or higher
+- **Docker**: For containerized deployment
+
+<!-- List any other dependencies that are required to run the service -->
+
+### Installation
+
+1. Clone the repository:
+
+```bash
+git clone https://github.com/decentraland/asset-bundle-registry.git
+cd asset-bundle-registry
+```
+
+2. Install dependencies:
+
+```bash
+yarn install
+```
+
+3. Build the project:
 
 ```bash
 yarn build
 ```
 
-### Start
+### Configuration
+
+The service uses environment variables for configuration.
+Create a `.env` file in the root directory containing the environment variables for the service to run.
+Use the `.env.default` variables as an example.
+
+### Running the Service
+
+#### Setting up the environment
+
+In order to successfully run this server, external dependencies such as databases, memory storages and such must be provided.
+To do so, this repository provides you with a `docker-compose` file for that purpose. In order to get the environment set up, run:
 
 ```bash
-yarn start
+docker-compose up
 ```
 
-### Test
+#### Running in development mode
+
+To run the service in development mode:
+
+```bash
+yarn start:dev
+```
+
+## Testing
+
+This service includes comprehensive test coverage with both unit and integration tests.
+
+### Running Tests
+
+Run all tests with coverage:
 
 ```bash
 yarn test
 ```
+
+Run tests in watch mode:
+
+```bash
+yarn test --watch
+```
+
+Run only unit tests:
+
+```bash
+yarn test test/unit
+```
+
+Run only integration tests:
+
+```bash
+yarn test test/integration
+```
+
+### Test Structure
+
+- **Unit Tests** (`test/unit/`): Test individual components and functions in isolation
+- **Integration Tests** (`test/integration/`): Test the complete request/response cycle
+
+For detailed testing guidelines and standards, refer to our [Testing Standards](https://github.com/decentraland/docs/tree/main/development-standards/testing-standards) documentation.
 
 ## AI Agent Context
 
