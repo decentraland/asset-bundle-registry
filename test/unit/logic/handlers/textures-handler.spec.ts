@@ -548,6 +548,92 @@ describe('textures-handler', () => {
         })
       })
 
+      describe('and reconversion succeeds', () => {
+        describe('and entity already had COMPLETE asset bundles', () => {
+          let event: AssetBundleConversionFinishedEvent
+          let dbEntityWithCompleteBundles: Registry.DbEntity
+          let updatedDbEntity: Registry.DbEntity
+          let result: { ok: boolean; errors?: string[] }
+
+          beforeEach(async () => {
+            event = createEvent({
+              metadata: {
+                entityId: '123',
+                platform: 'windows',
+                statusCode: ManifestStatusCode.SUCCESS,
+                isLods: false,
+                isWorld: false,
+                version: 'v2'
+              }
+            })
+            const entity = createEntity()
+            dbEntityWithCompleteBundles = {
+              ...createDbEntity(entity),
+              bundles: {
+                assets: {
+                  windows: Registry.SimplifiedStatus.COMPLETE,
+                  mac: Registry.SimplifiedStatus.COMPLETE,
+                  webgl: Registry.SimplifiedStatus.PENDING
+                },
+                lods: {
+                  windows: Registry.SimplifiedStatus.PENDING,
+                  mac: Registry.SimplifiedStatus.PENDING,
+                  webgl: Registry.SimplifiedStatus.PENDING
+                }
+              },
+              versions: {
+                assets: {
+                  windows: { version: 'v1', buildDate: '2024-01-01' },
+                  mac: { version: 'v1', buildDate: '2024-01-01' },
+                  webgl: { version: '', buildDate: '' }
+                }
+              }
+            }
+            updatedDbEntity = {
+              ...dbEntityWithCompleteBundles,
+              versions: {
+                assets: {
+                  windows: { version: 'v2', buildDate: '2024-01-02' },
+                  mac: { version: 'v1', buildDate: '2024-01-01' },
+                  webgl: { version: '', buildDate: '' }
+                }
+              }
+            }
+            db.getRegistryById = jest.fn().mockResolvedValue(dbEntityWithCompleteBundles)
+            db.upsertRegistryBundle = jest.fn().mockResolvedValue(dbEntityWithCompleteBundles)
+            db.updateRegistryVersionWithBuildDate = jest.fn().mockResolvedValue(updatedDbEntity)
+
+            result = await handler.handle(event)
+          })
+
+          it('should succeed', () => {
+            expect(result.ok).toBe(true)
+          })
+
+          it('should update bundle status to COMPLETE', () => {
+            expect(db.upsertRegistryBundle).toHaveBeenCalledWith(
+              '123',
+              'windows',
+              false,
+              Registry.SimplifiedStatus.COMPLETE
+            )
+          })
+
+          it('should update version to the new version', () => {
+            expect(db.updateRegistryVersionWithBuildDate).toHaveBeenCalledWith(
+              '123',
+              'windows',
+              'v2',
+              new Date(event.timestamp).toISOString()
+            )
+          })
+
+          it('should call persistAndRotateStates with updated entity', () => {
+            expect(registryOrchestrator.persistAndRotateStates).toHaveBeenCalledWith(updatedDbEntity)
+          })
+        })
+      })
+
       it('should update lods bundle status when isLods is true', async () => {
         const event = createEvent({
           metadata: {

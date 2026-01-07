@@ -95,13 +95,16 @@ export const createTexturesEventHandler = ({
             ? Registry.SimplifiedStatus.COMPLETE
             : Registry.SimplifiedStatus.FAILED
 
-        if (shouldPreservePreviousStatus) {
-          logger.info('Preserving previous COMPLETE status after failed reconversion', {
-            entityId: event.metadata.entityId,
-            platform: event.metadata.platform,
-            statusCode: event.metadata.statusCode
-          })
-        }
+        logger.info('Processing bundle conversion result', {
+          entityId: event.metadata.entityId,
+          platform: event.metadata.platform,
+          bundleType,
+          statusCode: event.metadata.statusCode,
+          conversionSucceeded: String(conversionSucceeded),
+          previousStatus: previousBundleStatus,
+          newStatus: status,
+          preservingPreviousStatus: String(shouldPreservePreviousStatus)
+        })
 
         let registry: Registry.DbEntity | null = await db.upsertRegistryBundle(
           event.metadata.entityId,
@@ -122,7 +125,7 @@ export const createTexturesEventHandler = ({
           }
         }
 
-        // Update version separately - but only if the conversion succeeded or if we're not preserving previous status
+        // Update version separately - but only if we're not preserving previous status
         // If we're preserving the previous COMPLETE status, we should also keep the old version
         // to avoid pointing clients to bundles that don't exist
         if (!shouldPreservePreviousStatus) {
