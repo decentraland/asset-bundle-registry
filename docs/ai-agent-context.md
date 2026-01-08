@@ -21,7 +21,7 @@
 
 - Runtime: Node.js
 - Language: TypeScript 5.x
-- HTTP Framework: @well-known-components/http-server
+- HTTP Framework: @dcl/http-server
 - Database: PostgreSQL (via @well-known-components/pg-component)
 - Cache: Redis (queue status management) with in-memory fallback
 - Component Architecture: @well-known-components (logger, metrics, http-server, env-config-provider)
