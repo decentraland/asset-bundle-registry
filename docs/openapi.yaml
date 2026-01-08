@@ -344,9 +344,6 @@ paths:
         This endpoint fetches entity data from Catalyst and asset bundle status from
         the CDN to populate the registry.
 
-        **Authentication:** Requires a bearer token configured via `API_ADMIN_TOKEN`
-        environment variable.
-
         Use this endpoint to manually trigger registry updates for specific entities
         that may have been missed by the event-driven pipeline.
       operationId: createRegistry
@@ -386,8 +383,6 @@ paths:
         Administrative endpoint for flushing internal job caches. This clears
         cached job status information stored in Redis/memory.
 
-        **Authentication:** Requires a bearer token configured via `API_ADMIN_TOKEN`
-        environment variable.
 
         Use this endpoint to reset cache state when troubleshooting or after
         manual database modifications.

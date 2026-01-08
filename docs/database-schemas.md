@@ -259,11 +259,3 @@ Stores failed profile fetch attempts for retry processing.
 2. The `retry_count` determines retry priority and backoff delay
 3. Successful retries remove the record from this table
 4. Records with high retry counts may require manual intervention
-
----
-
-## Related Code
-
-- **Migrations**: `src/migrations/`
-- **Database Adapters**: `src/adapters/db/`
-- **Types**: `src/types/`
