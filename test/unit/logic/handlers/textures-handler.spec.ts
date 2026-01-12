@@ -19,7 +19,9 @@ describe('textures-handler', () => {
     persistAndRotateStates: jest.fn()
   }
   const memoryStorage = createInMemoryCacheComponent()
-  const queuesStatusManager = createQueuesStatusManagerComponent({ memoryStorage })
+  const queuesStatusManager = createQueuesStatusManagerComponent({
+    memoryStorage
+  })
 
   const createEvent = (
     overrides: Partial<AssetBundleConversionFinishedEvent> = {}
@@ -122,6 +124,8 @@ describe('textures-handler', () => {
 
         db.getRegistryById = jest.fn().mockResolvedValue(null)
         catalyst.getEntityById = jest.fn().mockResolvedValue(entity)
+        // persistAndRotateStates must return the created entity so we can access bundles later
+        registryOrchestrator.persistAndRotateStates = jest.fn().mockResolvedValue(dbEntity)
         db.upsertRegistryBundle = jest.fn().mockResolvedValue({
           ...dbEntity,
           bundles: {
@@ -166,6 +170,8 @@ describe('textures-handler', () => {
         const dbEntity = createDbEntity(entity)
         db.getRegistryById = jest.fn().mockResolvedValue(null)
         worlds.getWorld = jest.fn().mockResolvedValue(entity)
+        // persistAndRotateStates must return the created entity so we can access bundles later
+        registryOrchestrator.persistAndRotateStates = jest.fn().mockResolvedValue(dbEntity)
         db.upsertRegistryBundle = jest.fn().mockResolvedValue({
           ...dbEntity,
           bundles: {
@@ -370,7 +376,7 @@ describe('textures-handler', () => {
         )
       })
 
-      it('should mark bundle as failed when conversion fails', async () => {
+      it('should mark bundle as failed when conversion fails and entity had PENDING status', async () => {
         const event = createEvent({
           metadata: {
             entityId: '123',
@@ -413,12 +419,219 @@ describe('textures-handler', () => {
         const result = await handler.handle(event)
 
         expect(result.ok).toBe(true)
+        expect(db.upsertRegistryBundle).toHaveBeenCalledWith('123', 'windows', false, Registry.SimplifiedStatus.FAILED)
         expect(db.updateRegistryVersionWithBuildDate).toHaveBeenCalledWith(
           '123',
           'windows',
           'v1',
           new Date(event.timestamp).toISOString()
         )
+      })
+
+      describe('and reconversion fails', () => {
+        describe('and entity already had COMPLETE asset bundles', () => {
+          let event: AssetBundleConversionFinishedEvent
+          let dbEntityWithCompleteBundles: Registry.DbEntity
+          let result: { ok: boolean; errors?: string[] }
+
+          beforeEach(async () => {
+            event = createEvent({
+              metadata: {
+                entityId: '123',
+                platform: 'windows',
+                statusCode: ManifestStatusCode.ASSET_BUNDLE_BUILD_FAIL,
+                isLods: false,
+                isWorld: false,
+                version: 'v2'
+              }
+            })
+            const entity = createEntity()
+            dbEntityWithCompleteBundles = {
+              ...createDbEntity(entity),
+              bundles: {
+                assets: {
+                  windows: Registry.SimplifiedStatus.COMPLETE,
+                  mac: Registry.SimplifiedStatus.COMPLETE,
+                  webgl: Registry.SimplifiedStatus.PENDING
+                },
+                lods: {
+                  windows: Registry.SimplifiedStatus.PENDING,
+                  mac: Registry.SimplifiedStatus.PENDING,
+                  webgl: Registry.SimplifiedStatus.PENDING
+                }
+              },
+              versions: {
+                assets: {
+                  windows: { version: 'v1', buildDate: '2024-01-01' },
+                  mac: { version: 'v1', buildDate: '2024-01-01' },
+                  webgl: { version: '', buildDate: '' }
+                }
+              }
+            }
+            db.getRegistryById = jest.fn().mockResolvedValue(dbEntityWithCompleteBundles)
+            db.upsertRegistryBundle = jest.fn().mockResolvedValue(dbEntityWithCompleteBundles)
+
+            result = await handler.handle(event)
+          })
+
+          it('should succeed', () => {
+            expect(result.ok).toBe(true)
+          })
+
+          it('should preserve COMPLETE status instead of marking as FAILED', () => {
+            expect(db.upsertRegistryBundle).toHaveBeenCalledWith(
+              '123',
+              'windows',
+              false,
+              Registry.SimplifiedStatus.COMPLETE
+            )
+          })
+
+          it('should not update version to avoid pointing to non-existent bundles', () => {
+            expect(db.updateRegistryVersionWithBuildDate).not.toHaveBeenCalled()
+          })
+
+          it('should still call persistAndRotateStates', () => {
+            expect(registryOrchestrator.persistAndRotateStates).toHaveBeenCalledWith(dbEntityWithCompleteBundles)
+          })
+        })
+
+        describe('and entity already had COMPLETE LOD bundles', () => {
+          let event: AssetBundleConversionFinishedEvent
+          let dbEntityWithCompleteLods: Registry.DbEntity
+          let result: { ok: boolean; errors?: string[] }
+
+          beforeEach(async () => {
+            event = createEvent({
+              metadata: {
+                entityId: '123',
+                platform: 'mac',
+                statusCode: ManifestStatusCode.GLTFAST_CRITICAL_ERROR,
+                isLods: true,
+                isWorld: false,
+                version: 'v2'
+              }
+            })
+            const entity = createEntity()
+            dbEntityWithCompleteLods = {
+              ...createDbEntity(entity),
+              bundles: {
+                assets: {
+                  windows: Registry.SimplifiedStatus.COMPLETE,
+                  mac: Registry.SimplifiedStatus.COMPLETE,
+                  webgl: Registry.SimplifiedStatus.PENDING
+                },
+                lods: {
+                  windows: Registry.SimplifiedStatus.COMPLETE,
+                  mac: Registry.SimplifiedStatus.COMPLETE,
+                  webgl: Registry.SimplifiedStatus.PENDING
+                }
+              }
+            }
+            db.getRegistryById = jest.fn().mockResolvedValue(dbEntityWithCompleteLods)
+            db.upsertRegistryBundle = jest.fn().mockResolvedValue(dbEntityWithCompleteLods)
+
+            result = await handler.handle(event)
+          })
+
+          it('should succeed', () => {
+            expect(result.ok).toBe(true)
+          })
+
+          it('should preserve COMPLETE status for LODs', () => {
+            expect(db.upsertRegistryBundle).toHaveBeenCalledWith('123', 'mac', true, Registry.SimplifiedStatus.COMPLETE)
+          })
+
+          it('should not update version', () => {
+            expect(db.updateRegistryVersionWithBuildDate).not.toHaveBeenCalled()
+          })
+        })
+      })
+
+      describe('and reconversion succeeds', () => {
+        describe('and entity already had COMPLETE asset bundles', () => {
+          let event: AssetBundleConversionFinishedEvent
+          let dbEntityWithCompleteBundles: Registry.DbEntity
+          let updatedDbEntity: Registry.DbEntity
+          let result: { ok: boolean; errors?: string[] }
+
+          beforeEach(async () => {
+            event = createEvent({
+              metadata: {
+                entityId: '123',
+                platform: 'windows',
+                statusCode: ManifestStatusCode.SUCCESS,
+                isLods: false,
+                isWorld: false,
+                version: 'v2'
+              }
+            })
+            const entity = createEntity()
+            dbEntityWithCompleteBundles = {
+              ...createDbEntity(entity),
+              bundles: {
+                assets: {
+                  windows: Registry.SimplifiedStatus.COMPLETE,
+                  mac: Registry.SimplifiedStatus.COMPLETE,
+                  webgl: Registry.SimplifiedStatus.PENDING
+                },
+                lods: {
+                  windows: Registry.SimplifiedStatus.PENDING,
+                  mac: Registry.SimplifiedStatus.PENDING,
+                  webgl: Registry.SimplifiedStatus.PENDING
+                }
+              },
+              versions: {
+                assets: {
+                  windows: { version: 'v1', buildDate: '2024-01-01' },
+                  mac: { version: 'v1', buildDate: '2024-01-01' },
+                  webgl: { version: '', buildDate: '' }
+                }
+              }
+            }
+            updatedDbEntity = {
+              ...dbEntityWithCompleteBundles,
+              versions: {
+                assets: {
+                  windows: { version: 'v2', buildDate: '2024-01-02' },
+                  mac: { version: 'v1', buildDate: '2024-01-01' },
+                  webgl: { version: '', buildDate: '' }
+                }
+              }
+            }
+            db.getRegistryById = jest.fn().mockResolvedValue(dbEntityWithCompleteBundles)
+            db.upsertRegistryBundle = jest.fn().mockResolvedValue(dbEntityWithCompleteBundles)
+            db.updateRegistryVersionWithBuildDate = jest.fn().mockResolvedValue(updatedDbEntity)
+
+            result = await handler.handle(event)
+          })
+
+          it('should succeed', () => {
+            expect(result.ok).toBe(true)
+          })
+
+          it('should update bundle status to COMPLETE', () => {
+            expect(db.upsertRegistryBundle).toHaveBeenCalledWith(
+              '123',
+              'windows',
+              false,
+              Registry.SimplifiedStatus.COMPLETE
+            )
+          })
+
+          it('should update version to the new version', () => {
+            expect(db.updateRegistryVersionWithBuildDate).toHaveBeenCalledWith(
+              '123',
+              'windows',
+              'v2',
+              new Date(event.timestamp).toISOString()
+            )
+          })
+
+          it('should call persistAndRotateStates with updated entity', () => {
+            expect(registryOrchestrator.persistAndRotateStates).toHaveBeenCalledWith(updatedDbEntity)
+          })
+        })
       })
 
       it('should update lods bundle status when isLods is true', async () => {
