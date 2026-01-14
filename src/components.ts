@@ -2,44 +2,8 @@ import { createDotEnvConfigComponent } from "@well-known-components/env-config-p
 import {
   createServerComponent,
   createStatusCheckComponent,
-<<<<<<< Updated upstream
-  instrumentHttpServerWithPromClientRegistry
-} from '@dcl/http-server'
-import { createLogComponent } from '@well-known-components/logger'
-import { createFetchComponent } from '@well-known-components/fetch-component'
-import { createMetricsComponent } from '@well-known-components/metrics'
-import { metricDeclarations } from './metrics'
-import { AppComponents, GlobalContext, Sync } from './types'
-import { createPgComponent } from '@well-known-components/pg-component'
-import { createDbAdapter } from './adapters/db'
-import { createSqsComponent } from '@dcl/sqs-component'
-import { createMemoryQueueComponent } from '@dcl/memory-queue-component'
-import { createMessageProcessorComponent } from './logic/message-processor'
-import { createCatalystAdapter } from './adapters/catalyst'
-import { createMessagesConsumerComponent } from './logic/message-consumer'
-import path from 'path'
-import { createEntityStatusFetcherComponent } from './logic/entity-status-fetcher'
-import { createRegistryOrchestratorComponent } from './logic/registry-orchestrator'
-import { createWorkerManagerComponent } from './logic/workers/worker-manager'
-import { createRedisComponent } from './adapters/redis'
-import { createInMemoryCacheComponent } from './adapters/memory-cache'
-import { createWorldsAdapter } from './adapters/worlds'
-import { createQueuesStatusManagerComponent } from './logic/queues-status-manager'
-import { createProfileSanitizerComponent } from './logic/sync/profile-sanitizer'
-import { createEntityDeploymentTrackerComponent } from './logic/sync/entity-deployment-tracker'
-import { createProfilesCacheComponent } from './logic/sync/profiles-cache'
-import { createSnapshotContentStorage } from './logic/sync/snapshots-content-storage'
-import { createNormalizedLRUCache } from './adapters/lru-cache'
-import { createEntityPersisterComponent } from './logic/sync/entity-persister'
-import { createProfileRetrieverComponent } from './logic/profile-retriever'
-import { createFailedProfilesRetrierComponent } from './logic/sync/failed-profiles-retrier'
-import { createSnapshotsHandlerComponent } from './logic/sync/snapshots-handler'
-import { createPointerChangesHandlerComponent } from './logic/sync/pointer-changes-handler'
-import { createSynchronizerComponent } from './logic/sync/synchronizer'
-import { createOwnershipValidatorJob } from './logic/sync/ownership-validator-job'
-=======
   instrumentHttpServerWithPromClientRegistry,
-} from "@well-known-components/http-server";
+} from "@dcl/http-server";
 import { createLogComponent } from "@well-known-components/logger";
 import { createFetchComponent } from "@well-known-components/fetch-component";
 import { createMetricsComponent } from "@well-known-components/metrics";
@@ -72,7 +36,6 @@ import { createSnapshotsHandlerComponent } from "./logic/sync/snapshots-handler"
 import { createPointerChangesHandlerComponent } from "./logic/sync/pointer-changes-handler";
 import { createSynchronizerComponent } from "./logic/sync/synchronizer";
 import { createOwnershipValidatorJob } from "./logic/sync/ownership-validator-job";
->>>>>>> Stashed changes
 
 // Initialize all the components of the app
 export async function initComponents(): Promise<AppComponents> {
