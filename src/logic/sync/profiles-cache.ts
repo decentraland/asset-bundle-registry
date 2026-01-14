@@ -1,7 +1,6 @@
 import { ILRUNormalizedCache } from '../../adapters/lru-cache'
 import { IProfilesCacheComponent, Sync, AppComponents } from '../../types'
 import { Entity } from '@dcl/schemas'
-import { withoutTracing } from '../../utils/tracing'
 
 const FIVE_MINUTES_MS = 5 * 60 * 1000
 
@@ -20,14 +19,12 @@ export function createProfilesCacheComponent(
 ): IProfilesCacheComponent {
   const { metrics } = components
 
-  // periodic metrics report (suppressed from tracing - background operation)
+  // periodic metrics report
   setInterval(() => {
-    void withoutTracing(() => {
-      const currentSize = cache.size()
-      const maxSize = cache.maxSize()
-      metrics.observe('profiles_cache_max_size', {}, maxSize)
-      metrics.observe('profiles_cache_allocated_size', {}, currentSize)
-    })
+    const currentSize = cache.size()
+    const maxSize = cache.maxSize()
+    metrics.observe('profiles_cache_max_size', {}, maxSize)
+    metrics.observe('profiles_cache_allocated_size', {}, currentSize)
   }, FIVE_MINUTES_MS)
 
   function get(pointer: string): Entity | undefined {
