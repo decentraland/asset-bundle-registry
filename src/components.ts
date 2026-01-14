@@ -36,6 +36,7 @@ import { createSnapshotsHandlerComponent } from './logic/sync/snapshots-handler'
 import { createPointerChangesHandlerComponent } from './logic/sync/pointer-changes-handler'
 import { createSynchronizerComponent } from './logic/sync/synchronizer'
 import { createOwnershipValidatorJob } from './logic/sync/ownership-validator-job'
+import { withSuppressedTracing } from './utils/tracing'
 
 // Initialize all the components of the app
 export async function initComponents(): Promise<AppComponents> {
@@ -116,12 +117,14 @@ export async function initComponents(): Promise<AppComponents> {
     config
   })
   const catalyst = await createCatalystAdapter({ logs, fetch, config })
-  const entityPersister = createEntityPersisterComponent({
-    logs,
-    db,
-    profilesCache,
-    entityDeploymentTracker
-  })
+  const entityPersister = withSuppressedTracing(
+    createEntityPersisterComponent({
+      logs,
+      db,
+      profilesCache,
+      entityDeploymentTracker
+    })
+  )
   const profileRetriever = createProfileRetrieverComponent({
     logs,
     db,
@@ -159,23 +162,27 @@ export async function initComponents(): Promise<AppComponents> {
     profileSanitizer,
     entityPersister
   })
-  const synchronizer = await createSynchronizerComponent({
-    logs,
-    config,
-    entityPersister,
-    db,
-    snapshotsHandler,
-    pointerChangesHandler,
-    failedProfilesRetrier
-  })
-  const ownershipValidatorJob = await createOwnershipValidatorJob({
-    logs,
-    config,
-    catalyst,
-    profilesCache,
-    profileSanitizer,
-    db
-  })
+  const synchronizer = withSuppressedTracing(
+    await createSynchronizerComponent({
+      logs,
+      config,
+      entityPersister,
+      db,
+      snapshotsHandler,
+      pointerChangesHandler,
+      failedProfilesRetrier
+    })
+  )
+  const ownershipValidatorJob = withSuppressedTracing(
+    await createOwnershipValidatorJob({
+      logs,
+      config,
+      catalyst,
+      profilesCache,
+      profileSanitizer,
+      db
+    })
+  )
   const worlds = await createWorldsAdapter({ logs, config, fetch })
   const registryOrchestrator = createRegistryOrchestratorComponent({
     logs,
@@ -199,12 +206,14 @@ export async function initComponents(): Promise<AppComponents> {
     logs,
     config
   })
-  const messageConsumer = createMessagesConsumerComponent({
-    logs,
-    queue,
-    messageProcessor
-  })
-  const workerManager = createWorkerManagerComponent({ metrics, logs })
+  const messageConsumer = withSuppressedTracing(
+    createMessagesConsumerComponent({
+      logs,
+      queue,
+      messageProcessor
+    })
+  )
+  const workerManager = withSuppressedTracing(createWorkerManagerComponent({ metrics, logs }))
 
   return {
     config,
