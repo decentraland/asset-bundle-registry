@@ -1,5 +1,6 @@
 import { getMostUpdatedRegistryByPointers } from '../../logic/registry-parser'
 import { HandlerContextWithPath, Registry } from '../../types'
+import * as Sentry from '@sentry/node'
 
 export async function getActiveEntityHandler(context: HandlerContextWithPath<'db' | 'metrics', '/entities/active'>) {
   const {
@@ -18,6 +19,8 @@ export async function getActiveEntityHandler(context: HandlerContextWithPath<'db
       }
     }
   }
+
+  Sentry.captureException(new Error('test'))
 
   // Track the number of pointers in this request
   metrics.observe('pointers_per_request', {}, pointers.length)
