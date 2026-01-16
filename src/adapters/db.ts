@@ -353,7 +353,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
       FROM
         profiles
       WHERE
-        LOWER(pointer) = ${pointer.toLowerCase()}
+        pointer = ${pointer.toLowerCase()}
       LIMIT 1
     `
 
@@ -373,7 +373,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
       FROM
         profiles
       WHERE
-        LOWER(pointer) = ANY(${lowerCasePointers}::varchar(255)[])
+        pointer = ANY(${lowerCasePointers}::varchar(255)[])
     `
 
     const result = await pg.query<Sync.ProfileDbEntity>(query)
