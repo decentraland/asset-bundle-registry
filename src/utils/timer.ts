@@ -49,3 +49,20 @@ export async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Pr
     throw error
   }
 }
+
+export async function interruptibleSleep(ms: number, abortSignal: AbortSignal): Promise<void> {
+  return new Promise<void>((resolve) => {
+    // eslint-disable-next-line prefer-const
+    let timeoutId: NodeJS.Timeout
+    const abortHandler = () => {
+      clearTimeout(timeoutId)
+      abortSignal.removeEventListener('abort', abortHandler)
+      resolve()
+    }
+    abortSignal.addEventListener('abort', abortHandler)
+    timeoutId = setTimeout(() => {
+      abortSignal.removeEventListener('abort', abortHandler)
+      resolve()
+    }, ms)
+  })
+}

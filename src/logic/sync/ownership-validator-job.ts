@@ -1,11 +1,19 @@
 import { IBaseComponent } from '@well-known-components/interfaces'
+import PQueue from 'p-queue'
 import { AppComponents } from '../../types'
 import { AvatarInfo, Entity, EntityType, EthAddress } from '@dcl/schemas'
 import { Sync } from '../../types'
 import { Profile } from 'dcl-catalyst-client/dist/client/specs/lambdas-client'
+import { interruptibleSleep, withTimeout } from '../../utils/timer'
 
-const FIVE_MINUTES_MS = 5 * 60 * 1000 // 5 minutes
-const BATCH_SIZE = 50 // Process profiles in batches
+// Timing constants
+const TEN_MINUTES_MS = 10 * 60 * 1000
+const TEN_SECONDS_IN_MS = 10_000
+
+// Batch processing constants
+const BATCH_SIZE = 50 // Profiles per Catalyst API call
+const INTER_BATCH_DELAY_MS = 100 // Delay between batches (also yields to event loop)
+const VALIDATOR_DB_CONCURRENCY = 5 // Throttle DB writes to reduce contention with sync
 
 type ValidatableProperties = {
   wearables: string[]
@@ -15,15 +23,21 @@ type ValidatableProperties = {
 }
 
 export async function createOwnershipValidatorJob(
-  components: Pick<AppComponents, 'logs' | 'config' | 'catalyst' | 'profilesCache' | 'profileSanitizer' | 'db'>
+  components: Pick<
+    AppComponents,
+    'logs' | 'config' | 'catalyst' | 'profilesCache' | 'profileSanitizer' | 'db' | 'metrics'
+  >
 ): Promise<IBaseComponent> {
-  const { logs, config, catalyst, profilesCache, profileSanitizer, db } = components
-  const logger = logs.getLogger('ownership-validator-job')
-  const VALIDATION_INTERVAL_MS =
-    (await config.getNumber('PROFILES_OWNERSHIP_VALIDATION_INTERVAL_MS')) || FIVE_MINUTES_MS
+  const { logs, config, catalyst, profilesCache, profileSanitizer, db, metrics } = components
 
-  let validationInterval: NodeJS.Timeout | null = null
-  let isRunning = false
+  const VALIDATION_INTERVAL_MS = (await config.getNumber('PROFILES_OWNERSHIP_VALIDATION_INTERVAL_MS')) || TEN_MINUTES_MS
+  const logger = logs.getLogger('ownership-validator-job')
+  const validatorDbQueue = new PQueue({ concurrency: VALIDATOR_DB_CONCURRENCY }) // Throttle write DB operations
+
+  // Lifecycle state
+  let running = false
+  let abortController: AbortController | null = null
+  let loopPromise: Promise<void> | null = null
 
   function shouldUpdateProfile(currentStoredProfile: Profile, profileFetched: Profile): boolean {
     // Different deployment - update if sanitized is newer
@@ -56,40 +70,53 @@ export async function createOwnershipValidatorJob(
     profilePointer: EthAddress,
     overrides: ValidatableProperties
   ): Promise<Entity | null> {
-    const fetchedEntities: Entity[] = await catalyst.getEntityByPointers([profilePointer])
-    const fetchedEntity = fetchedEntities[0]
+    try {
+      const fetchedEntities: Entity[] = await withTimeout(
+        catalyst.getEntityByPointers([profilePointer]),
+        TEN_SECONDS_IN_MS
+      )
+      const fetchedEntity = fetchedEntities[0]
 
-    if (!fetchedEntity) {
+      if (!fetchedEntity) {
+        return null
+      }
+
+      return {
+        ...fetchedEntity,
+        metadata: {
+          avatars: [
+            {
+              ...fetchedEntity.metadata.avatars[0],
+              avatar: {
+                ...fetchedEntity.metadata.avatars[0].avatar,
+                // properties that require ownership validation
+                wearables: overrides.wearables
+                  ? overrides.wearables
+                  : fetchedEntity.metadata.avatars[0].avatar.wearables,
+                emotes: overrides.emotes ? overrides.emotes : fetchedEntity.metadata.avatars[0].avatar.emotes,
+                name: overrides.name ? overrides.name : fetchedEntity.metadata.avatars[0].avatar.name,
+                hasClaimedName: overrides.hasClaimedName
+                  ? overrides.hasClaimedName
+                  : fetchedEntity.metadata.avatars[0].avatar.hasClaimedName
+              }
+            }
+          ]
+        }
+      } as Entity
+    } catch (error: any) {
+      logger.warn('Failed to fetch entity', { pointer: profilePointer, error: error.message })
       return null
     }
-
-    return {
-      ...fetchedEntity,
-      metadata: {
-        avatars: [
-          {
-            ...fetchedEntity.metadata.avatars[0],
-            avatar: {
-              ...fetchedEntity.metadata.avatars[0].avatar,
-              // properties that require ownership validation
-              wearables: overrides.wearables ? overrides.wearables : fetchedEntity.metadata.avatars[0].avatar.wearables,
-              emotes: overrides.emotes ? overrides.emotes : fetchedEntity.metadata.avatars[0].avatar.emotes,
-              name: overrides.name ? overrides.name : fetchedEntity.metadata.avatars[0].avatar.name,
-              hasClaimedName: overrides.hasClaimedName
-                ? overrides.hasClaimedName
-                : fetchedEntity.metadata.avatars[0].avatar.hasClaimedName
-            }
-          }
-        ]
-      }
-    } as Entity
   }
 
   async function updateProfileInAllLayers(profile: Entity): Promise<void> {
     const pointer = profile.pointers[0].toLowerCase()
 
-    try {
-      profilesCache.setIfNewer(pointer, profile)
+    // Cache update is synchronous and fast
+    profilesCache.setIfNewer(pointer, profile)
+
+    // DB write goes through throttled queue
+    await validatorDbQueue.add(async () => {
       const dbProfile: Sync.ProfileDbEntity = {
         id: profile.id,
         type: EntityType.PROFILE,
@@ -99,19 +126,29 @@ export async function createOwnershipValidatorJob(
         metadata: profile.metadata,
         localTimestamp: Date.now()
       }
-      await db.upsertProfileIfNewer(dbProfile)
-    } catch (error: any) {
-      logger.warn('Failed to update profile in database', { pointer, error: error.message })
-    }
+
+      try {
+        await db.upsertProfileIfNewer(dbProfile)
+      } catch (error: any) {
+        logger.warn('Failed to update profile in database', { pointer, error: error.message })
+      }
+    })
   }
 
-  async function validateBatch(pointers: string[]): Promise<number> {
-    if (pointers.length === 0) {
+  async function fetchAndUpdateProfiles(pointers: string[], abortSignal: AbortSignal): Promise<number> {
+    if (pointers.length === 0 || abortSignal.aborted) {
       return 0
     }
 
-    // Fetch sanitized profiles from lamb2
-    const fetchedProfiles: Profile[] = await catalyst.getProfiles(pointers)
+    let fetchedProfiles: Profile[]
+
+    try {
+      // Fetch sanitized profiles from lamb2
+      fetchedProfiles = await catalyst.getProfiles(pointers)
+    } catch (error: any) {
+      logger.error('Batch validation failed', { error: error.message })
+      return 0
+    }
 
     if (fetchedProfiles.length === 0) {
       logger.warn('No profiles returned from lamb2', { requestedCount: pointers.length })
@@ -129,14 +166,16 @@ export async function createOwnershipValidatorJob(
 
     // Compare with current cached profiles
     for (const pointer of pointers) {
+      if (abortSignal.aborted) {
+        break
+      }
+
       const cachedProfile = profilesCache.get(pointer)
       const originalProfile = cachedProfile ? profileSanitizer.mapEntitiesToProfiles([cachedProfile])[0] : null
       const sanitizedProfile = sanitizedMap.get(pointer)
 
       if (originalProfile && sanitizedProfile && shouldUpdateProfile(originalProfile, sanitizedProfile)) {
-        logger.info('Profile update required', {
-          pointer
-        })
+        logger.info('Profile update required', { pointer })
 
         const curatedProfile = await fetchEntityAndAdjustOwnership(pointer, {
           wearables: sanitizedProfile.avatars?.[0]?.avatar?.wearables || [],
@@ -149,6 +188,7 @@ export async function createOwnershipValidatorJob(
           logger.error('Failed to update profile with new ownership', { pointer })
           continue
         }
+
         await updateProfileInAllLayers(curatedProfile)
         updatedCount++
       }
@@ -157,77 +197,114 @@ export async function createOwnershipValidatorJob(
     return updatedCount
   }
 
-  async function runValidationCycle(): Promise<void> {
-    if (!isRunning) {
+  function splitIntoBatches<T>(items: T[], batchSize: number): T[][] {
+    const batches: T[][] = []
+    for (let i = 0; i < items.length; i += batchSize) {
+      batches.push(items.slice(i, i + batchSize))
+    }
+    return batches
+  }
+
+  async function runValidationCycle(abortSignal: AbortSignal): Promise<void> {
+    const startTime = Date.now()
+
+    // Get all pointers from hot cache
+    const allPointers = profilesCache.getAllPointers()
+
+    if (allPointers.length === 0) {
+      logger.debug('No profiles in cache to validate')
       return
     }
 
-    try {
-      logger.debug('Ownership validation cycle started')
-      const startTime = Date.now()
+    logger.info('Starting validation cycle', { totalProfiles: allPointers.length })
 
-      // Get all pointers from hot cache (Frequently accessed profiles)
-      const allPointers = profilesCache.getAllPointers()
+    const batches = splitIntoBatches(allPointers, BATCH_SIZE)
+    let totalUpdated = 0
 
-      if (allPointers.length === 0) {
-        logger.debug('No profiles found in cache to validate')
-        return
+    for (const batch of batches) {
+      if (abortSignal.aborted) break
+
+      const profilesUpdatedCount = await fetchAndUpdateProfiles(batch, abortSignal)
+      totalUpdated += profilesUpdatedCount
+
+      // Delay between batches (also yields to event loop)
+      if (!abortSignal.aborted) {
+        await interruptibleSleep(INTER_BATCH_DELAY_MS, abortSignal)
       }
+    }
 
-      let totalUpdated = 0
+    const durationSeconds = (Date.now() - startTime) / 1000
 
-      // Process in batches to avoid overwhelming lamb2
-      for (let i = 0; i < allPointers.length; i += BATCH_SIZE) {
-        if (!isRunning) {
-          break
-        }
+    // Report metrics
+    metrics.observe('ownership_validation_cycle_duration_seconds', {}, durationSeconds)
+    metrics.observe('ownership_validation_profiles_validated', {}, allPointers.length)
+    metrics.increment('ownership_validation_profiles_updated_total', {}, totalUpdated)
 
-        const batch = allPointers.slice(i, i + BATCH_SIZE)
-        const updated = await validateBatch(batch)
-        totalUpdated += updated
+    logger.info('Ownership validation cycle complete', {
+      totalProfiles: allPointers.length,
+      updatedProfiles: totalUpdated,
+      durationSeconds: durationSeconds.toFixed(2),
+      durationMinutes: (durationSeconds / 60).toFixed(2)
+    })
+  }
 
-        // Small delay between batches to be gentle on lamb2
-        if (i + BATCH_SIZE < allPointers.length && isRunning) {
-          await new Promise((resolve) => setTimeout(resolve, 100))
-        }
-      }
+  async function validationLoop(startedFn: () => boolean, abortSignal: AbortSignal): Promise<void> {
+    // Wait for all components (including pg migrations) to be ready
+    logger.debug('Waiting for all components to start')
+    while (!startedFn() && !abortSignal.aborted) {
+      await interruptibleSleep(100, abortSignal)
+    }
 
-      logger.info('Ownership validation cycle complete', {
-        totalProfiles: allPointers.length,
-        updatedProfiles: totalUpdated,
-        duration: `${(Date.now() - startTime) / 1000 / 60} minutes`
+    if (abortSignal.aborted) {
+      logger.debug('Validation loop aborted before components were ready')
+      return
+    }
+
+    logger.debug('All components started, beginning validation loop')
+
+    while (running && !abortSignal.aborted) {
+      await runValidationCycle(abortSignal).catch((error) => {
+        logger.error('Validation cycle failed', { error: error.message })
       })
-    } catch (error: any) {
-      logger.error('Ownership validation cycle failed', { error: error.message })
+
+      // Wait full interval after cycle completion
+      if (!abortSignal.aborted && running) {
+        await interruptibleSleep(VALIDATION_INTERVAL_MS, abortSignal)
+      }
+    }
+
+    if (abortSignal.aborted) {
+      logger.debug('Validation loop aborted')
     }
   }
 
-  async function start(): Promise<void> {
-    logger.info('Ownership validator scheduled')
-    isRunning = true
+  async function start(startOptions: IBaseComponent.ComponentStartOptions): Promise<void> {
+    logger.info('Starting ownership validator', {
+      intervalMs: VALIDATION_INTERVAL_MS,
+      batchSize: BATCH_SIZE
+    })
 
-    // Initial delay before first validation (let sync stabilize)
-    setTimeout(() => {
-      if (isRunning) {
-        void runValidationCycle()
-
-        // Set up periodic validation
-        validationInterval = setInterval(() => {
-          void runValidationCycle()
-        }, VALIDATION_INTERVAL_MS)
-      }
-    }, VALIDATION_INTERVAL_MS)
-
-    logger.info('Ownership validator started', { intervalMs: VALIDATION_INTERVAL_MS })
+    running = true
+    abortController = new AbortController()
+    loopPromise = validationLoop(startOptions.started, abortController.signal)
   }
 
   async function stop(): Promise<void> {
-    isRunning = false
+    logger.info('Stopping ownership validator')
+    running = false
 
-    if (validationInterval) {
-      clearInterval(validationInterval)
-      validationInterval = null
+    // Signal abort to stop the loop
+    if (abortController) {
+      abortController.abort()
     }
+
+    // Wait for current cycle to finish
+    if (loopPromise) {
+      await loopPromise.catch(() => {})
+    }
+
+    // Wait for pending DB writes to complete
+    await validatorDbQueue.onIdle()
 
     logger.info('Ownership validator stopped')
   }

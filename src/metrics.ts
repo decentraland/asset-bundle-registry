@@ -66,6 +66,20 @@ export const metricDeclarations = {
     help: 'Number of pointers per request',
     type: IMetricsComponent.HistogramType,
     buckets: [1, 10, 20, 50, 100, 200, 300, 400, 500]
+  },
+  // Ownership validation metrics
+  ownership_validation_cycle_duration_seconds: {
+    help: 'Duration of ownership validation cycle in seconds',
+    type: IMetricsComponent.HistogramType,
+    buckets: [1, 5, 30, 60, 120, 300, 600]
+  },
+  ownership_validation_profiles_validated: {
+    help: 'Number of profiles validated in last cycle',
+    type: IMetricsComponent.GaugeType
+  },
+  ownership_validation_profiles_updated_total: {
+    help: 'Total profiles updated due to ownership changes',
+    type: IMetricsComponent.CounterType
   }
 }
 
