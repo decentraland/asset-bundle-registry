@@ -1,24 +1,16 @@
 import { IBaseComponent } from '@well-known-components/interfaces'
 import { AppComponents } from '../../types'
-import { AvatarInfo, Entity, EntityType, EthAddress } from '@dcl/schemas'
+import { AvatarInfo, Entity, EntityType } from '@dcl/schemas'
 import { Sync } from '../../types'
 import { Profile } from 'dcl-catalyst-client/dist/client/specs/lambdas-client'
-import { interruptibleSleep, withTimeout } from '../../utils/timer'
+import { interruptibleSleep } from '../../utils/timer'
 
 // Timing constants
 const TEN_MINUTES_MS = 10 * 60 * 1000
-const TEN_SECONDS_IN_MS = 10_000
 
 // Batch processing constants
 const BATCH_SIZE = 50 // Profiles per Catalyst API call
 const INTER_BATCH_DELAY_MS = 100 // Delay between batches (also yields to event loop)
-
-type ValidatableProperties = {
-  wearables: string[]
-  emotes: { urn?: string; slot?: number }[]
-  name?: string
-  hasClaimedName?: boolean
-}
 
 export async function createOwnershipValidatorJob(
   components: Pick<
@@ -61,49 +53,6 @@ export async function createOwnershipValidatorJob(
       !originalWearables.every((wearable) => sanitizedWearables.includes(wearable)) ||
       !originalEmotes.every((emote) => sanitizedEmotes.includes(emote))
     )
-  }
-
-  async function fetchEntityAndAdjustOwnership(
-    profilePointer: EthAddress,
-    overrides: ValidatableProperties
-  ): Promise<Entity | null> {
-    try {
-      const fetchedEntities: Entity[] = await withTimeout(
-        catalyst.getEntityByPointers([profilePointer]),
-        TEN_SECONDS_IN_MS
-      )
-      const fetchedEntity = fetchedEntities[0]
-
-      if (!fetchedEntity) {
-        return null
-      }
-
-      return {
-        ...fetchedEntity,
-        metadata: {
-          avatars: [
-            {
-              ...fetchedEntity.metadata.avatars[0],
-              avatar: {
-                ...fetchedEntity.metadata.avatars[0].avatar,
-                // properties that require ownership validation
-                wearables: overrides.wearables
-                  ? overrides.wearables
-                  : fetchedEntity.metadata.avatars[0].avatar.wearables,
-                emotes: overrides.emotes ? overrides.emotes : fetchedEntity.metadata.avatars[0].avatar.emotes,
-                name: overrides.name ? overrides.name : fetchedEntity.metadata.avatars[0].avatar.name,
-                hasClaimedName: overrides.hasClaimedName
-                  ? overrides.hasClaimedName
-                  : fetchedEntity.metadata.avatars[0].avatar.hasClaimedName
-              }
-            }
-          ]
-        }
-      } as Entity
-    } catch (error: any) {
-      logger.warn('Failed to fetch entity', { pointer: profilePointer, error: error.message })
-      return null
-    }
   }
 
   function updateProfileInCache(profile: Entity): void {
@@ -166,15 +115,10 @@ export async function createOwnershipValidatorJob(
       if (originalProfile && sanitizedProfile && shouldUpdateProfile(originalProfile, sanitizedProfile)) {
         logger.info('Profile update required', { pointer })
 
-        const curatedProfile = await fetchEntityAndAdjustOwnership(pointer, {
-          wearables: sanitizedProfile.avatars?.[0]?.avatar?.wearables || [],
-          emotes: sanitizedProfile.avatars?.[0]?.avatar?.emotes || [],
-          name: sanitizedProfile.avatars?.[0]?.name,
-          hasClaimedName: sanitizedProfile.avatars?.[0]?.hasClaimedName
-        })
+        const curatedProfile = catalyst.convertLambdasProfileToEntity(sanitizedProfile)
 
         if (!curatedProfile) {
-          logger.error('Failed to update profile with new ownership', { pointer })
+          logger.error('Failed to convert sanitized profile to entity', { pointer })
           continue
         }
 
