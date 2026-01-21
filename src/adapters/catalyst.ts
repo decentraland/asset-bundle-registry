@@ -18,7 +18,7 @@ export async function createCatalystAdapter({
 
   // We use a historical catalyst (instead of the load balancer) because some official nodes
   // have garbage-collected old profiles. The historical catalyst retains all profile data
-  const historicalCatalyst = await config.requireString('CATALYST_WITH_HISTORICAL_INFORMATION')
+  const historicalCatalyst = await config.requireString('CATALYST_WITH_HISTORICAL_DATA')
   const historicalLambdasClient = createLambdasClient({ fetcher: fetch, url: ensureLambdasUrl(historicalCatalyst) })
 
   function extractEntityIdFromSnapshotUrl(snapshotUrl: string): string | null {
