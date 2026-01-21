@@ -130,7 +130,8 @@ export type RetryMessageData = {
 export enum EventHandlerName {
   DEPLOYMENT = 'Deployment Handler',
   TEXTURES = 'Textures Handler',
-  STATUS = 'Status Handler'
+  STATUS = 'Status Handler',
+  UNDEPLOYMENT = 'Undeployment Handler'
 }
 
 export type MessageProcessorResult = {

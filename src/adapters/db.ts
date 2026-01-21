@@ -2,7 +2,10 @@ import SQL, { SQLStatement } from 'sql-template-strings'
 import { AppComponents, IDbComponent, Registry, Sync } from '../types'
 import { EthAddress } from '@dcl/schemas'
 
-export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent {
+export function createDbAdapter({
+  pg,
+  pointers: pointersComponent
+}: Pick<AppComponents, 'pg' | 'pointers'>): IDbComponent {
   async function getSortedRegistriesByOwner(owner: EthAddress): Promise<Registry.DbEntity[]> {
     const query: SQLStatement = SQL`
       SELECT 
@@ -18,20 +21,53 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
     return result.rows
   }
 
+  /**
+   * Queries registries by pointers.
+   *
+   * When a legacy world pointer (e.g., "pepe.dcl.eth") is provided, this function
+   * will also match world scene pointers that start with that world name
+   * (e.g., "pepe.dcl.eth:0,0", "pepe.dcl.eth:1,0").
+   *
+   * This allows querying with just the world name to retrieve all scenes in a world.
+   *
+   * @param pointers - Array of pointers to search for
+   * @param statuses - Optional status filter
+   * @param descSort - Whether to sort by timestamp descending
+   * @returns Matching registries
+   */
   async function getSortedRegistriesByPointers(
     pointers: string[],
     statuses?: Registry.Status[],
     descSort: boolean = false
   ): Promise<Registry.DbEntity[]> {
     const lowerCasePointers = pointers.map((p) => p.toLowerCase())
+
+    // Separate legacy world pointers (like "pepe.dcl.eth") from other pointers
+    // Legacy world pointers need special handling to also match world scene pointers
+    const legacyWorldPointers = lowerCasePointers.filter(pointersComponent.isLegacyWorldPointer)
+
+    // Build the base query with array overlap
     const query = SQL`
       SELECT 
         id, type, timestamp, deployer, pointers, content, metadata, status, bundles, versions
       FROM 
         registries
-      WHERE 
+      WHERE (
         pointers && ${lowerCasePointers}::varchar(255)[]
     `
+
+    // For legacy world pointers, also match world scene pointers starting with "worldname:"
+    if (legacyWorldPointers.length > 0) {
+      const worldPrefixPatterns = legacyWorldPointers.map((p) => `${p}:%`)
+      query.append(SQL`
+        OR EXISTS (
+          SELECT 1 FROM unnest(pointers) AS p
+          WHERE p LIKE ANY(${worldPrefixPatterns}::varchar(255)[])
+        )
+      `)
+    }
+
+    query.append(SQL`)`)
 
     if (statuses) {
       query.append(SQL`
@@ -199,6 +235,47 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
 
     const result = await pg.query<Registry.PartialDbEntity>(query)
     return result.rows
+  }
+
+  /**
+   * Marks registries and all their related fallbacks as OBSOLETE in a single atomic operation.
+   *
+   * This is used for world scene undeployments where:
+   * 1. The target entities are marked as OBSOLETE
+   * 2. Any registries sharing pointers with target entities that have FALLBACK status are also marked as OBSOLETE
+   *
+   * @param entityIds - Array of entity IDs to undeploy
+   * @returns The total number of registries marked as OBSOLETE (including fallbacks)
+   */
+  async function undeployRegistries(entityIds: string[]): Promise<number> {
+    if (entityIds.length === 0) {
+      return 0
+    }
+
+    const parsedIds = entityIds.map((id) => id.toLowerCase())
+
+    // Single atomic query that:
+    // 1. Collects all pointers from target entities in a CTE
+    // 2. Updates target entities and any FALLBACK registries sharing pointers
+    // Uses array overlap (&&) operator for efficient index usage
+    const query: SQLStatement = SQL`
+      WITH target_pointers AS (
+        SELECT array_agg(DISTINCT p) AS pointers
+        FROM registries, unnest(pointers) AS p
+        WHERE LOWER(id) = ANY(${parsedIds}::varchar(255)[])
+      )
+      UPDATE registries
+      SET status = ${Registry.Status.OBSOLETE}
+      WHERE
+        LOWER(id) = ANY(${parsedIds}::varchar(255)[])
+        OR (
+          status = ${Registry.Status.FALLBACK}
+          AND pointers && (SELECT pointers FROM target_pointers)
+        )
+    `
+
+    const result = await pg.query(query)
+    return result.rowCount ?? 0
   }
 
   async function deleteRegistries(entityIds: string[]): Promise<void> {
@@ -523,6 +600,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
     getRegistryById,
     getRelatedRegistries,
     deleteRegistries,
+    undeployRegistries,
     getBatchOfDeprecatedRegistriesOlderThan,
     insertHistoricalRegistry,
     getSortedHistoricalRegistriesByOwner,

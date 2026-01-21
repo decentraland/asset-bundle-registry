@@ -36,6 +36,7 @@ import { createSnapshotsHandlerComponent } from './logic/sync/snapshots-handler'
 import { createPointerChangesHandlerComponent } from './logic/sync/pointer-changes-handler'
 import { createSynchronizerComponent } from './logic/sync/synchronizer'
 import { createOwnershipValidatorJob } from './logic/sync/ownership-validator-job'
+import { createPointersComponent } from './logic/pointers'
 
 // Initialize all the components of the app
 export async function initComponents(): Promise<AppComponents> {
@@ -91,7 +92,8 @@ export async function initComponents(): Promise<AppComponents> {
     }
   )
 
-  const db = createDbAdapter({ pg })
+  const pointers = createPointersComponent()
+  const db = createDbAdapter({ pg, pointers })
 
   const sqsEndpoint = await config.getString('AWS_SQS_ENDPOINT')
   const queue = sqsEndpoint ? await createSqsComponent(config) : createMemoryQueueComponent()
@@ -176,7 +178,7 @@ export async function initComponents(): Promise<AppComponents> {
     profileSanitizer,
     db
   })
-  const worlds = await createWorldsAdapter({ logs, config, fetch })
+  const worlds = await createWorldsAdapter({ logs, config, fetch, pointers })
   const registryOrchestrator = createRegistryOrchestratorComponent({
     logs,
     db,
@@ -235,6 +237,7 @@ export async function initComponents(): Promise<AppComponents> {
     snapshotsHandler,
     pointerChangesHandler,
     synchronizer,
-    ownershipValidatorJob
+    ownershipValidatorJob,
+    pointers
   }
 }

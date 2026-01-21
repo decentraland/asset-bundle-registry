@@ -165,6 +165,64 @@ test('GET /entities/status/:id', function ({ components }) {
     })
   })
 
+  it('should return entity status correctly when a world scene pointer is provided', async function () {
+    const registry = createRegistryEntity(
+      identity.realAccount.address,
+      Registry.Status.COMPLETE,
+      Registry.SimplifiedStatus.COMPLETE,
+      { id: 'world-scene-status-entity', pointers: ['statusworld.dcl.eth:0,0'] }
+    )
+    await createRegistryOnDatabase(registry)
+
+    const response = await fetchLocally(
+      'GET',
+      `/entities/status/${encodeURIComponent('statusworld.dcl.eth:0,0')}`,
+      identity
+    )
+    const parsedResponse = await response.json()
+
+    expect(parsedResponse).toMatchObject({
+      entityId: registry.id,
+      catalyst: 'complete',
+      complete: true,
+      assetBundles: { mac: 'complete', windows: 'complete' },
+      lods: { mac: 'complete', windows: 'complete' }
+    })
+  })
+
+  it('should return the most recent entity status when a legacy world pointer matches world scene pointers', async function () {
+    const olderRegistry = createRegistryEntity(
+      identity.realAccount.address,
+      Registry.Status.COMPLETE,
+      Registry.SimplifiedStatus.COMPLETE,
+      { id: 'older-world-scene-entity', pointers: ['legacystatusworld.dcl.eth:0,0'], timestamp: 1000 }
+    )
+    const newerRegistry = createRegistryEntity(
+      identity.realAccount.address,
+      Registry.Status.COMPLETE,
+      Registry.SimplifiedStatus.COMPLETE,
+      { id: 'newer-world-scene-entity', pointers: ['legacystatusworld.dcl.eth:1,0'], timestamp: 2000 }
+    )
+    await createRegistryOnDatabase(olderRegistry)
+    await createRegistryOnDatabase(newerRegistry)
+
+    const response = await fetchLocally(
+      'GET',
+      `/entities/status/${encodeURIComponent('legacystatusworld.dcl.eth')}`,
+      identity
+    )
+    const parsedResponse = await response.json()
+
+    // Should return the most recent entity (descSort is true in the handler)
+    expect(parsedResponse).toMatchObject({
+      entityId: newerRegistry.id,
+      catalyst: 'complete',
+      complete: true,
+      assetBundles: { mac: 'complete', windows: 'complete' },
+      lods: { mac: 'complete', windows: 'complete' }
+    })
+  })
+
   it('should return 404 when no entity is found', async function () {
     const response = await fetchLocally('GET', `/entities/status/nonexistentId`, identity)
     const parsedResponse = await response.json()

@@ -19,10 +19,17 @@ export const createTexturesEventHandler = ({
   return {
     handle: async (event: AssetBundleConversionFinishedEvent): Promise<EventHandlerResult> => {
       try {
-        let entity: Registry.DbEntity | null = await db.getRegistryById(event.metadata.entityId)
+        const metadata = event.metadata
+        let entity: Registry.DbEntity | null = await db.getRegistryById(metadata.entityId)
+
+        // Skip processing if the entity has been undeployed (marked as OBSOLETE)
+        if (entity?.status === Registry.Status.OBSOLETE) {
+          logger.info('Entity is OBSOLETE, skipping bundle update', { entityId: metadata.entityId })
+          return { ok: true, handlerName: HANDLER_NAME }
+        }
 
         if (!entity) {
-          logger.info('Entity not found in the database, will create it', { entityId: event.metadata.entityId })
+          logger.info('Entity not found in the database, will create it', { entityId: metadata.entityId })
           let fetchedEntity: Entity | null
 
           if (event.metadata.isWorld) {
@@ -35,7 +42,7 @@ export const createTexturesEventHandler = ({
             logger.error('Entity not found', { event: JSON.stringify(event) })
             return {
               ok: false,
-              errors: [`Entity with id ${event.metadata.entityId} was not found`],
+              errors: [`Entity with id ${metadata.entityId} was not found`],
               handlerName: HANDLER_NAME
             }
           }
@@ -69,46 +76,46 @@ export const createTexturesEventHandler = ({
           })
         }
 
-        if (!event.metadata.isLods) {
-          await queuesStatusManager.markAsFinished(event.metadata.platform, event.metadata.entityId)
+        if (!metadata.isLods) {
+          await queuesStatusManager.markAsFinished(metadata.platform, metadata.entityId)
         }
 
         const status: Registry.SimplifiedStatus =
-          event.metadata.statusCode === ManifestStatusCode.SUCCESS ||
-          event.metadata.statusCode === ManifestStatusCode.CONVERSION_ERRORS_TOLERATED ||
-          event.metadata.statusCode === ManifestStatusCode.ALREADY_CONVERTED
+          metadata.statusCode === ManifestStatusCode.SUCCESS ||
+          metadata.statusCode === ManifestStatusCode.CONVERSION_ERRORS_TOLERATED ||
+          metadata.statusCode === ManifestStatusCode.ALREADY_CONVERTED
             ? Registry.SimplifiedStatus.COMPLETE
             : Registry.SimplifiedStatus.FAILED
 
         let registry: Registry.DbEntity | null = await db.upsertRegistryBundle(
-          event.metadata.entityId,
-          event.metadata.platform,
-          !!event.metadata.isLods,
+          metadata.entityId,
+          metadata.platform,
+          !!metadata.isLods,
           status
         )
 
         if (!registry) {
-          logger.error('Error storing bundle', { entityId: event.metadata.entityId, platform: event.metadata.platform })
+          logger.error('Error storing bundle', { entityId: metadata.entityId, platform: metadata.platform })
           return { ok: false, errors: ['Error storing bundle'], handlerName: HANDLER_NAME }
         }
 
         // Update version separately
         registry = await db.updateRegistryVersionWithBuildDate(
-          event.metadata.entityId,
-          event.metadata.platform,
-          event.metadata.version,
+          metadata.entityId,
+          metadata.platform,
+          metadata.version,
           new Date(event.timestamp).toISOString()
         )
 
         if (!registry) {
           logger.error('Error updating version', {
-            entityId: event.metadata.entityId,
-            platform: event.metadata.platform
+            entityId: metadata.entityId,
+            platform: metadata.platform
           })
           return { ok: false, errors: ['Error storing version'], handlerName: HANDLER_NAME }
         }
 
-        logger.info(`Bundle stored`, { entityId: event.metadata.entityId, bundles: JSON.stringify(registry.bundles) })
+        logger.info(`Bundle stored`, { entityId: metadata.entityId, bundles: JSON.stringify(registry.bundles) })
 
         await registryOrchestrator.persistAndRotateStates(registry)
 

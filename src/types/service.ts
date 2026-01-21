@@ -38,6 +38,7 @@ export interface IDbComponent {
     buildDate: string
   ): Promise<Registry.DbEntity | null>
   getRelatedRegistries(registry: Pick<Registry.DbEntity, 'pointers' | 'id'>): Promise<Registry.PartialDbEntity[]>
+  undeployRegistries(entityIds: string[]): Promise<number>
   deleteRegistries(entityIds: string[]): Promise<void>
   getBatchOfDeprecatedRegistriesOlderThan(
     dateInMilliseconds: number,
@@ -78,7 +79,7 @@ export interface ICatalystComponent {
 }
 
 export interface IWorldsComponent {
-  getWorld(worldId: string, worldContentServerUrl?: string): Promise<Entity | null>
+  getWorld(entityId: string, contentServerUrl?: string): Promise<Entity | null>
   isWorldDeployment(event: DeploymentToSqs): boolean
 }
 

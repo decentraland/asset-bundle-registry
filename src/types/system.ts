@@ -29,6 +29,7 @@ import {
 } from './service'
 import { metricDeclarations } from '../metrics'
 import { IContentStorageComponent } from '@dcl/catalyst-storage'
+import { IPointersComponent } from '../logic/pointers'
 
 export type GlobalContext = {
   components: BaseComponents
@@ -50,6 +51,7 @@ export type BaseComponents = {
   profileSanitizer: IProfileSanitizerComponent
   profileRetriever: IProfileRetrieverComponent
   synchronizer: ISynchronizerComponent
+  pointers: IPointersComponent
 }
 
 // components used in runtime
