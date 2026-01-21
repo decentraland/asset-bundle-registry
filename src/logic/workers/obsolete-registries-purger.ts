@@ -4,6 +4,7 @@ import { metricDeclarations } from '../../metrics'
 import { createMetricsComponent } from '@well-known-components/metrics'
 import { createPgComponent } from '@well-known-components/pg-component'
 import { createDbAdapter } from '../../adapters/db'
+import { createPointersComponent } from '../pointers'
 import { SQL } from 'sql-template-strings'
 
 const BATCH_SIZE = 100
@@ -28,9 +29,9 @@ async function getComponents() {
     const dbPassword = await config.requireString('PG_COMPONENT_PSQL_PASSWORD')
     databaseUrl = `postgres://${dbUser}:${dbPassword}@${dbHost}:${dbPort}/${dbDatabaseName}`
   }
-
+  const pointers = createPointersComponent()
   const pg = await createPgComponent({ logs, config, metrics })
-  const db = createDbAdapter({ pg })
+  const db = createDbAdapter({ pg, pointers })
   const logger = logs.getLogger('db-purger-worker')
 
   return { metrics, pg, db, logger }
