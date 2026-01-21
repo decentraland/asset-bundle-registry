@@ -20,7 +20,7 @@ export function extendDbComponent({ db, pg }: Pick<AppComponents, 'db' | 'pg'>):
     deleteProfiles: async (pointers: string[]) => {
       const query: SQLStatement = SQL`
             DELETE FROM profiles
-            WHERE LOWER(pointer) = ANY(${pointers.map((p) => p.toLocaleLowerCase())}::varchar(255)[])
+            WHERE pointer = ANY(${pointers.map((p) => p.toLowerCase())}::varchar(255)[])
           `
 
       await pg.query(query)

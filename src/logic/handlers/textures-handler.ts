@@ -80,12 +80,36 @@ export const createTexturesEventHandler = ({
           await queuesStatusManager.markAsFinished(metadata.platform, metadata.entityId)
         }
 
-        const status: Registry.SimplifiedStatus =
-          metadata.statusCode === ManifestStatusCode.SUCCESS ||
-          metadata.statusCode === ManifestStatusCode.CONVERSION_ERRORS_TOLERATED ||
-          metadata.statusCode === ManifestStatusCode.ALREADY_CONVERTED
+        const conversionSucceeded =
+          event.metadata.statusCode === ManifestStatusCode.SUCCESS ||
+          event.metadata.statusCode === ManifestStatusCode.CONVERSION_ERRORS_TOLERATED ||
+          event.metadata.statusCode === ManifestStatusCode.ALREADY_CONVERTED
+
+        const bundleType = event.metadata.isLods ? 'lods' : 'assets'
+        const platform = event.metadata.platform as keyof Registry.Bundles['assets']
+        const previousBundleStatus = entity.bundles[bundleType][platform]
+
+        // If reconversion fails but previous bundles were COMPLETE, keep them as COMPLETE
+        // The old bundles are still valid on CDN and should continue to be used
+        const shouldPreservePreviousStatus =
+          !conversionSucceeded && previousBundleStatus === Registry.SimplifiedStatus.COMPLETE
+
+        const status: Registry.SimplifiedStatus = conversionSucceeded
+          ? Registry.SimplifiedStatus.COMPLETE
+          : shouldPreservePreviousStatus
             ? Registry.SimplifiedStatus.COMPLETE
             : Registry.SimplifiedStatus.FAILED
+
+        logger.info('Processing bundle conversion result', {
+          entityId: event.metadata.entityId,
+          platform: event.metadata.platform,
+          bundleType,
+          statusCode: event.metadata.statusCode,
+          conversionSucceeded: String(conversionSucceeded),
+          previousStatus: previousBundleStatus,
+          newStatus: status,
+          preservingPreviousStatus: String(shouldPreservePreviousStatus)
+        })
 
         let registry: Registry.DbEntity | null = await db.upsertRegistryBundle(
           metadata.entityId,
@@ -95,27 +119,45 @@ export const createTexturesEventHandler = ({
         )
 
         if (!registry) {
-          logger.error('Error storing bundle', { entityId: metadata.entityId, platform: metadata.platform })
-          return { ok: false, errors: ['Error storing bundle'], handlerName: HANDLER_NAME }
-        }
-
-        // Update version separately
-        registry = await db.updateRegistryVersionWithBuildDate(
-          metadata.entityId,
-          metadata.platform,
-          metadata.version,
-          new Date(event.timestamp).toISOString()
-        )
-
-        if (!registry) {
-          logger.error('Error updating version', {
-            entityId: metadata.entityId,
-            platform: metadata.platform
+          logger.error('Error storing bundle', {
+            entityId: event.metadata.entityId,
+            platform: event.metadata.platform
           })
-          return { ok: false, errors: ['Error storing version'], handlerName: HANDLER_NAME }
+          return {
+            ok: false,
+            errors: ['Error storing bundle'],
+            handlerName: HANDLER_NAME
+          }
         }
 
-        logger.info(`Bundle stored`, { entityId: metadata.entityId, bundles: JSON.stringify(registry.bundles) })
+        // Update version separately - but only if we're not preserving previous status
+        // If we're preserving the previous COMPLETE status, we should also keep the old version
+        // to avoid pointing clients to bundles that don't exist
+        if (!shouldPreservePreviousStatus) {
+          registry = await db.updateRegistryVersionWithBuildDate(
+            event.metadata.entityId,
+            event.metadata.platform,
+            event.metadata.version,
+            new Date(event.timestamp).toISOString()
+          )
+
+          if (!registry) {
+            logger.error('Error updating version', {
+              entityId: event.metadata.entityId,
+              platform: event.metadata.platform
+            })
+            return {
+              ok: false,
+              errors: ['Error storing version'],
+              handlerName: HANDLER_NAME
+            }
+          }
+        }
+
+        logger.info(`Bundle stored`, {
+          entityId: event.metadata.entityId,
+          bundles: JSON.stringify(registry.bundles)
+        })
 
         await registryOrchestrator.persistAndRotateStates(registry)
 
@@ -126,7 +168,11 @@ export const createTexturesEventHandler = ({
           stack: JSON.stringify(errors?.stack)
         })
 
-        return { ok: false, errors: [errors?.message || 'Unexpected processor failure'], handlerName: HANDLER_NAME }
+        return {
+          ok: false,
+          errors: [errors?.message || 'Unexpected processor failure'],
+          handlerName: HANDLER_NAME
+        }
       }
     },
     canHandle: (event: any): boolean => {
