@@ -55,11 +55,6 @@ export async function createOwnershipValidatorJob(
     )
   }
 
-  function updateProfileInCache(profile: Entity): void {
-    const pointer = profile.pointers[0].toLowerCase()
-    profilesCache.setIfNewer(pointer, profile)
-  }
-
   function prepareDbEntity(profile: Entity): Sync.ProfileDbEntity {
     return {
       id: profile.id,
@@ -77,39 +72,38 @@ export async function createOwnershipValidatorJob(
       return 0
     }
 
-    let fetchedProfiles: Profile[]
-
-    try {
-      // Fetch sanitized profiles from lamb2
-      fetchedProfiles = await catalyst.getProfiles(pointers)
-    } catch (error: any) {
-      logger.error('Batch validation failed', { error: error.message })
-      return 0
-    }
+    const fetchedProfiles = await catalyst.getProfiles(pointers)
 
     if (fetchedProfiles.length === 0) {
       logger.warn('No profiles returned from lamb2', { requestedCount: pointers.length })
       return 0
     }
 
+    // Build sanitized map keyed by lowercased userId
     const sanitizedMap = new Map<string, Profile>()
     for (const profile of fetchedProfiles) {
-      if (!!profile.avatars?.[0]?.userId) {
+      if (profile.avatars?.[0]?.userId) {
         sanitizedMap.set(profile.avatars[0].userId.toLowerCase(), profile)
       }
     }
 
-    // Collect profiles that need updating for bulk DB write
+    const cachedMap = profilesCache.getMany(pointers)
+    const cachedEntries = Array.from(cachedMap.entries())
+    const mappedProfiles = profileSanitizer.mapEntitiesToProfiles(cachedEntries.map(([_, entity]) => entity))
+    const originalProfileMap = new Map<string, Profile>()
+    cachedEntries.forEach(([pointer], index) => {
+      originalProfileMap.set(pointer, mappedProfiles[index])
+    })
+
+    const entitiesToUpdate: Entity[] = []
     const pendingDbUpdates: Sync.ProfileDbEntity[] = []
 
-    // Compare with current cached profiles
     for (const pointer of pointers) {
       if (abortSignal.aborted) {
         break
       }
 
-      const cachedProfile = profilesCache.get(pointer)
-      const originalProfile = cachedProfile ? profileSanitizer.mapEntitiesToProfiles([cachedProfile])[0] : null
+      const originalProfile = originalProfileMap.get(pointer)
       const sanitizedProfile = sanitizedMap.get(pointer)
 
       if (originalProfile && sanitizedProfile && shouldUpdateProfile(originalProfile, sanitizedProfile)) {
@@ -122,15 +116,15 @@ export async function createOwnershipValidatorJob(
           continue
         }
 
-        // Update cache immediately (preserves existing behavior)
-        updateProfileInCache(curatedProfile)
-
-        // Collect for bulk DB write
+        entitiesToUpdate.push(curatedProfile)
         pendingDbUpdates.push(prepareDbEntity(curatedProfile))
       }
     }
 
-    // Bulk write to DB at end of batch
+    if (entitiesToUpdate.length > 0) {
+      profilesCache.setManyIfNewer(entitiesToUpdate)
+    }
+
     if (pendingDbUpdates.length > 0) {
       try {
         const updatedPointers = await db.bulkUpsertProfilesIfNewer(pendingDbUpdates)
@@ -138,13 +132,12 @@ export async function createOwnershipValidatorJob(
           attempted: pendingDbUpdates.length,
           actuallyUpdated: updatedPointers.length
         })
+        return updatedPointers.length
       } catch (error: any) {
         logger.error('Failed to bulk upsert profiles', {
           error: error.message,
           profileCount: pendingDbUpdates.length
         })
-
-        // no updates
         return 0
       }
     }

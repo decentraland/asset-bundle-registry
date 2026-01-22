@@ -127,7 +127,7 @@ describe('ownership validator job', () => {
 
           // note: there is no way to delete profiles from Catalyst
           it('should not update any profiles', () => {
-            expect(mockProfilesCache.setIfNewer).not.toHaveBeenCalled()
+            expect(mockProfilesCache.setManyIfNewer).not.toHaveBeenCalled()
             expect(mockDb.bulkUpsertProfilesIfNewer).not.toHaveBeenCalled()
           })
         })
@@ -171,7 +171,7 @@ describe('ownership validator job', () => {
                 ]
               })
               ;(mockProfilesCache.getAllPointers as jest.Mock).mockReturnValueOnce(pointers)
-              ;(mockProfilesCache.get as jest.Mock).mockReturnValueOnce(storedEntity)
+              ;(mockProfilesCache.getMany as jest.Mock).mockReturnValueOnce(new Map([[pointers[0], storedEntity]]))
               ;(mockCatalyst.getProfiles as jest.Mock).mockResolvedValueOnce([fetchedProfile])
 
               await component.start?.(createStartOptions())
@@ -179,7 +179,7 @@ describe('ownership validator job', () => {
             })
 
             it('should not update any profiles', () => {
-              expect(mockProfilesCache.setIfNewer).not.toHaveBeenCalled()
+              expect(mockProfilesCache.setManyIfNewer).not.toHaveBeenCalled()
               expect(mockDb.bulkUpsertProfilesIfNewer).not.toHaveBeenCalled()
             })
           })
@@ -209,7 +209,7 @@ describe('ownership validator job', () => {
                 ]
               })
               ;(mockProfilesCache.getAllPointers as jest.Mock).mockReturnValueOnce(pointers)
-              ;(mockProfilesCache.get as jest.Mock).mockReturnValueOnce(storedEntity)
+              ;(mockProfilesCache.getMany as jest.Mock).mockReturnValueOnce(new Map([[pointers[0], storedEntity]]))
               ;(mockCatalyst.getProfiles as jest.Mock).mockResolvedValueOnce([fetchedProfile])
               ;(mockCatalyst.convertLambdasProfileToEntity as jest.Mock).mockReturnValueOnce(
                 createProfileEntity({
@@ -225,14 +225,13 @@ describe('ownership validator job', () => {
             })
 
             it('should update profile in cache with entity constructed from lambdas profile', () => {
-              expect(mockProfilesCache.setIfNewer).toHaveBeenCalledWith(
-                pointers[0],
+              expect(mockProfilesCache.setManyIfNewer).toHaveBeenCalledWith([
                 expect.objectContaining({
                   id: newEntityId,
                   timestamp: 2000,
                   pointers: [pointers[0]]
                 })
-              )
+              ])
             })
 
             it('should update profile in db via bulk upsert', () => {
@@ -271,7 +270,7 @@ describe('ownership validator job', () => {
                 ]
               })
               ;(mockProfilesCache.getAllPointers as jest.Mock).mockReturnValueOnce(pointers)
-              ;(mockProfilesCache.get as jest.Mock).mockReturnValueOnce(storedEntity)
+              ;(mockProfilesCache.getMany as jest.Mock).mockReturnValueOnce(new Map([[pointers[0], storedEntity]]))
               ;(mockCatalyst.getProfiles as jest.Mock).mockResolvedValueOnce([fetchedProfile])
               ;(mockCatalyst.convertLambdasProfileToEntity as jest.Mock).mockReturnValueOnce(
                 createProfileEntity({
@@ -287,13 +286,12 @@ describe('ownership validator job', () => {
             })
 
             it('should update the profile in cache', () => {
-              expect(mockProfilesCache.setIfNewer).toHaveBeenCalledWith(
-                pointers[0],
+              expect(mockProfilesCache.setManyIfNewer).toHaveBeenCalledWith([
                 expect.objectContaining({
                   id: entityId,
                   timestamp: 1000
                 })
-              )
+              ])
             })
 
             it('should update the profile in db via bulk upsert', () => {
@@ -341,7 +339,7 @@ describe('ownership validator job', () => {
                 ]
               })
               ;(mockProfilesCache.getAllPointers as jest.Mock).mockReturnValueOnce(pointers)
-              ;(mockProfilesCache.get as jest.Mock).mockReturnValueOnce(storedEntity)
+              ;(mockProfilesCache.getMany as jest.Mock).mockReturnValueOnce(new Map([[pointers[0], storedEntity]]))
               ;(mockCatalyst.getProfiles as jest.Mock).mockResolvedValueOnce([fetchedProfile])
               ;(mockCatalyst.convertLambdasProfileToEntity as jest.Mock).mockReturnValueOnce(
                 createProfileEntity({
@@ -357,13 +355,12 @@ describe('ownership validator job', () => {
             })
 
             it('should update the profile in cache', () => {
-              expect(mockProfilesCache.setIfNewer).toHaveBeenCalledWith(
-                pointers[0],
+              expect(mockProfilesCache.setManyIfNewer).toHaveBeenCalledWith([
                 expect.objectContaining({
                   id: entityId,
                   timestamp: 1000
                 })
-              )
+              ])
             })
 
             it('should update the profile in db via bulk upsert', () => {
@@ -409,7 +406,7 @@ describe('ownership validator job', () => {
                 ]
               })
               ;(mockProfilesCache.getAllPointers as jest.Mock).mockReturnValueOnce(pointers)
-              ;(mockProfilesCache.get as jest.Mock).mockReturnValueOnce(storedEntity)
+              ;(mockProfilesCache.getMany as jest.Mock).mockReturnValueOnce(new Map([[pointers[0], storedEntity]]))
               ;(mockCatalyst.getProfiles as jest.Mock).mockResolvedValueOnce([fetchedProfile])
 
               await component.start?.(createStartOptions())
@@ -417,7 +414,7 @@ describe('ownership validator job', () => {
             })
 
             it('should not update the profile in cache or db', () => {
-              expect(mockProfilesCache.setIfNewer).not.toHaveBeenCalled()
+              expect(mockProfilesCache.setManyIfNewer).not.toHaveBeenCalled()
               expect(mockDb.bulkUpsertProfilesIfNewer).not.toHaveBeenCalled()
             })
           })
@@ -631,7 +628,7 @@ describe('ownership validator job', () => {
       })
 
       it('should not update any profiles', () => {
-        expect(mockProfilesCache.setIfNewer).not.toHaveBeenCalled()
+        expect(mockProfilesCache.setManyIfNewer).not.toHaveBeenCalled()
         expect(mockDb.bulkUpsertProfilesIfNewer).not.toHaveBeenCalled()
       })
 
