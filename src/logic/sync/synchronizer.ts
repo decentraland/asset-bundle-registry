@@ -1,3 +1,4 @@
+import { IBaseComponent } from '@well-known-components/interfaces'
 import { AppComponents, ISynchronizerComponent } from '../../types'
 import { withRetry } from '../../utils/timer'
 
@@ -44,20 +45,11 @@ export async function createSynchronizerComponent(
     }
   }
 
-  async function waitForDatabaseReady(): Promise<void> {
-    let isReady: boolean = false
-    while (!isReady) {
-      try {
-        await db.getLatestProfileTimestamp()
-        isReady = true
-      } catch (error: any) {
-        logger.info('Waiting for database migrations to complete', { error: error.message })
-        await new Promise((resolve) => setTimeout(resolve, 1000))
-      }
+  async function waitForComponentsReady(startedFn: () => boolean): Promise<void> {
+    while (!startedFn()) {
+      await new Promise((resolve) => setTimeout(resolve, 100))
     }
-    // if service is starting from scratch, it will take a while until the migrations are done
-    // TODO: handle database ready directly in the service lifecycle
-    logger.info('Database is ready, synchronizer can start')
+    logger.info('All components started, synchronizer can begin')
   }
 
   async function loop(
@@ -135,7 +127,7 @@ export async function createSynchronizerComponent(
     }
   }
 
-  async function start(_startOptions?: any): Promise<void> {
+  async function start(startOptions: IBaseComponent.ComponentStartOptions): Promise<void> {
     const isSinchronizerDisabled = (await config.getString('DISABLE_PROFILE_SYNC')) === 'true'
     if (isSinchronizerDisabled) {
       logger.info('Profile sync is disabled, skipping')
@@ -145,7 +137,7 @@ export async function createSynchronizerComponent(
     running = true
     abortController = new AbortController()
 
-    await waitForDatabaseReady()
+    await waitForComponentsReady(startOptions.started)
     const lastCursor = await loadLastCursor()
 
     logger.info('Starting profile synchronizer', { lastCursor })

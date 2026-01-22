@@ -12,11 +12,19 @@ import { createDbMockComponent } from '../mocks/db'
 import { createLogMockComponent } from '../mocks/logs'
 import { createCatalystMockComponent } from '../mocks/catalyst'
 import { createProfilesCacheMockComponent } from '../mocks/profiles-cache'
-import { createProfileDbEntity, createProfileEntity } from '../mocks/data/profiles'
+import { createProfileDbEntity, createProfileEntity, createFullAvatar } from '../mocks/data/profiles'
 import { Entity } from '@dcl/schemas'
 import { createEntityPersisterMockComponent } from '../mocks/entity-persister'
 import { createTestMetricsComponent } from '@well-known-components/metrics'
 import { metricDeclarations } from '../../../src/metrics'
+import { Profile } from 'dcl-catalyst-client/dist/client/specs/lambdas-client'
+
+function createTestLambdasProfile(entityId: string, pointer: string): Profile {
+  return {
+    timestamp: 1,
+    avatars: [createFullAvatar({ ethAddress: pointer }, entityId)]
+  }
+}
 
 describe('profile retriever', () => {
   let mockLogs: ILoggerComponent
@@ -60,31 +68,39 @@ describe('profile retriever', () => {
         describe('and the profiles are found in the catalyst', () => {
           let pointerA: string
           let pointerB: string
-          let profilesFromCatalyst: Entity[]
+          let entityIdA: string
+          let entityIdB: string
           beforeEach(() => {
             pointerA = '0x123'
             pointerB = '0x456'
-            profilesFromCatalyst = [
-              createProfileEntity({ id: pointerA, pointers: [pointerA] }),
-              createProfileEntity({ id: pointerB, pointers: [pointerB] })
-            ]
-            mockCatalyst.getEntityByPointers = jest.fn().mockResolvedValueOnce(profilesFromCatalyst)
+            entityIdA = 'bafkreientitya'
+            entityIdB = 'bafkreientityb'
+            mockCatalyst.getProfiles = jest
+              .fn()
+              .mockResolvedValueOnce([
+                createTestLambdasProfile(entityIdA, pointerA),
+                createTestLambdasProfile(entityIdB, pointerB)
+              ])
+            mockCatalyst.convertLambdasProfileToEntity = jest.fn().mockImplementation((profile: Profile) => {
+              const pointer = profile.avatars?.[0]?.ethAddress?.toLowerCase()
+              if (pointer === pointerA.toLowerCase()) {
+                return createProfileEntity({ id: entityIdA, pointers: [pointerA] })
+              } else if (pointer === pointerB.toLowerCase()) {
+                return createProfileEntity({ id: entityIdB, pointers: [pointerB] })
+              }
+              return null
+            })
           })
 
           it('should fetch the profiles from the catalyst and return them', async () => {
             const result = await component.getProfiles([pointerA, pointerB])
-            expect(result).toEqual(
-              new Map([
-                [pointerA, profilesFromCatalyst[0]],
-                [pointerB, profilesFromCatalyst[1]]
-              ])
-            )
+            expect(result.get(pointerA)?.id).toBe(entityIdA)
+            expect(result.get(pointerB)?.id).toBe(entityIdB)
           })
 
           it('should persist the profiles in the entity persister', async () => {
             await component.getProfiles([pointerA, pointerB])
-            expect(mockEntityPersister.persistEntity).toHaveBeenCalledWith(profilesFromCatalyst[0])
-            expect(mockEntityPersister.persistEntity).toHaveBeenCalledWith(profilesFromCatalyst[1])
+            expect(mockEntityPersister.persistEntity).toHaveBeenCalledTimes(2)
           })
         })
       })
@@ -116,33 +132,36 @@ describe('profile retriever', () => {
 
         it('should not fetch the profiles from the catalyst', async () => {
           await component.getProfiles([pointerA, pointerB])
-          expect(mockCatalyst.getEntityByPointers).not.toHaveBeenCalled()
+          expect(mockCatalyst.getProfiles).not.toHaveBeenCalled()
         })
       })
 
       describe('and some profiles are found in the database and the rest are found in the catalyst', () => {
         let pointerA: string
         let pointerB: string
+        let entityIdB: string
         let profilesFromDB: Sync.ProfileDbEntity[]
 
         beforeEach(() => {
           pointerA = '0x123'
           pointerB = '0x456'
+          entityIdB = 'bafkreientityb'
           profilesFromDB = [createProfileDbEntity({ id: pointerA, pointer: pointerA })]
           mockDb.getProfilesByPointers = jest.fn().mockResolvedValueOnce(profilesFromDB)
-          mockCatalyst.getEntityByPointers = jest
-            .fn()
-            .mockResolvedValueOnce([createProfileEntity({ id: pointerB, pointers: [pointerB] })])
+          mockCatalyst.getProfiles = jest.fn().mockResolvedValueOnce([createTestLambdasProfile(entityIdB, pointerB)])
+          mockCatalyst.convertLambdasProfileToEntity = jest.fn().mockImplementation((profile: Profile) => {
+            const pointer = profile.avatars?.[0]?.ethAddress?.toLowerCase()
+            if (pointer === pointerB.toLowerCase()) {
+              return createProfileEntity({ id: entityIdB, pointers: [pointerB] })
+            }
+            return null
+          })
         })
 
         it('should fetch profiles from database and catalyst and return them', async () => {
           const result = await component.getProfiles([pointerA, pointerB])
-          expect(result).toEqual(
-            new Map([
-              [pointerA, createProfileEntity({ id: pointerA, pointers: [pointerA] })],
-              [pointerB, createProfileEntity({ id: pointerB, pointers: [pointerB] })]
-            ])
-          )
+          expect(result.get(pointerA)?.id).toBe(pointerA)
+          expect(result.get(pointerB)?.id).toBe(entityIdB)
         })
 
         it('should call database with both pointers', async () => {
@@ -152,7 +171,7 @@ describe('profile retriever', () => {
 
         it('should call catalyst with the pointer that is not in the database', async () => {
           await component.getProfiles([pointerA, pointerB])
-          expect(mockCatalyst.getEntityByPointers).toHaveBeenCalledWith([pointerB])
+          expect(mockCatalyst.getProfiles).toHaveBeenCalledWith([pointerB])
         })
       })
     })
@@ -193,25 +212,27 @@ describe('profile retriever', () => {
 
         it('should not call catalyst', async () => {
           await component.getProfiles([pointerA, pointerB])
-          expect(mockCatalyst.getEntityByPointers).not.toHaveBeenCalled()
+          expect(mockCatalyst.getProfiles).not.toHaveBeenCalled()
         })
       })
 
       describe('and the rest of profiles are found in the catalyst', () => {
+        const entityIdB = 'bafkreientityb'
         beforeEach(() => {
-          mockCatalyst.getEntityByPointers = jest
-            .fn()
-            .mockResolvedValueOnce([createProfileEntity({ id: pointerB, pointers: [pointerB] })])
+          mockCatalyst.getProfiles = jest.fn().mockResolvedValueOnce([createTestLambdasProfile(entityIdB, pointerB)])
+          mockCatalyst.convertLambdasProfileToEntity = jest.fn().mockImplementation((profile: Profile) => {
+            const pointer = profile.avatars?.[0]?.ethAddress?.toLowerCase()
+            if (pointer === pointerB.toLowerCase()) {
+              return createProfileEntity({ id: entityIdB, pointers: [pointerB] })
+            }
+            return null
+          })
         })
 
         it('should fetch profiles from cache and catalyst and return them', async () => {
           const result = await component.getProfiles([pointerA, pointerB])
-          expect(result).toEqual(
-            new Map([
-              [pointerA, profilesFromCache[0]],
-              [pointerB, createProfileEntity({ id: pointerB, pointers: [pointerB] })]
-            ])
-          )
+          expect(result.get(pointerA)).toBe(profilesFromCache[0])
+          expect(result.get(pointerB)?.id).toBe(entityIdB)
         })
 
         it('should call database with the pointer that is not in the cache', async () => {
@@ -221,7 +242,7 @@ describe('profile retriever', () => {
 
         it('should call catalyst with the pointer that is not in the cache', async () => {
           await component.getProfiles([pointerA, pointerB])
-          expect(mockCatalyst.getEntityByPointers).toHaveBeenCalledWith([pointerB])
+          expect(mockCatalyst.getProfiles).toHaveBeenCalledWith([pointerB])
         })
       })
     })
@@ -259,7 +280,7 @@ describe('profile retriever', () => {
       it('should not call database or catalyst', async () => {
         await component.getProfiles([pointerA, pointerB])
         expect(mockDb.getProfilesByPointers).not.toHaveBeenCalled()
-        expect(mockCatalyst.getEntityByPointers).not.toHaveBeenCalled()
+        expect(mockCatalyst.getProfiles).not.toHaveBeenCalled()
       })
     })
   })

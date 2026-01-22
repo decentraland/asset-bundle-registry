@@ -41,7 +41,7 @@ export function createProfileRetrieverComponent(
           type: EntityType.PROFILE,
           pointers: [dbProfile.pointer],
           timestamp: dbProfile.timestamp,
-          content: dbProfile.content,
+          content: dbProfile.content ?? [],
           metadata: dbProfile.metadata
         })
       }
@@ -55,8 +55,17 @@ export function createProfileRetrieverComponent(
 
   async function getFromCatalyst(pointers: string[]): Promise<Entity[]> {
     try {
-      const catalystEntities = await catalyst.getEntityByPointers(pointers)
-      return catalystEntities.filter((e) => e.type === EntityType.PROFILE)
+      const profiles = await catalyst.getProfiles(pointers)
+      const entities: Entity[] = []
+
+      for (const profile of profiles) {
+        const entity = catalyst.convertLambdasProfileToEntity(profile)
+        if (entity) {
+          entities.push(entity)
+        }
+      }
+
+      return entities
     } catch (error: any) {
       logger.warn('Failed to batch fetch from Catalyst', { error: error.message })
       return []

@@ -49,6 +49,7 @@ export interface IDbComponent {
   getHistoricalRegistryById(id: string): Promise<Registry.DbEntity | null>
   // profiles
   upsertProfileIfNewer(profile: Sync.ProfileDbEntity): Promise<boolean>
+  bulkUpsertProfilesIfNewer(profiles: Sync.ProfileDbEntity[]): Promise<string[]>
   getProfileByPointer(pointer: string): Promise<Sync.ProfileDbEntity | null>
   getProfilesByPointers(pointers: string[]): Promise<Sync.ProfileDbEntity[]>
   getLatestProfileTimestamp(): Promise<number | null>
@@ -75,6 +76,7 @@ export interface ICatalystComponent {
   getEntityByPointers(pointers: string[]): Promise<Entity[]>
   getContent(id: string): Promise<Entity | undefined>
   getProfiles(pointers: string[]): Promise<Profile[]>
+  convertLambdasProfileToEntity(profile: Profile): Entity | null
 }
 
 export interface IWorldsComponent {
