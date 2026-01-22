@@ -1,5 +1,4 @@
 import { IBaseComponent } from '@well-known-components/interfaces'
-import PQueue from 'p-queue'
 import { AppComponents } from '../../types'
 import { AvatarInfo, Entity, EntityType, EthAddress } from '@dcl/schemas'
 import { Sync } from '../../types'
@@ -13,7 +12,6 @@ const TEN_SECONDS_IN_MS = 10_000
 // Batch processing constants
 const BATCH_SIZE = 50 // Profiles per Catalyst API call
 const INTER_BATCH_DELAY_MS = 100 // Delay between batches (also yields to event loop)
-const VALIDATOR_DB_CONCURRENCY = 5 // Throttle DB writes to reduce contention with sync
 
 type ValidatableProperties = {
   wearables: string[]
@@ -32,7 +30,6 @@ export async function createOwnershipValidatorJob(
 
   const VALIDATION_INTERVAL_MS = (await config.getNumber('PROFILES_OWNERSHIP_VALIDATION_INTERVAL_MS')) || TEN_MINUTES_MS
   const logger = logs.getLogger('ownership-validator-job')
-  const validatorDbQueue = new PQueue({ concurrency: VALIDATOR_DB_CONCURRENCY }) // Throttle write DB operations
 
   // Lifecycle state
   let running = false
@@ -109,30 +106,21 @@ export async function createOwnershipValidatorJob(
     }
   }
 
-  async function updateProfileInAllLayers(profile: Entity): Promise<void> {
+  function updateProfileInCache(profile: Entity): void {
     const pointer = profile.pointers[0].toLowerCase()
-
-    // Cache update is synchronous and fast
     profilesCache.setIfNewer(pointer, profile)
+  }
 
-    // DB write goes through throttled queue
-    await validatorDbQueue.add(async () => {
-      const dbProfile: Sync.ProfileDbEntity = {
-        id: profile.id,
-        type: EntityType.PROFILE,
-        pointer: pointer,
-        timestamp: profile.timestamp,
-        content: profile.content,
-        metadata: profile.metadata,
-        localTimestamp: Date.now()
-      }
-
-      try {
-        await db.upsertProfileIfNewer(dbProfile)
-      } catch (error: any) {
-        logger.warn('Failed to update profile in database', { pointer, error: error.message })
-      }
-    })
+  function prepareDbEntity(profile: Entity): Sync.ProfileDbEntity {
+    return {
+      id: profile.id,
+      type: EntityType.PROFILE,
+      pointer: profile.pointers[0].toLowerCase(),
+      timestamp: profile.timestamp,
+      content: profile.content,
+      metadata: profile.metadata,
+      localTimestamp: Date.now()
+    }
   }
 
   async function fetchAndUpdateProfiles(pointers: string[], abortSignal: AbortSignal): Promise<number> {
@@ -162,7 +150,8 @@ export async function createOwnershipValidatorJob(
       }
     }
 
-    let updatedCount = 0
+    // Collect profiles that need updating for bulk DB write
+    const pendingDbUpdates: Sync.ProfileDbEntity[] = []
 
     // Compare with current cached profiles
     for (const pointer of pointers) {
@@ -189,12 +178,34 @@ export async function createOwnershipValidatorJob(
           continue
         }
 
-        await updateProfileInAllLayers(curatedProfile)
-        updatedCount++
+        // Update cache immediately (preserves existing behavior)
+        updateProfileInCache(curatedProfile)
+
+        // Collect for bulk DB write
+        pendingDbUpdates.push(prepareDbEntity(curatedProfile))
       }
     }
 
-    return updatedCount
+    // Bulk write to DB at end of batch
+    if (pendingDbUpdates.length > 0) {
+      try {
+        const updatedPointers = await db.bulkUpsertProfilesIfNewer(pendingDbUpdates)
+        logger.debug('Bulk upserted profiles', {
+          attempted: pendingDbUpdates.length,
+          actuallyUpdated: updatedPointers.length
+        })
+      } catch (error: any) {
+        logger.error('Failed to bulk upsert profiles', {
+          error: error.message,
+          profileCount: pendingDbUpdates.length
+        })
+
+        // no updates
+        return 0
+      }
+    }
+
+    return pendingDbUpdates.length
   }
 
   function splitIntoBatches<T>(items: T[], batchSize: number): T[][] {
@@ -302,9 +313,6 @@ export async function createOwnershipValidatorJob(
     if (loopPromise) {
       await loopPromise.catch(() => {})
     }
-
-    // Wait for pending DB writes to complete
-    await validatorDbQueue.onIdle()
 
     logger.info('Ownership validator stopped')
   }

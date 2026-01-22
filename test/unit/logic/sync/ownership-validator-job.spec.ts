@@ -128,7 +128,7 @@ describe('ownership validator job', () => {
           // note: there is no way to delete profiles from Catalyst
           it('should not update any profiles', () => {
             expect(mockProfilesCache.setIfNewer).not.toHaveBeenCalled()
-            expect(mockDb.upsertProfileIfNewer).not.toHaveBeenCalled()
+            expect(mockDb.bulkUpsertProfilesIfNewer).not.toHaveBeenCalled()
           })
         })
 
@@ -180,7 +180,7 @@ describe('ownership validator job', () => {
 
             it('should not update any profiles', () => {
               expect(mockProfilesCache.setIfNewer).not.toHaveBeenCalled()
-              expect(mockDb.upsertProfileIfNewer).not.toHaveBeenCalled()
+              expect(mockDb.bulkUpsertProfilesIfNewer).not.toHaveBeenCalled()
             })
           })
 
@@ -242,14 +242,14 @@ describe('ownership validator job', () => {
               )
             })
 
-            it('should update profile in db', () => {
-              expect(mockDb.upsertProfileIfNewer).toHaveBeenCalledWith(
+            it('should update profile in db via bulk upsert', () => {
+              expect(mockDb.bulkUpsertProfilesIfNewer).toHaveBeenCalledWith([
                 expect.objectContaining({
                   id: fetchedEntity.id,
                   pointer: pointers[0],
                   timestamp: fetchedEntity.timestamp
                 })
-              )
+              ])
             })
           })
 
@@ -306,8 +306,8 @@ describe('ownership validator job', () => {
               )
             })
 
-            it('should update the profile in db', () => {
-              expect(mockDb.upsertProfileIfNewer).toHaveBeenCalledWith(
+            it('should update the profile in db via bulk upsert', () => {
+              expect(mockDb.bulkUpsertProfilesIfNewer).toHaveBeenCalledWith([
                 expect.objectContaining({
                   id: fetchedEntity.id,
                   pointer: pointers[0],
@@ -322,7 +322,7 @@ describe('ownership validator job', () => {
                     ]
                   })
                 })
-              )
+              ])
             })
           })
 
@@ -379,8 +379,8 @@ describe('ownership validator job', () => {
               )
             })
 
-            it('should update the profile in db', () => {
-              expect(mockDb.upsertProfileIfNewer).toHaveBeenCalledWith(
+            it('should update the profile in db via bulk upsert', () => {
+              expect(mockDb.bulkUpsertProfilesIfNewer).toHaveBeenCalledWith([
                 expect.objectContaining({
                   id: fetchedEntity.id,
                   pointer: pointers[0],
@@ -395,7 +395,7 @@ describe('ownership validator job', () => {
                     ]
                   })
                 })
-              )
+              ])
             })
           })
 
@@ -426,7 +426,7 @@ describe('ownership validator job', () => {
 
             it('should not update the profile in cache or db', () => {
               expect(mockProfilesCache.setIfNewer).not.toHaveBeenCalled()
-              expect(mockDb.upsertProfileIfNewer).not.toHaveBeenCalled()
+              expect(mockDb.bulkUpsertProfilesIfNewer).not.toHaveBeenCalled()
             })
           })
         })
@@ -640,7 +640,7 @@ describe('ownership validator job', () => {
 
       it('should not update any profiles', () => {
         expect(mockProfilesCache.setIfNewer).not.toHaveBeenCalled()
-        expect(mockDb.upsertProfileIfNewer).not.toHaveBeenCalled()
+        expect(mockDb.bulkUpsertProfilesIfNewer).not.toHaveBeenCalled()
       })
 
       it('should continue processing and not crash', async () => {

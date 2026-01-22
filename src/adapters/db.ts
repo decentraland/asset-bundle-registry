@@ -346,6 +346,52 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
     return (result.rowCount ?? 0) > 0
   }
 
+  async function bulkUpsertProfilesIfNewer(profiles: Sync.ProfileDbEntity[]): Promise<string[]> {
+    if (profiles.length === 0) {
+      return []
+    }
+
+    const ids: string[] = []
+    const pointers: string[] = []
+    const timestamps: number[] = []
+    const contents: string[] = []
+    const metadatas: string[] = []
+    const localTimestamps: number[] = []
+
+    for (const profile of profiles) {
+      ids.push(profile.id)
+      pointers.push(profile.pointer.toLowerCase())
+      timestamps.push(profile.timestamp)
+      contents.push(JSON.stringify(profile.content))
+      metadatas.push(JSON.stringify(profile.metadata))
+      localTimestamps.push(profile.localTimestamp)
+    }
+
+    const query = SQL`
+      INSERT INTO profiles (id, pointer, timestamp, content, metadata, local_timestamp)
+      SELECT * FROM UNNEST(
+        ${ids}::varchar[],
+        ${pointers}::varchar[],
+        ${timestamps}::bigint[],
+        ${contents}::jsonb[],
+        ${metadatas}::jsonb[],
+        ${localTimestamps}::bigint[]
+      )
+      ON CONFLICT (pointer) DO UPDATE
+      SET
+        id = EXCLUDED.id,
+        timestamp = EXCLUDED.timestamp,
+        content = EXCLUDED.content,
+        metadata = EXCLUDED.metadata,
+        local_timestamp = EXCLUDED.local_timestamp
+      WHERE profiles.timestamp < EXCLUDED.timestamp
+      RETURNING pointer
+    `
+
+    const result = await pg.query<{ pointer: string }>(query)
+    return result.rows.map((row) => row.pointer)
+  }
+
   async function getProfileByPointer(pointer: string): Promise<Sync.ProfileDbEntity | null> {
     const query = SQL`
       SELECT
@@ -528,6 +574,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
     getSortedHistoricalRegistriesByOwner,
     getHistoricalRegistryById,
     upsertProfileIfNewer,
+    bulkUpsertProfilesIfNewer,
     getProfileByPointer,
     getProfilesByPointers,
     getLatestProfileTimestamp,
