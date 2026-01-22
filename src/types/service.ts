@@ -76,6 +76,7 @@ export interface ICatalystComponent {
   getEntityByPointers(pointers: string[]): Promise<Entity[]>
   getContent(id: string): Promise<Entity | undefined>
   getProfiles(pointers: string[]): Promise<Profile[]>
+  convertLambdasProfileToEntity(profile: Profile): Entity | null
 }
 
 export interface IWorldsComponent {

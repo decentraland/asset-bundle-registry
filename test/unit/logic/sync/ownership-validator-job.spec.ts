@@ -186,57 +186,50 @@ describe('ownership validator job', () => {
 
           describe('and a profile has a newer timestamp', () => {
             let fetchedProfile: Profile
-            let fetchedEntity: Entity
+            const newEntityId = 'bafkreifetchedentity'
 
             beforeEach(async () => {
               fetchedProfile = createTestProfile({
                 timestamp: 2000,
                 avatars: [
-                  createFullAvatar({
-                    userId: pointers[0],
-                    avatar: createAvatarInfo({
-                      wearables: ['urn:decentraland:matic:collections-v2:0x1:0'],
-                      emotes: [{ urn: 'urn:decentraland:matic:collections-v2:0x2:0', slot: 0 }]
-                    })
-                  })
-                ]
-              })
-
-              fetchedEntity = createProfileEntity({
-                id: 'bafkreifetchedentity',
-                timestamp: 2000,
-                pointers: [pointers[0]],
-                metadata: {
-                  avatars: [
-                    createFullAvatar({
+                  createFullAvatar(
+                    {
                       userId: pointers[0],
-                      avatar: createAvatarInfo({
-                        wearables: ['urn:decentraland:matic:collections-v2:0x1:0'],
-                        emotes: [{ urn: 'urn:decentraland:matic:collections-v2:0x2:0', slot: 0 }]
-                      })
-                    })
-                  ]
-                }
+                      ethAddress: pointers[0],
+                      avatar: createAvatarInfo(
+                        {
+                          wearables: ['urn:decentraland:matic:collections-v2:0x1:0'],
+                          emotes: [{ urn: 'urn:decentraland:matic:collections-v2:0x2:0', slot: 0 }]
+                        },
+                        newEntityId
+                      )
+                    },
+                    newEntityId
+                  )
+                ]
               })
               ;(mockProfilesCache.getAllPointers as jest.Mock).mockReturnValueOnce(pointers)
               ;(mockProfilesCache.get as jest.Mock).mockReturnValueOnce(storedEntity)
               ;(mockCatalyst.getProfiles as jest.Mock).mockResolvedValueOnce([fetchedProfile])
-              ;(mockCatalyst.getEntityByPointers as jest.Mock).mockResolvedValueOnce([fetchedEntity])
+              ;(mockCatalyst.convertLambdasProfileToEntity as jest.Mock).mockReturnValueOnce(
+                createProfileEntity({
+                  id: newEntityId,
+                  timestamp: 2000,
+                  pointers: [pointers[0]],
+                  metadata: fetchedProfile
+                })
+              )
 
               await component.start?.(createStartOptions())
               await jest.advanceTimersByTimeAsync(0)
             })
 
-            it('should fetch the entity from catalyst', () => {
-              expect(mockCatalyst.getEntityByPointers).toHaveBeenCalledWith([pointers[0]])
-            })
-
-            it('should update profile in cache', () => {
+            it('should update profile in cache with entity constructed from lambdas profile', () => {
               expect(mockProfilesCache.setIfNewer).toHaveBeenCalledWith(
                 pointers[0],
                 expect.objectContaining({
-                  id: fetchedEntity.id,
-                  timestamp: fetchedEntity.timestamp,
+                  id: newEntityId,
+                  timestamp: 2000,
                   pointers: [pointers[0]]
                 })
               )
@@ -245,9 +238,9 @@ describe('ownership validator job', () => {
             it('should update profile in db via bulk upsert', () => {
               expect(mockDb.bulkUpsertProfilesIfNewer).toHaveBeenCalledWith([
                 expect.objectContaining({
-                  id: fetchedEntity.id,
+                  id: newEntityId,
                   pointer: pointers[0],
-                  timestamp: fetchedEntity.timestamp
+                  timestamp: 2000
                 })
               ])
             })
@@ -255,42 +248,39 @@ describe('ownership validator job', () => {
 
           describe('and fetched profile has different wearables', () => {
             let fetchedProfile: Profile
-            let fetchedEntity: Entity
+            const entityId = 'bafkreifetchedentity'
 
             beforeEach(async () => {
               fetchedProfile = createTestProfile({
                 timestamp: 1000,
                 avatars: [
-                  createFullAvatar({
-                    userId: pointers[0],
-                    avatar: createAvatarInfo({
-                      wearables: ['urn:decentraland:matic:collections-v2:should-persist'],
-                      emotes: [{ urn: 'urn:decentraland:matic:collections-v2:0x2:0', slot: 0 }]
-                    })
-                  })
-                ]
-              })
-
-              fetchedEntity = createProfileEntity({
-                id: 'bafkreifetchedentity',
-                timestamp: 1000,
-                pointers: [pointers[0]],
-                metadata: {
-                  avatars: [
-                    createFullAvatar({
+                  createFullAvatar(
+                    {
                       userId: pointers[0],
-                      avatar: createAvatarInfo({
-                        wearables: ['urn:decentraland:matic:collections-v2:should-persist'],
-                        emotes: [{ urn: 'urn:decentraland:matic:collections-v2:0x2:0', slot: 0 }]
-                      })
-                    })
-                  ]
-                }
+                      ethAddress: pointers[0],
+                      avatar: createAvatarInfo(
+                        {
+                          wearables: ['urn:decentraland:matic:collections-v2:should-persist'],
+                          emotes: [{ urn: 'urn:decentraland:matic:collections-v2:0x2:0', slot: 0 }]
+                        },
+                        entityId
+                      )
+                    },
+                    entityId
+                  )
+                ]
               })
               ;(mockProfilesCache.getAllPointers as jest.Mock).mockReturnValueOnce(pointers)
               ;(mockProfilesCache.get as jest.Mock).mockReturnValueOnce(storedEntity)
               ;(mockCatalyst.getProfiles as jest.Mock).mockResolvedValueOnce([fetchedProfile])
-              ;(mockCatalyst.getEntityByPointers as jest.Mock).mockResolvedValueOnce([fetchedEntity])
+              ;(mockCatalyst.convertLambdasProfileToEntity as jest.Mock).mockReturnValueOnce(
+                createProfileEntity({
+                  id: entityId,
+                  timestamp: 1000,
+                  pointers: [pointers[0]],
+                  metadata: fetchedProfile
+                })
+              )
 
               await component.start?.(createStartOptions())
               await jest.advanceTimersByTimeAsync(0)
@@ -300,8 +290,8 @@ describe('ownership validator job', () => {
               expect(mockProfilesCache.setIfNewer).toHaveBeenCalledWith(
                 pointers[0],
                 expect.objectContaining({
-                  id: fetchedEntity.id,
-                  timestamp: fetchedEntity.timestamp
+                  id: entityId,
+                  timestamp: 1000
                 })
               )
             })
@@ -309,9 +299,9 @@ describe('ownership validator job', () => {
             it('should update the profile in db via bulk upsert', () => {
               expect(mockDb.bulkUpsertProfilesIfNewer).toHaveBeenCalledWith([
                 expect.objectContaining({
-                  id: fetchedEntity.id,
+                  id: entityId,
                   pointer: pointers[0],
-                  timestamp: fetchedEntity.timestamp,
+                  timestamp: 1000,
                   metadata: expect.objectContaining({
                     avatars: [
                       expect.objectContaining({
@@ -328,42 +318,39 @@ describe('ownership validator job', () => {
 
           describe('and fetched profile has different emotes', () => {
             let fetchedProfile: Profile
-            let fetchedEntity: Entity
+            const entityId = 'bafkreifetchedentity'
 
             beforeEach(async () => {
               fetchedProfile = createTestProfile({
                 timestamp: 1000,
                 avatars: [
-                  createFullAvatar({
-                    userId: pointers[0],
-                    avatar: createAvatarInfo({
-                      wearables: ['urn:decentraland:matic:collections-v2:0x1:0'],
-                      emotes: [{ urn: 'urn:decentraland:matic:collections-v2:should-persist', slot: 0 }]
-                    })
-                  })
-                ]
-              })
-
-              fetchedEntity = createProfileEntity({
-                id: 'bafkreifetchedentity',
-                timestamp: 1000,
-                pointers: [pointers[0]],
-                metadata: {
-                  avatars: [
-                    createFullAvatar({
+                  createFullAvatar(
+                    {
                       userId: pointers[0],
-                      avatar: createAvatarInfo({
-                        wearables: ['urn:decentraland:matic:collections-v2:0x1:0'],
-                        emotes: [{ urn: 'urn:decentraland:matic:collections-v2:should-persist', slot: 0 }]
-                      })
-                    })
-                  ]
-                }
+                      ethAddress: pointers[0],
+                      avatar: createAvatarInfo(
+                        {
+                          wearables: ['urn:decentraland:matic:collections-v2:0x1:0'],
+                          emotes: [{ urn: 'urn:decentraland:matic:collections-v2:should-persist', slot: 0 }]
+                        },
+                        entityId
+                      )
+                    },
+                    entityId
+                  )
+                ]
               })
               ;(mockProfilesCache.getAllPointers as jest.Mock).mockReturnValueOnce(pointers)
               ;(mockProfilesCache.get as jest.Mock).mockReturnValueOnce(storedEntity)
               ;(mockCatalyst.getProfiles as jest.Mock).mockResolvedValueOnce([fetchedProfile])
-              ;(mockCatalyst.getEntityByPointers as jest.Mock).mockResolvedValueOnce([fetchedEntity])
+              ;(mockCatalyst.convertLambdasProfileToEntity as jest.Mock).mockReturnValueOnce(
+                createProfileEntity({
+                  id: entityId,
+                  timestamp: 1000,
+                  pointers: [pointers[0]],
+                  metadata: fetchedProfile
+                })
+              )
 
               await component.start?.(createStartOptions())
               await jest.advanceTimersByTimeAsync(0)
@@ -373,8 +360,8 @@ describe('ownership validator job', () => {
               expect(mockProfilesCache.setIfNewer).toHaveBeenCalledWith(
                 pointers[0],
                 expect.objectContaining({
-                  id: fetchedEntity.id,
-                  timestamp: fetchedEntity.timestamp
+                  id: entityId,
+                  timestamp: 1000
                 })
               )
             })
@@ -382,9 +369,9 @@ describe('ownership validator job', () => {
             it('should update the profile in db via bulk upsert', () => {
               expect(mockDb.bulkUpsertProfilesIfNewer).toHaveBeenCalledWith([
                 expect.objectContaining({
-                  id: fetchedEntity.id,
+                  id: entityId,
                   pointer: pointers[0],
-                  timestamp: fetchedEntity.timestamp,
+                  timestamp: 1000,
                   metadata: expect.objectContaining({
                     avatars: [
                       expect.objectContaining({
@@ -399,26 +386,31 @@ describe('ownership validator job', () => {
             })
           })
 
-          describe('and fetching entity by pointer fails', () => {
+          describe('and fetched profile has no valid snapshot URL', () => {
             let fetchedProfile: Profile
 
             beforeEach(async () => {
               fetchedProfile = createTestProfile({
                 timestamp: 2000,
                 avatars: [
-                  createFullAvatar({
-                    userId: pointers[0],
-                    avatar: createAvatarInfo({
-                      wearables: ['urn:decentraland:matic:collections-v2:0x1:0'],
-                      emotes: [{ urn: 'urn:decentraland:matic:collections-v2:0x2:0', slot: 0 }]
-                    })
-                  })
+                  {
+                    ...createFullAvatar({
+                      userId: pointers[0],
+                      ethAddress: pointers[0]
+                    }),
+                    avatar: {
+                      ...createAvatarInfo({
+                        wearables: ['urn:decentraland:matic:collections-v2:0x1:0'],
+                        emotes: [{ urn: 'urn:decentraland:matic:collections-v2:0x2:0', slot: 0 }]
+                      }),
+                      snapshots: { face256: '', body: '' } // No valid snapshot URL
+                    }
+                  }
                 ]
               })
               ;(mockProfilesCache.getAllPointers as jest.Mock).mockReturnValueOnce(pointers)
               ;(mockProfilesCache.get as jest.Mock).mockReturnValueOnce(storedEntity)
               ;(mockCatalyst.getProfiles as jest.Mock).mockResolvedValueOnce([fetchedProfile])
-              ;(mockCatalyst.getEntityByPointers as jest.Mock).mockResolvedValueOnce([])
 
               await component.start?.(createStartOptions())
               await jest.advanceTimersByTimeAsync(0)

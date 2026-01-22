@@ -3,6 +3,14 @@ import { Sync } from '../../src/types'
 import { createRequestMaker } from '../utils'
 import { test } from '../components'
 import { createProfileDbEntity, createProfileEntity, createFullAvatar } from '../unit/mocks/data/profiles'
+import { Profile } from 'dcl-catalyst-client/dist/client/specs/lambdas-client'
+
+function createTestLambdasProfile(entityId: string, pointer: string, name: string): Profile {
+  return {
+    timestamp: 1,
+    avatars: [createFullAvatar({ ethAddress: pointer, name }, entityId)]
+  }
+}
 
 function profileDbEntityToEntity(profileDb: Sync.ProfileDbEntity): Entity {
   return {
@@ -119,27 +127,39 @@ test('POST /profiles endpoint', async function ({ components }) {
 
   describe('when profile is not in database but exists in catalyst', function () {
     let pointer: string
-    let catalystProfile: Entity
+    let lambdasProfile: Profile
 
-    beforeEach(function () {
+    beforeEach(async function () {
       pointer = '0xcatalystprofile1111111111111111111'
-      catalystProfile = createProfileEntity({
-        id: 'bafkreicatalystprofile',
-        pointers: [pointer],
-        metadata: { avatars: [createFullAvatar({ ethAddress: pointer, name: 'CatalystUser' })] }
-      })
-      jest.spyOn(components.catalyst, 'getEntityByPointers').mockResolvedValueOnce([catalystProfile])
+      lambdasProfile = createTestLambdasProfile('bafkreicatalystprofile', pointer, 'CatalystUser')
+      jest.spyOn(components.catalyst, 'getProfiles').mockResolvedValueOnce([lambdasProfile])
+      jest.spyOn(components.catalyst, 'convertLambdasProfileToEntity').mockReturnValueOnce(
+        profileDbEntityToEntity(
+          createProfileDbEntity({
+            id: 'bafkreicatalystprofile',
+            pointer,
+            metadata: {
+              avatars: [createFullAvatar({ ethAddress: pointer, name: 'CatalystUser' }, 'bafkreicatalystprofile')]
+            }
+          })
+        )
+      )
+      // Profile will be persisted by profile-retriever when fetched from catalyst
+      profilesToCleanUp.push(pointer)
+    })
+
+    afterEach(async () => {
+      await components.extendedDb.deleteProfiles([pointer])
     })
 
     it('should fetch from catalyst and return profile with snapshot URLs', async function () {
       const response = await fetchLocally('POST', '/profiles', undefined, { ids: [pointer] })
       const parsedResponse = await response.json()
 
-      const expectedProfile = components.profileSanitizer.mapEntitiesToProfiles([catalystProfile])
-
       expect(response.status).toBe(200)
-      expect(normalizeProfileDTOs(parsedResponse)).toEqual(expectedProfile)
-      expect(components.catalyst.getEntityByPointers).toHaveBeenCalledWith([pointer])
+      expect(parsedResponse).toHaveLength(1)
+      expect(parsedResponse[0].avatars[0].name).toBe('CatalystUser')
+      expect(components.catalyst.getProfiles).toHaveBeenCalledWith([pointer])
     })
   })
 
@@ -148,7 +168,7 @@ test('POST /profiles endpoint', async function ({ components }) {
 
     beforeEach(function () {
       pointer = '0xnonexistentprofile11111111111111111'
-      jest.spyOn(components.catalyst, 'getEntityByPointers').mockResolvedValueOnce([])
+      jest.spyOn(components.catalyst, 'getProfiles').mockResolvedValueOnce([])
     })
 
     it('should return an empty array', async function () {
