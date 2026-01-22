@@ -13,7 +13,6 @@ import { main } from '../src/service'
 import { createDbAdapter } from '../src/adapters/db'
 import { extendDbComponent } from './db'
 import { createMessageConsumerMockComponent } from './unit/mocks/message-consumer'
-import { createPointersComponent } from '../src/logic/pointers'
 
 /**
  * Behaves like Jest "describe" function, used to describe a test for a
@@ -44,8 +43,7 @@ async function initComponents(): Promise<TestComponents> {
   // This worker writes to the database, so it runs the migrations
   const pg = await createPgComponent(components)
 
-  const pointers = createPointersComponent()
-  const db = createDbAdapter({ pg, pointers })
+  const db = createDbAdapter({ pg })
 
   const messageConsumer = createMessageConsumerMockComponent()
 

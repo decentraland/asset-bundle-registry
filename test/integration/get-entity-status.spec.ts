@@ -165,19 +165,31 @@ test('GET /entities/status/:id', function ({ components }) {
     })
   })
 
-  it('should return entity status correctly when a world scene pointer is provided', async function () {
+  it('should return entity status correctly when querying with world coordinates and world_name', async function () {
     const registry = createRegistryEntity(
       identity.realAccount.address,
       Registry.Status.COMPLETE,
       Registry.SimplifiedStatus.COMPLETE,
-      { id: 'world-scene-status-entity', pointers: ['statusworld.dcl.eth:0,0'] }
+      {
+        id: 'world-scene-status-entity',
+        type: 'world',
+        pointers: ['0,0'],
+        metadata: {
+          worldConfiguration: {
+            name: 'statusworld.dcl.eth'
+          }
+        }
+      }
     )
     await createRegistryOnDatabase(registry)
 
     const response = await fetchLocally(
       'GET',
-      `/entities/status/${encodeURIComponent('statusworld.dcl.eth:0,0')}`,
-      identity
+      `/entities/status/${encodeURIComponent('0,0')}`,
+      identity,
+      undefined,
+      {},
+      { world_name: 'statusworld.dcl.eth' }
     )
     const parsedResponse = await response.json()
 
@@ -190,26 +202,49 @@ test('GET /entities/status/:id', function ({ components }) {
     })
   })
 
-  it('should return the most recent entity status when a legacy world pointer matches world scene pointers', async function () {
+  it('should return the most recent entity status when querying with world coordinates and world_name', async function () {
     const olderRegistry = createRegistryEntity(
       identity.realAccount.address,
       Registry.Status.COMPLETE,
       Registry.SimplifiedStatus.COMPLETE,
-      { id: 'older-world-scene-entity', pointers: ['legacystatusworld.dcl.eth:0,0'], timestamp: 1000 }
+      {
+        id: 'older-world-scene-entity',
+        type: 'world',
+        pointers: ['0,0'],
+        timestamp: 1000,
+        metadata: {
+          worldConfiguration: {
+            name: 'legacystatusworld.dcl.eth'
+          }
+        }
+      }
     )
     const newerRegistry = createRegistryEntity(
       identity.realAccount.address,
       Registry.Status.COMPLETE,
       Registry.SimplifiedStatus.COMPLETE,
-      { id: 'newer-world-scene-entity', pointers: ['legacystatusworld.dcl.eth:1,0'], timestamp: 2000 }
+      {
+        id: 'newer-world-scene-entity',
+        type: 'world',
+        pointers: ['1,0'],
+        timestamp: 2000,
+        metadata: {
+          worldConfiguration: {
+            name: 'legacystatusworld.dcl.eth'
+          }
+        }
+      }
     )
     await createRegistryOnDatabase(olderRegistry)
     await createRegistryOnDatabase(newerRegistry)
 
     const response = await fetchLocally(
       'GET',
-      `/entities/status/${encodeURIComponent('legacystatusworld.dcl.eth')}`,
-      identity
+      `/entities/status/${encodeURIComponent('1,0')}`,
+      identity,
+      undefined,
+      {},
+      { world_name: 'legacystatusworld.dcl.eth' }
     )
     const parsedResponse = await response.json()
 

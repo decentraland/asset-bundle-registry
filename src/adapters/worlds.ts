@@ -2,23 +2,24 @@ import { Entity } from '@dcl/schemas'
 import { AppComponents, IWorldsComponent } from '../types'
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
 
+// Regular expression for Genesis City coordinates (e.g., -53,71 or 100,-50)
+const GENESIS_COORDINATES_REGEX = /^-?\d+,-?\d+$/
+
 export async function createWorldsAdapter({
   logs,
   config,
-  fetch,
-  pointers
-}: Pick<AppComponents, 'logs' | 'config' | 'fetch' | 'pointers'>): Promise<IWorldsComponent> {
+  fetch
+}: Pick<AppComponents, 'logs' | 'config' | 'fetch'>): Promise<IWorldsComponent> {
   const logger = logs.getLogger('worlds-adapter')
   const defaultWorldsContentServerUrl = await config.requireString('WORLDS_CONTENT_SERVER_URL')
 
   /**
    * Fetches a world entity by its entity id.
-   * For multi-scene worlds, pointers are transformed to world-prefixed format (worldname:coordinate).
-   * For single-scene worlds, the world name is used as the pointer (backward compatible).
+   * For worlds, only coordinates (parcels) are stored as pointers, not world-prefixed pointers.
    *
    * @param entityId - The world entity ID
    * @param contentServerUrl - The world content server URL
-   * @returns The world entity with transformed pointers or null
+   * @returns The world entity with transformed pointers (coordinates only) or null
    */
   async function getWorld(
     entityId: string,
@@ -43,8 +44,11 @@ export async function createWorldsAdapter({
       // Get the original pointers from the entity
       const originalPointers: string[] = parsedResponse.pointers || []
 
-      // Transform pointers to world-prefixed format if they are coordinates
-      const transformedPointers = pointers.transformWorldPointers(worldName, originalPointers)
+      // For worlds, only store the coordinates (parcels) as pointers
+      // Filter to only include coordinate-like pointers
+      const transformedPointers = originalPointers
+        .filter((pointer) => GENESIS_COORDINATES_REGEX.test(pointer))
+        .map((pointer) => pointer.toLowerCase())
 
       logger.debug('Transformed world pointers', {
         entityId,

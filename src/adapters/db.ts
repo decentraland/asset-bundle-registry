@@ -2,10 +2,7 @@ import SQL, { SQLStatement } from 'sql-template-strings'
 import { AppComponents, IDbComponent, Registry, Sync } from '../types'
 import { EthAddress } from '@dcl/schemas'
 
-export function createDbAdapter({
-  pg,
-  pointers: pointersComponent
-}: Pick<AppComponents, 'pg' | 'pointers'>): IDbComponent {
+export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent {
   async function getSortedRegistriesByOwner(owner: EthAddress): Promise<Registry.DbEntity[]> {
     const query: SQLStatement = SQL`
       SELECT 
@@ -24,27 +21,25 @@ export function createDbAdapter({
   /**
    * Queries registries by pointers.
    *
-   * When a legacy world pointer (e.g., "pepe.dcl.eth") is provided, this function
-   * will also match world scene pointers that start with that world name
-   * (e.g., "pepe.dcl.eth:0,0", "pepe.dcl.eth:1,0").
+   * When worldName is not provided, coordinates are treated as Genesis City coordinates
+   * and world entities are excluded from results.
    *
-   * This allows querying with just the world name to retrieve all scenes in a world.
+   * When worldName is provided, only entities matching that world name (via metadata.worldConfiguration.name)
+   * are returned.
    *
-   * @param pointers - Array of pointers to search for
+   * @param pointers - Array of pointers to search for (coordinates)
    * @param statuses - Optional status filter
    * @param descSort - Whether to sort by timestamp descending
+   * @param worldName - Optional world name to filter by
    * @returns Matching registries
    */
   async function getSortedRegistriesByPointers(
     pointers: string[],
     statuses?: Registry.Status[],
-    descSort: boolean = false
+    descSort: boolean = false,
+    worldName?: string
   ): Promise<Registry.DbEntity[]> {
     const lowerCasePointers = pointers.map((p) => p.toLowerCase())
-
-    // Separate legacy world pointers (like "pepe.dcl.eth") from other pointers
-    // Legacy world pointers need special handling to also match world scene pointers
-    const legacyWorldPointers = lowerCasePointers.filter(pointersComponent.isLegacyWorldPointer)
 
     // Build the base query with array overlap
     const query = SQL`
@@ -56,18 +51,25 @@ export function createDbAdapter({
         pointers && ${lowerCasePointers}::varchar(255)[]
     `
 
-    // For legacy world pointers, also match world scene pointers starting with "worldname:"
-    if (legacyWorldPointers.length > 0) {
-      const worldPrefixPatterns = legacyWorldPointers.map((p) => `${p}:%`)
+    query.append(SQL`)`)
+
+    // Filter by world name if provided
+    if (worldName) {
+      const normalizedWorldName = worldName.toLowerCase()
+      // When worldName is provided, only return entities matching that world name
+      // The index idx_registries_world_configuration_name covers non-null cases,
+      // so this query will use the index efficiently
       query.append(SQL`
-        OR EXISTS (
-          SELECT 1 FROM unnest(pointers) AS p
-          WHERE p LIKE ANY(${worldPrefixPatterns}::varchar(255)[])
-        )
+        AND metadata->'worldConfiguration'->>'name' = ${normalizedWorldName}
+      `)
+    } else {
+      // When worldName is not provided, exclude worlds (treat coordinates as Genesis City)
+      // Exclude entities that are worlds (have worldConfiguration.name)
+      // Note: This won't use the index since we're filtering for NULL values
+      query.append(SQL`
+        AND metadata->'worldConfiguration'->>'name' IS NULL
       `)
     }
-
-    query.append(SQL`)`)
 
     if (statuses) {
       query.append(SQL`

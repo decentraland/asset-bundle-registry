@@ -20,7 +20,8 @@ export interface IDbComponent {
   getSortedRegistriesByPointers(
     pointers: string[],
     statuses?: Registry.Status[],
-    descSort?: boolean
+    descSort?: boolean,
+    worldName?: string
   ): Promise<Registry.DbEntity[]>
   getRegistryById(id: string): Promise<Registry.DbEntity | null>
   insertRegistry(registry: Registry.DbEntity): Promise<Registry.DbEntity>

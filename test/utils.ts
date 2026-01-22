@@ -56,9 +56,20 @@ export function createRequestMaker({ localFetch }: Pick<TestComponents, 'localFe
     path: string,
     identity: Identity,
     body: any,
-    metadata: Record<string, any> = {}
+    metadata: Record<string, any> = {},
+    queryParams?: Record<string, string>
   ) {
     let headers: Record<string, string> = {}
+    let url = path
+
+    // Add query parameters if provided
+    if (queryParams) {
+      const params = new URLSearchParams(queryParams)
+      const queryString = params.toString()
+      if (queryString) {
+        url = `${path}${path.includes('?') ? '&' : '?'}${queryString}`
+      }
+    }
 
     if (identity) {
       headers = getAuthHeaders(method, path, metadata, (payload) =>
@@ -73,7 +84,7 @@ export function createRequestMaker({ localFetch }: Pick<TestComponents, 'localFe
       )
     }
 
-    return localFetch.fetch(path, {
+    return localFetch.fetch(url, {
       method: method,
       headers: {
         ...headers,
