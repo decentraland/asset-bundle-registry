@@ -60,7 +60,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
       // The index idx_registries_world_configuration_name covers non-null cases,
       // so this query will use the index efficiently
       query.append(SQL`
-        AND metadata->'worldConfiguration'->>'name' = ${normalizedWorldName}
+        AND LOWER(metadata->'worldConfiguration'->>'name') = ${normalizedWorldName}
       `)
     } else {
       // When worldName is not provided, exclude worlds (treat coordinates as Genesis City)
