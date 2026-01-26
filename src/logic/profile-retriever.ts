@@ -65,6 +65,23 @@ export function createProfileRetrieverComponent(
         }
       }
 
+      // Log when profiles are lost during catalyst fetch
+      if (entities.length < pointers.length) {
+        const returnedUserIds = profiles.map((p) => p.avatars?.[0]?.userId?.toLowerCase()).filter(Boolean)
+        const notReturnedPointers = pointers.filter((p) => !returnedUserIds.includes(p.toLowerCase()))
+
+        logger.warn('Catalyst fetch - profiles not fully retrieved', {
+          requested: pointers.length,
+          returnedFromCatalyst: profiles.length,
+          convertedToEntities: entities.length,
+          missingFromCatalyst: pointers.length - profiles.length,
+          failedAvatarConversion: profiles.length - entities.length,
+          sampleRequestedPointers: pointers.slice(0, 3).join(', '),
+          sampleReturnedUserIds: returnedUserIds.slice(0, 3).join(', '),
+          sampleNotReturnedPointers: notReturnedPointers.slice(0, 3).join(', ')
+        })
+      }
+
       return entities
     } catch (error: any) {
       logger.warn('Failed to batch fetch from Catalyst', { error: error.message })

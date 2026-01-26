@@ -121,6 +121,21 @@ export async function createOwnershipValidatorJob(
       }
     }
 
+    // Log when no comparisons were possible (key mismatch detection)
+    const comparisonsMade = Array.from(originalProfileMap.keys()).filter((p) => sanitizedMap.has(p)).length
+    if (comparisonsMade === 0 && pointers.length > 0) {
+      const cacheKeys = Array.from(originalProfileMap.keys())
+      const lambdasKeys = Array.from(sanitizedMap.keys())
+
+      logger.warn('Profile validation skipped - keys not matching', {
+        pointers: pointers.length,
+        inCache: cachedMap.size,
+        fromLambdas: sanitizedMap.size,
+        sampleCacheKeys: cacheKeys.slice(0, 3).join(', '),
+        sampleLambdasKeys: lambdasKeys.slice(0, 3).join(', ') || 'none'
+      })
+    }
+
     if (entitiesToUpdate.length > 0) {
       profilesCache.setManyIfNewer(entitiesToUpdate)
     }
