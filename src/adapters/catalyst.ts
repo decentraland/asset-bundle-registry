@@ -157,6 +157,12 @@ export async function createCatalystAdapter({
       return []
     }
 
+    logger.debug('Catalyst getProfiles request', {
+      url: historicalCatalyst,
+      pointerCount: pointers.length,
+      samplePointers: pointers.slice(0, 3).join(', ')
+    })
+
     try {
       const profiles = await historicalLambdasClient.getAvatarsDetailsByPost({ ids: pointers })
       const profilesWithAvatars = profiles.filter(
@@ -166,7 +172,9 @@ export async function createCatalystAdapter({
     } catch (error: any) {
       logger.error('Error fetching profiles from historical catalyst lambdas', {
         error: error?.message || 'Unknown error',
-        count: pointers.length
+        stack: error?.stack?.split('\n').slice(0, 3).join(' | '),
+        pointerCount: pointers.length,
+        samplePointers: pointers.slice(0, 3).join(', ')
       })
       return []
     }

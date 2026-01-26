@@ -109,7 +109,8 @@ export async function initComponents(): Promise<AppComponents> {
     ttlMs: undefined
   })
   const profilesCache = createProfilesCacheComponent(profilesLRUCache, {
-    metrics
+    metrics,
+    logs
   })
   const snapshotContentStorage = await createSnapshotContentStorage({
     logs,

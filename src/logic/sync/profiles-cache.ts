@@ -15,9 +15,10 @@ const FIVE_MINUTES_MS = 5 * 60 * 1000
  */
 export function createProfilesCacheComponent(
   cache: ILRUNormalizedCache<Sync.CacheEntry>,
-  components: Pick<AppComponents, 'metrics'>
+  components: Pick<AppComponents, 'metrics' | 'logs'>
 ): IProfilesCacheComponent {
-  const { metrics } = components
+  const { metrics, logs } = components
+  const logger = logs.getLogger('profiles-cache')
 
   // periodic metrics report
   setInterval(() => {
@@ -82,7 +83,12 @@ export function createProfilesCacheComponent(
   }
 
   function getAllPointers(): string[] {
-    return cache.keys()
+    const pointers = cache.keys()
+    logger.debug('getAllPointers called', {
+      count: pointers.length,
+      sample: pointers.slice(0, 5).join(', ')
+    })
+    return pointers
   }
 
   return {

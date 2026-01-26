@@ -72,10 +72,25 @@ export async function createOwnershipValidatorJob(
       return 0
     }
 
+    logger.debug('Requesting profiles from lambdas', {
+      pointerCount: pointers.length,
+      samplePointers: pointers.slice(0, 3).join(', '),
+      firstPointer: pointers[0]
+    })
+
     const fetchedProfiles = await catalyst.getProfiles(pointers)
 
+    logger.debug('Lambdas response received', {
+      requestedCount: pointers.length,
+      returnedCount: fetchedProfiles.length,
+      returnedUserIds: fetchedProfiles
+        .slice(0, 3)
+        .map((p) => p.avatars?.[0]?.userId)
+        .join(', ')
+    })
+
     if (fetchedProfiles.length === 0) {
-      logger.warn('No profiles returned from lamb2', { requestedCount: pointers.length })
+      logger.warn('No profiles returned from lambdas', { requestedCount: pointers.length })
       return 0
     }
 
