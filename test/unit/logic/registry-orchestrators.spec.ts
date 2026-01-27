@@ -1,16 +1,16 @@
 import { EntityType } from '@dcl/schemas'
-import { Registry, IRegistryOrchestratorComponent } from '../../../src/types'
+import { Registry } from '../../../src/types'
 import { createDbMockComponent } from '../mocks/db'
 import { createLogMockComponent } from '../mocks/logs'
-import { createRegistryOrchestratorComponent } from '../../../src/logic/registry-orchestrator'
+import { createRegistryComponent, IRegistryComponent } from '../../../src/logic/registry'
 import { createTestMetricsComponent } from '@well-known-components/metrics'
 import { metricDeclarations } from '../../../src/metrics'
 
-describe('registry orchestrator should', () => {
+describe('registry component should', () => {
   const mockDb = createDbMockComponent()
   const logs = createLogMockComponent()
   const metrics = createTestMetricsComponent(metricDeclarations)
-  const sut: IRegistryOrchestratorComponent = createRegistryOrchestratorComponent({ metrics, db: mockDb, logs })
+  const sut: IRegistryComponent = createRegistryComponent({ metrics, db: mockDb, logs })
 
   const createRegistry = (partial: Partial<Registry.DbEntity> = {}): Registry.DbEntity => ({
     id: 'bafkreig4pgot2bf6iw3bfxgo4nn7ich35ztjfjhjdomz2yqmtmnagpxhjq',

@@ -1,18 +1,27 @@
 import { AssetBundleConversionFinishedEvent, Entity } from '@dcl/schemas'
-import { AppComponents, IEventHandlerComponent, EventHandlerName, EventHandlerResult, Registry } from '../../types'
+import {
+  AppComponents,
+  IEventHandlerComponent,
+  EventHandlerName,
+  EventHandlerResult,
+  Registry,
+  ICoordinatesComponent
+} from '../../types'
 import { ManifestStatusCode } from '../entity-status-fetcher'
+import { IRegistryComponent } from '../registry'
 
 export const createTexturesEventHandler = ({
   logs,
   db,
   catalyst,
   worlds,
-  registryOrchestrator,
-  queuesStatusManager
-}: Pick<
-  AppComponents,
-  'logs' | 'db' | 'catalyst' | 'worlds' | 'registryOrchestrator' | 'queuesStatusManager'
->): IEventHandlerComponent<AssetBundleConversionFinishedEvent> => {
+  registry,
+  queuesStatusManager,
+  coordinates
+}: Pick<AppComponents, 'logs' | 'db' | 'catalyst' | 'worlds' | 'queuesStatusManager'> & {
+  registry: IRegistryComponent
+  coordinates: ICoordinatesComponent
+}): IEventHandlerComponent<AssetBundleConversionFinishedEvent> => {
   const HANDLER_NAME = EventHandlerName.TEXTURES
   const logger = logs.getLogger('textures-handler')
 
@@ -68,7 +77,7 @@ export const createTexturesEventHandler = ({
             }
           }
 
-          entity = await registryOrchestrator.persistAndRotateStates({
+          entity = await registry.persistAndRotateStates({
             ...fetchedEntity,
             deployer: '', // cannot infer from textures event
             bundles: defaultBundles,
@@ -111,14 +120,14 @@ export const createTexturesEventHandler = ({
           preservingPreviousStatus: String(shouldPreservePreviousStatus)
         })
 
-        let registry: Registry.DbEntity | null = await db.upsertRegistryBundle(
+        let registryEntity: Registry.DbEntity | null = await db.upsertRegistryBundle(
           metadata.entityId,
           metadata.platform,
           !!metadata.isLods,
           status
         )
 
-        if (!registry) {
+        if (!registryEntity) {
           logger.error('Error storing bundle', {
             entityId: event.metadata.entityId,
             platform: event.metadata.platform
@@ -134,14 +143,14 @@ export const createTexturesEventHandler = ({
         // If we're preserving the previous COMPLETE status, we should also keep the old version
         // to avoid pointing clients to bundles that don't exist
         if (!shouldPreservePreviousStatus) {
-          registry = await db.updateRegistryVersionWithBuildDate(
+          registryEntity = await db.updateRegistryVersionWithBuildDate(
             event.metadata.entityId,
             event.metadata.platform,
             event.metadata.version,
             new Date(event.timestamp).toISOString()
           )
 
-          if (!registry) {
+          if (!registryEntity) {
             logger.error('Error updating version', {
               entityId: event.metadata.entityId,
               platform: event.metadata.platform
@@ -156,10 +165,35 @@ export const createTexturesEventHandler = ({
 
         logger.info(`Bundle stored`, {
           entityId: event.metadata.entityId,
-          bundles: JSON.stringify(registry.bundles)
+          bundles: JSON.stringify(registryEntity.bundles)
         })
 
-        await registryOrchestrator.persistAndRotateStates(registry)
+        const updatedRegistry = await registry.persistAndRotateStates(registryEntity)
+
+        // If this is a world entity and it's now processed (COMPLETE or FALLBACK),
+        // trigger spawn coordinate recalculation
+        if (
+          event.metadata.isWorld &&
+          (updatedRegistry.status === Registry.Status.COMPLETE || updatedRegistry.status === Registry.Status.FALLBACK)
+        ) {
+          const worldName = (updatedRegistry.metadata as any)?.worldConfiguration?.name
+          if (worldName) {
+            logger.info('Triggering spawn coordinate recalculation for world', {
+              worldName,
+              entityId: updatedRegistry.id,
+              status: updatedRegistry.status
+            })
+            try {
+              await coordinates.recalculateSpawnIfNeeded(worldName)
+            } catch (spawnError: any) {
+              // Log but don't fail the handler - spawn coordinate update is secondary
+              logger.error('Failed to recalculate spawn coordinate', {
+                worldName,
+                error: spawnError?.message || 'Unknown error'
+              })
+            }
+          }
+        }
 
         return { ok: true, handlerName: HANDLER_NAME }
       } catch (errors: any) {

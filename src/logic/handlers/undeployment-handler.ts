@@ -1,5 +1,6 @@
 import { Events, WorldScenesUndeploymentEvent } from '@dcl/schemas'
 import { AppComponents, IEventHandlerComponent, EventHandlerName, EventHandlerResult } from '../../types'
+import { IRegistryComponent } from '../registry'
 
 /**
  * Type guard to validate if a message is a WorldScenesUndeploymentEvent.
@@ -14,21 +15,23 @@ function isWorldScenesUndeploymentEvent(event: any): event is WorldScenesUndeplo
 /**
  * Creates the Undeployment Event Handler component.
  *
- * Handles world scene undeployment events by marking target entities and their
- * fallbacks as OBSOLETE in a single atomic database operation.
+ * Handles world scene undeployment events by delegating to the registry component
+ * which performs the operation atomically within a database transaction.
  *
  * The undeployment process:
  * 1. Validates the incoming undeployment message
- * 2. Marks all target entities as OBSOLETE
- * 3. Marks any FALLBACK registries sharing pointers with target entities as OBSOLETE
+ * 2. Delegates to registry.undeployWorldScenes which atomically:
+ *    - Marks all target entities as OBSOLETE
+ *    - Marks any FALLBACK registries sharing pointers as OBSOLETE
+ *    - Recalculates spawn coordinates for affected worlds
  *
- * @param components Required components: db, logs
+ * @param components Required components: registry, logs
  * @returns IEventHandlerComponent implementation for WorldScenesUndeploymentEvent
  */
 export const createUndeploymentEventHandler = ({
-  db,
+  registry,
   logs
-}: Pick<AppComponents, 'db' | 'logs'>): IEventHandlerComponent<WorldScenesUndeploymentEvent> => {
+}: Pick<AppComponents, 'logs'> & { registry: IRegistryComponent }): IEventHandlerComponent<WorldScenesUndeploymentEvent> => {
   const HANDLER_NAME = EventHandlerName.UNDEPLOYMENT
   const logger = logs.getLogger('undeployment-handler')
 
@@ -36,8 +39,8 @@ export const createUndeploymentEventHandler = ({
     /**
      * Handles a world undeployment event.
      *
-     * Marks the specified entities and their fallbacks as OBSOLETE atomically.
-     * This ensures that after undeployment, the pointer has no active content.
+     * Delegates to the registry component which performs the entire operation
+     * atomically within a database transaction, including spawn coordinate recalculation.
      *
      * @param event - The undeployment event containing entity IDs to undeploy
      * @returns EventHandlerResult indicating success or failure
@@ -48,11 +51,12 @@ export const createUndeploymentEventHandler = ({
       try {
         logger.info('Processing undeployment', { entityIds: entityIds.join(', ') })
 
-        const updatedCount = await db.undeployRegistries(entityIds)
+        const result = await registry.undeployWorldScenes(entityIds)
 
         logger.info('Undeployment complete', {
           requestedEntityIds: entityIds.join(', '),
-          totalUpdatedRegistries: updatedCount
+          totalUpdatedRegistries: result.undeployedCount,
+          affectedWorlds: result.affectedWorlds.join(', ')
         })
 
         return { ok: true, handlerName: HANDLER_NAME }

@@ -14,6 +14,35 @@ import {
 import { Entity, EthAddress } from '@dcl/schemas'
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
 import { Profile } from 'dcl-catalyst-client/dist/client/specs/lambdas-client'
+import { SpawnCoordinate } from '../logic/coordinates/types'
+
+/**
+ * Result of an atomic world scenes undeployment operation.
+ */
+export type UndeploymentResult = {
+  undeployedCount: number
+  affectedWorlds: string[]
+  spawnCoordinatesUpdated: string[]
+}
+
+/**
+ * Parameters passed to the spawn recalculation function during atomic undeployment.
+ */
+export type SpawnRecalculationParams = {
+  worldName: string
+  parcels: string[]
+  currentSpawn: SpawnCoordinate | null
+}
+
+/**
+ * Result from the spawn recalculation function indicating what action to take.
+ */
+export type SpawnRecalculationResult = {
+  action: 'delete' | 'upsert' | 'none'
+  x?: number
+  y?: number
+  isUserSet?: boolean
+}
 
 export interface IDbComponent {
   getSortedRegistriesByOwner(owner: EthAddress): Promise<Registry.DbEntity[]>
@@ -61,6 +90,17 @@ export interface IDbComponent {
   updateFailedProfileFetchRetry(entityId: string, retryCount: number, errorMessage?: string): Promise<void>
   getFailedProfileFetches(limit: number, maxRetryCount?: number): Promise<Sync.FailedProfileDbEntity[]>
   getFailedProfileFetchByEntityId(entityId: string): Promise<Sync.FailedProfileDbEntity | null>
+  // World spawn coordinate methods
+  getSpawnCoordinate(worldName: string): Promise<SpawnCoordinate | null>
+  upsertSpawnCoordinate(worldName: string, x: number, y: number, isUserSet: boolean): Promise<void>
+  deleteSpawnCoordinate(worldName: string): Promise<void>
+  getProcessedWorldParcels(worldName: string): Promise<string[]>
+  getRegistriesByIds(entityIds: string[]): Promise<Registry.DbEntity[]>
+  // Atomic operations
+  undeployWorldScenesAtomic(
+    entityIds: string[],
+    calculateSpawnCoordinate: (params: SpawnRecalculationParams) => SpawnRecalculationResult
+  ): Promise<UndeploymentResult>
 }
 
 export { IQueueComponent }
@@ -101,6 +141,8 @@ export interface IEntityStatusFetcherComponent {
 export interface IRegistryOrchestratorComponent {
   persistAndRotateStates(registry: Omit<Registry.DbEntity, 'status'>): Promise<Registry.DbEntity>
 }
+
+export { IRegistryComponent } from '../logic/registry/component'
 
 export interface ICacheStorage extends IBaseComponent {
   get<T>(key: string): Promise<T[]>
@@ -160,3 +202,5 @@ export interface IFailedProfilesRetrierComponent {
 }
 
 export interface ISynchronizerComponent extends IBaseComponent {}
+
+export { ICoordinatesComponent } from '../logic/coordinates/component'

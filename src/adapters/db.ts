@@ -1,6 +1,35 @@
 import SQL, { SQLStatement } from 'sql-template-strings'
 import { AppComponents, IDbComponent, Registry, Sync } from '../types'
 import { EthAddress } from '@dcl/schemas'
+import { SpawnCoordinate } from '../logic/coordinates/types'
+
+/**
+ * Result of an atomic world scenes undeployment operation.
+ */
+export type UndeploymentResult = {
+  undeployedCount: number
+  affectedWorlds: string[]
+  spawnCoordinatesUpdated: string[]
+}
+
+/**
+ * Parameters passed to the spawn recalculation function during atomic undeployment.
+ */
+export type SpawnRecalculationParams = {
+  worldName: string
+  parcels: string[]
+  currentSpawn: SpawnCoordinate | null
+}
+
+/**
+ * Result from the spawn recalculation function indicating what action to take.
+ */
+export type SpawnRecalculationResult = {
+  action: 'delete' | 'upsert' | 'none'
+  x?: number
+  y?: number
+  isUserSet?: boolean
+}
 
 export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent {
   async function getSortedRegistriesByOwner(owner: EthAddress): Promise<Registry.DbEntity[]> {
@@ -592,6 +621,277 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
     return result.rows[0] || null
   }
 
+  // World spawn coordinate methods
+
+  /**
+   * Gets the spawn coordinate for a world.
+   * @param worldName - The world name (case-insensitive)
+   * @returns The spawn coordinate or null if not found
+   */
+  async function getSpawnCoordinate(worldName: string): Promise<SpawnCoordinate | null> {
+    const query = SQL`
+      SELECT
+        world_name as "worldName",
+        x,
+        y,
+        is_user_set as "isUserSet",
+        timestamp
+      FROM
+        world_spawn_coordinates
+      WHERE
+        LOWER(world_name) = ${worldName.toLowerCase()}
+    `
+
+    const result = await pg.query<SpawnCoordinate>(query)
+    return result.rows[0] || null
+  }
+
+  /**
+   * Upserts a spawn coordinate for a world.
+   * @param worldName - The world name (case-insensitive, stored lowercase)
+   * @param x - The x coordinate
+   * @param y - The y coordinate
+   * @param isUserSet - Whether this was explicitly set by the user
+   */
+  async function upsertSpawnCoordinate(
+    worldName: string,
+    x: number,
+    y: number,
+    isUserSet: boolean
+  ): Promise<void> {
+    const query = SQL`
+      INSERT INTO world_spawn_coordinates (world_name, x, y, is_user_set, timestamp)
+      VALUES (
+        ${worldName.toLowerCase()},
+        ${x},
+        ${y},
+        ${isUserSet},
+        ${Date.now()}
+      )
+      ON CONFLICT (world_name) DO UPDATE
+      SET
+        x = EXCLUDED.x,
+        y = EXCLUDED.y,
+        is_user_set = EXCLUDED.is_user_set,
+        timestamp = EXCLUDED.timestamp
+    `
+
+    await pg.query(query)
+  }
+
+  /**
+   * Deletes the spawn coordinate for a world.
+   * @param worldName - The world name (case-insensitive)
+   */
+  async function deleteSpawnCoordinate(worldName: string): Promise<void> {
+    const query = SQL`
+      DELETE FROM world_spawn_coordinates
+      WHERE LOWER(world_name) = ${worldName.toLowerCase()}
+    `
+
+    await pg.query(query)
+  }
+
+  /**
+   * Gets all processed (COMPLETE or FALLBACK) parcels for a world.
+   * Returns a deduplicated list of all pointers from matching registries.
+   * @param worldName - The world name (case-insensitive)
+   * @returns Array of parcel strings in "x,y" format
+   */
+  async function getProcessedWorldParcels(worldName: string): Promise<string[]> {
+    const query = SQL`
+      SELECT DISTINCT unnest(pointers) as parcel
+      FROM registries
+      WHERE
+        LOWER(metadata->'worldConfiguration'->>'name') = ${worldName.toLowerCase()}
+        AND status IN (${Registry.Status.COMPLETE}, ${Registry.Status.FALLBACK})
+    `
+
+    const result = await pg.query<{ parcel: string }>(query)
+    return result.rows.map((row) => row.parcel)
+  }
+
+  /**
+   * Gets registries by world name for extracting world names from entity IDs.
+   * Used by undeployment handler to get world names from entities being undeployed.
+   * @param entityIds - Array of entity IDs
+   * @returns Array of registries with their metadata
+   */
+  async function getRegistriesByIds(entityIds: string[]): Promise<Registry.DbEntity[]> {
+    if (entityIds.length === 0) {
+      return []
+    }
+
+    const parsedIds = entityIds.map((id) => id.toLowerCase())
+    const query = SQL`
+      SELECT
+        id, type, timestamp, deployer, pointers, content, metadata, status, bundles, versions
+      FROM
+        registries
+      WHERE
+        LOWER(id) = ANY(${parsedIds}::varchar(255)[])
+    `
+
+    const result = await pg.query<Registry.DbEntity>(query)
+    return result.rows
+  }
+
+  /**
+   * Atomically undeploys world scenes and recalculates spawn coordinates.
+   *
+   * This method performs the entire operation within a database transaction to prevent
+   * race conditions between reading the world state and updating spawn coordinates.
+   *
+   * The operation:
+   * 1. Gets registries by IDs to extract world names
+   * 2. Marks target registries and fallbacks as OBSOLETE
+   * 3. For each affected world, recalculates spawn coordinates using the provided function
+   *
+   * @param entityIds - Array of entity IDs to undeploy
+   * @param calculateSpawnCoordinate - Pure function to determine spawn coordinate action
+   * @returns Result containing counts and affected worlds
+   */
+  async function undeployWorldScenesAtomic(
+    entityIds: string[],
+    calculateSpawnCoordinate: (params: SpawnRecalculationParams) => SpawnRecalculationResult
+  ): Promise<UndeploymentResult> {
+    if (entityIds.length === 0) {
+      return {
+        undeployedCount: 0,
+        affectedWorlds: [],
+        spawnCoordinatesUpdated: []
+      }
+    }
+
+    const client = await pg.getPool().connect()
+
+    try {
+      await client.query('BEGIN')
+
+      const parsedIds = entityIds.map((id) => id.toLowerCase())
+
+      // 1. Get registries to extract world names
+      const registriesQuery = SQL`
+        SELECT
+          id, type, timestamp, deployer, pointers, content, metadata, status, bundles, versions
+        FROM
+          registries
+        WHERE
+          LOWER(id) = ANY(${parsedIds}::varchar(255)[])
+      `
+      const registriesResult = await client.query<Registry.DbEntity>(registriesQuery)
+      const registries = registriesResult.rows
+
+      const worldNames = new Set<string>()
+      for (const registry of registries) {
+        const worldName = (registry.metadata as any)?.worldConfiguration?.name
+        if (worldName) {
+          worldNames.add(worldName.toLowerCase())
+        }
+      }
+
+      // 2. Undeploy registries (mark as OBSOLETE) - same logic as undeployRegistries
+      const undeployQuery = SQL`
+        WITH target_pointers AS (
+          SELECT array_agg(DISTINCT p) AS pointers
+          FROM registries, unnest(pointers) AS p
+          WHERE LOWER(id) = ANY(${parsedIds}::varchar(255)[])
+        )
+        UPDATE registries
+        SET status = ${Registry.Status.OBSOLETE}
+        WHERE
+          LOWER(id) = ANY(${parsedIds}::varchar(255)[])
+          OR (
+            status = ${Registry.Status.FALLBACK}
+            AND pointers && (SELECT pointers FROM target_pointers)
+          )
+      `
+      const undeployResult = await client.query(undeployQuery)
+      const undeployedCount = undeployResult.rowCount ?? 0
+
+      // 3. Recalculate spawn coordinates for affected worlds
+      const spawnCoordinatesUpdated: string[] = []
+
+      for (const worldName of worldNames) {
+        // Get processed world parcels (COMPLETE or FALLBACK status)
+        const parcelsQuery = SQL`
+          SELECT DISTINCT unnest(pointers) as parcel
+          FROM registries
+          WHERE
+            LOWER(metadata->'worldConfiguration'->>'name') = ${worldName}
+            AND status IN (${Registry.Status.COMPLETE}, ${Registry.Status.FALLBACK})
+        `
+        const parcelsResult = await client.query<{ parcel: string }>(parcelsQuery)
+        const parcels = parcelsResult.rows.map((r) => r.parcel)
+
+        // Get current spawn coordinate
+        const spawnQuery = SQL`
+          SELECT
+            world_name as "worldName",
+            x,
+            y,
+            is_user_set as "isUserSet",
+            timestamp
+          FROM
+            world_spawn_coordinates
+          WHERE
+            LOWER(world_name) = ${worldName}
+        `
+        const spawnResult = await client.query<SpawnCoordinate>(spawnQuery)
+        const currentSpawn = spawnResult.rows[0] || null
+
+        // Call pure function to determine action
+        const result = calculateSpawnCoordinate({
+          worldName,
+          parcels,
+          currentSpawn
+        })
+
+        // Apply result
+        if (result.action === 'delete') {
+          const deleteQuery = SQL`
+            DELETE FROM world_spawn_coordinates
+            WHERE LOWER(world_name) = ${worldName}
+          `
+          await client.query(deleteQuery)
+          spawnCoordinatesUpdated.push(worldName)
+        } else if (result.action === 'upsert' && result.x !== undefined && result.y !== undefined) {
+          const upsertQuery = SQL`
+            INSERT INTO world_spawn_coordinates (world_name, x, y, is_user_set, timestamp)
+            VALUES (
+              ${worldName},
+              ${result.x},
+              ${result.y},
+              ${result.isUserSet ?? false},
+              ${Date.now()}
+            )
+            ON CONFLICT (world_name) DO UPDATE
+            SET
+              x = EXCLUDED.x,
+              y = EXCLUDED.y,
+              is_user_set = EXCLUDED.is_user_set,
+              timestamp = EXCLUDED.timestamp
+          `
+          await client.query(upsertQuery)
+          spawnCoordinatesUpdated.push(worldName)
+        }
+      }
+
+      await client.query('COMMIT')
+
+      return {
+        undeployedCount,
+        affectedWorlds: Array.from(worldNames),
+        spawnCoordinatesUpdated
+      }
+    } catch (error) {
+      await client.query('ROLLBACK')
+      throw error
+    } finally {
+      client.release()
+    }
+  }
+
   return {
     insertRegistry,
     updateRegistriesStatus,
@@ -617,6 +917,14 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
     deleteFailedProfileFetch,
     updateFailedProfileFetchRetry,
     getFailedProfileFetches,
-    getFailedProfileFetchByEntityId
+    getFailedProfileFetchByEntityId,
+    // World spawn coordinate methods
+    getSpawnCoordinate,
+    upsertSpawnCoordinate,
+    deleteSpawnCoordinate,
+    getProcessedWorldParcels,
+    getRegistriesByIds,
+    // Atomic operations
+    undeployWorldScenesAtomic
   }
 }

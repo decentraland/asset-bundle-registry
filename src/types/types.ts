@@ -131,7 +131,8 @@ export enum EventHandlerName {
   DEPLOYMENT = 'Deployment Handler',
   TEXTURES = 'Textures Handler',
   STATUS = 'Status Handler',
-  UNDEPLOYMENT = 'Undeployment Handler'
+  UNDEPLOYMENT = 'Undeployment Handler',
+  SPAWN_COORDINATE = 'Spawn Coordinate Handler'
 }
 
 export type MessageProcessorResult = {

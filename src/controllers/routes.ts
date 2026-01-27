@@ -10,6 +10,7 @@ import { flushCacheHandler } from '../logic/handlers/flush-cache-handler'
 import { getEntityVersionsHandler } from './handlers/get-entity-versions'
 import { getProfilesHandler } from './handlers/get-profiles'
 import { getProfilesMetadataHandler } from './handlers/get-profiles-metadata'
+import { getWorldManifestHandler } from './handlers/get-world-manifest'
 
 export async function setupRouter(globalContext: GlobalContext): Promise<Router<GlobalContext>> {
   const router = new Router<GlobalContext>()
@@ -33,6 +34,7 @@ export async function setupRouter(globalContext: GlobalContext): Promise<Router<
   router.get('/queues/status', getQueuesStatuses)
   router.post('/profiles', getProfilesHandler)
   router.post('/profiles/metadata', getProfilesMetadataHandler)
+  router.get('/worlds/:worldName/manifest', getWorldManifestHandler)
 
   const adminToken = await globalContext.components.config.getString('API_ADMIN_TOKEN')
 

@@ -2,17 +2,17 @@ import { Entity } from '@dcl/schemas'
 import { AppComponents, IEventHandlerComponent, EventHandlerName, EventHandlerResult, Registry } from '../../types'
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
 import { Authenticator } from '@dcl/crypto'
+import { IRegistryComponent } from '../registry'
 
 export const createDeploymentEventHandler = ({
-  registryOrchestrator,
+  registry,
   catalyst,
   worlds,
   db,
   logs
-}: Pick<
-  AppComponents,
-  'registryOrchestrator' | 'catalyst' | 'worlds' | 'db' | 'logs'
->): IEventHandlerComponent<DeploymentToSqs> => {
+}: Pick<AppComponents, 'catalyst' | 'worlds' | 'db' | 'logs'> & {
+  registry: IRegistryComponent
+}): IEventHandlerComponent<DeploymentToSqs> => {
   const HANDLER_NAME = EventHandlerName.DEPLOYMENT
   const logger = logs.getLogger('deployment-handler')
 
@@ -70,7 +70,7 @@ export const createDeploymentEventHandler = ({
         }
 
         const deployer = Authenticator.ownerAddress(event.entity.authChain)
-        await registryOrchestrator.persistAndRotateStates({
+        await registry.persistAndRotateStates({
           ...entity,
           deployer,
           bundles: defaultBundles,

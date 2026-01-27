@@ -26,6 +26,14 @@ export function createDbMockComponent(): jest.Mocked<IDbComponent> {
     deleteFailedProfileFetch: jest.fn(),
     updateFailedProfileFetchRetry: jest.fn(),
     getFailedProfileFetches: jest.fn(),
-    getFailedProfileFetchByEntityId: jest.fn()
+    getFailedProfileFetchByEntityId: jest.fn(),
+    // World spawn coordinate methods
+    getSpawnCoordinate: jest.fn(),
+    upsertSpawnCoordinate: jest.fn(),
+    deleteSpawnCoordinate: jest.fn(),
+    getProcessedWorldParcels: jest.fn(),
+    getRegistriesByIds: jest.fn(),
+    // Atomic operations
+    undeployWorldScenesAtomic: jest.fn()
   }
 }

@@ -1,7 +1,8 @@
 import {
   AssetBundleConversionFinishedEvent,
   AssetBundleConversionManuallyQueuedEvent,
-  WorldScenesUndeploymentEvent
+  WorldScenesUndeploymentEvent,
+  WorldSpawnCoordinateSetEvent
 } from '@dcl/schemas'
 import {
   AppComponents,
@@ -10,26 +11,30 @@ import {
   IMessageProcessorComponent,
   MessageProcessorResult,
   EventHandlerResult,
-  RetryMessageData
+  RetryMessageData,
+  ICoordinatesComponent
 } from '../types'
 import { createDeploymentEventHandler } from './handlers/deployment-handler'
 import { createStatusEventHandler } from './handlers/status-handler'
 import { createTexturesEventHandler } from './handlers/textures-handler'
 import { createUndeploymentEventHandler } from './handlers/undeployment-handler'
+import { createSpawnCoordinateEventHandler } from './handlers/spawn-coordinate-handler'
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
+import { IRegistryComponent } from './registry'
 
 export async function createMessageProcessorComponent({
   catalyst,
   worlds,
-  registryOrchestrator,
+  registry,
   queuesStatusManager,
+  coordinates,
   db,
   logs,
   config
 }: Pick<
   AppComponents,
-  'catalyst' | 'worlds' | 'registryOrchestrator' | 'queuesStatusManager' | 'db' | 'logs' | 'config'
->): Promise<IMessageProcessorComponent> {
+  'catalyst' | 'worlds' | 'registry' | 'queuesStatusManager' | 'db' | 'logs' | 'config'
+> & { coordinates: ICoordinatesComponent }): Promise<IMessageProcessorComponent> {
   const MAX_RETRIES: number = (await config.getNumber('MAX_RETRIES')) || 3
   const log = logs.getLogger('message-processor')
   const processors: IEventHandlerComponent<
@@ -37,18 +42,21 @@ export async function createMessageProcessorComponent({
     | AssetBundleConversionManuallyQueuedEvent
     | AssetBundleConversionFinishedEvent
     | WorldScenesUndeploymentEvent
+    | WorldSpawnCoordinateSetEvent
   >[] = [
-    createDeploymentEventHandler({ catalyst, worlds, registryOrchestrator, db, logs }),
+    createDeploymentEventHandler({ catalyst, worlds, registry, db, logs }),
     createTexturesEventHandler({
       db,
       logs,
       catalyst,
       worlds,
-      registryOrchestrator,
-      queuesStatusManager
+      registry,
+      queuesStatusManager,
+      coordinates
     }),
     createStatusEventHandler({ logs, queuesStatusManager }),
-    createUndeploymentEventHandler({ db, logs })
+    createUndeploymentEventHandler({ registry, logs }),
+    createSpawnCoordinateEventHandler({ coordinates, logs })
   ]
 
   async function process(message: any): Promise<MessageProcessorResult> {
@@ -73,6 +81,7 @@ export async function createMessageProcessorComponent({
           | AssetBundleConversionManuallyQueuedEvent
           | AssetBundleConversionFinishedEvent
           | WorldScenesUndeploymentEvent
+          | WorldSpawnCoordinateSetEvent
         >[]
       | undefined = processors.filter(
       (p) =>

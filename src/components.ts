@@ -18,7 +18,7 @@ import { createCatalystAdapter } from './adapters/catalyst'
 import { createMessagesConsumerComponent } from './logic/message-consumer'
 import path from 'path'
 import { createEntityStatusFetcherComponent } from './logic/entity-status-fetcher'
-import { createRegistryOrchestratorComponent } from './logic/registry-orchestrator'
+import { createRegistryComponent } from './logic/registry'
 import { createWorkerManagerComponent } from './logic/workers/worker-manager'
 import { createRedisComponent } from './adapters/redis'
 import { createInMemoryCacheComponent } from './adapters/memory-cache'
@@ -36,6 +36,7 @@ import { createSnapshotsHandlerComponent } from './logic/sync/snapshots-handler'
 import { createPointerChangesHandlerComponent } from './logic/sync/pointer-changes-handler'
 import { createSynchronizerComponent } from './logic/sync/synchronizer'
 import { createOwnershipValidatorJob } from './logic/sync/ownership-validator-job'
+import { createCoordinatesComponent } from './logic/coordinates'
 
 // Initialize all the components of the app
 export async function initComponents(): Promise<AppComponents> {
@@ -177,7 +178,7 @@ export async function initComponents(): Promise<AppComponents> {
     db
   })
   const worlds = await createWorldsAdapter({ logs, config, fetch })
-  const registryOrchestrator = createRegistryOrchestratorComponent({
+  const registry = createRegistryComponent({
     logs,
     db,
     metrics
@@ -190,11 +191,16 @@ export async function initComponents(): Promise<AppComponents> {
   const queuesStatusManager = createQueuesStatusManagerComponent({
     memoryStorage
   })
+  const coordinates = createCoordinatesComponent({
+    db,
+    logs
+  })
   const messageProcessor = await createMessageProcessorComponent({
     catalyst,
     worlds,
-    registryOrchestrator,
+    registry,
     queuesStatusManager,
+    coordinates,
     db,
     logs,
     config
@@ -220,11 +226,12 @@ export async function initComponents(): Promise<AppComponents> {
     catalyst,
     worlds,
     messageConsumer,
-    registryOrchestrator,
+    registry,
     entityStatusFetcher,
     workerManager,
     memoryStorage,
     queuesStatusManager,
+    coordinates,
     profileRetriever,
     profileSanitizer,
     entityDeploymentTracker,
