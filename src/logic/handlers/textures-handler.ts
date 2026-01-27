@@ -19,17 +19,17 @@ export const createTexturesEventHandler = ({
   return {
     handle: async (event: AssetBundleConversionFinishedEvent): Promise<EventHandlerResult> => {
       try {
-        const metadata = event.metadata
-        let entity: Registry.DbEntity | null = await db.getRegistryById(metadata.entityId)
+        const eventMetadata = event.metadata
+        let entity: Registry.DbEntity | null = await db.getRegistryById(eventMetadata.entityId)
 
         // Skip processing if the entity has been undeployed (marked as OBSOLETE)
         if (entity?.status === Registry.Status.OBSOLETE) {
-          logger.info('Entity is OBSOLETE, skipping bundle update', { entityId: metadata.entityId })
+          logger.info('Entity is OBSOLETE, skipping bundle update', { entityId: eventMetadata.entityId })
           return { ok: true, handlerName: HANDLER_NAME }
         }
 
         if (!entity) {
-          logger.info('Entity not found in the database, will create it', { entityId: metadata.entityId })
+          logger.info('Entity not found in the database, will create it', { entityId: eventMetadata.entityId })
           let fetchedEntity: Entity | null
 
           if (event.metadata.isWorld) {
@@ -42,7 +42,7 @@ export const createTexturesEventHandler = ({
             logger.error('Entity not found', { event: JSON.stringify(event) })
             return {
               ok: false,
-              errors: [`Entity with id ${metadata.entityId} was not found`],
+              errors: [`Entity with id ${eventMetadata.entityId} was not found`],
               handlerName: HANDLER_NAME
             }
           }
@@ -76,8 +76,8 @@ export const createTexturesEventHandler = ({
           })
         }
 
-        if (!metadata.isLods) {
-          await queuesStatusManager.markAsFinished(metadata.platform, metadata.entityId)
+        if (!eventMetadata.isLods) {
+          await queuesStatusManager.markAsFinished(eventMetadata.platform, eventMetadata.entityId)
         }
 
         const conversionSucceeded =
@@ -112,9 +112,9 @@ export const createTexturesEventHandler = ({
         })
 
         let registry: Registry.DbEntity | null = await db.upsertRegistryBundle(
-          metadata.entityId,
-          metadata.platform,
-          !!metadata.isLods,
+          eventMetadata.entityId,
+          eventMetadata.platform,
+          !!eventMetadata.isLods,
           status
         )
 
