@@ -84,7 +84,11 @@ export function createRegistryOrchestratorComponent({
   }
 
   async function persistAndRotateStates(registry: Omit<Registry.DbEntity, 'status'>): Promise<Registry.DbEntity> {
-    const relatedRegistries: Registry.PartialDbEntity[] = await db.getRelatedRegistries(registry)
+    // Extract world name from metadata to properly scope related registries
+    // This prevents collisions between world registries and Genesis City registries
+    // that may share the same coordinate pointers
+    const worldName = (registry.metadata as { worldConfiguration?: { name?: string } })?.worldConfiguration?.name
+    const relatedRegistries: Registry.PartialDbEntity[] = await db.getRelatedRegistries(registry, worldName)
     const splitRelatedEntities: {
       newerEntities: Registry.PartialDbEntity[]
       olderEntities: Registry.PartialDbEntity[]

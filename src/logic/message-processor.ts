@@ -1,4 +1,8 @@
-import { AssetBundleConversionFinishedEvent, AssetBundleConversionManuallyQueuedEvent } from '@dcl/schemas'
+import {
+  AssetBundleConversionFinishedEvent,
+  AssetBundleConversionManuallyQueuedEvent,
+  WorldScenesUndeploymentEvent
+} from '@dcl/schemas'
 import {
   AppComponents,
   IEventHandlerComponent,
@@ -11,6 +15,7 @@ import {
 import { createDeploymentEventHandler } from './handlers/deployment-handler'
 import { createStatusEventHandler } from './handlers/status-handler'
 import { createTexturesEventHandler } from './handlers/textures-handler'
+import { createUndeploymentEventHandler } from './handlers/undeployment-handler'
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
 
 export async function createMessageProcessorComponent({
@@ -28,7 +33,10 @@ export async function createMessageProcessorComponent({
   const MAX_RETRIES: number = (await config.getNumber('MAX_RETRIES')) || 3
   const log = logs.getLogger('message-processor')
   const processors: IEventHandlerComponent<
-    DeploymentToSqs | AssetBundleConversionManuallyQueuedEvent | AssetBundleConversionFinishedEvent
+    | DeploymentToSqs
+    | AssetBundleConversionManuallyQueuedEvent
+    | AssetBundleConversionFinishedEvent
+    | WorldScenesUndeploymentEvent
   >[] = [
     createDeploymentEventHandler({ catalyst, worlds, registryOrchestrator, db, logs }),
     createTexturesEventHandler({
@@ -39,7 +47,8 @@ export async function createMessageProcessorComponent({
       registryOrchestrator,
       queuesStatusManager
     }),
-    createStatusEventHandler({ logs, queuesStatusManager })
+    createStatusEventHandler({ logs, queuesStatusManager }),
+    createUndeploymentEventHandler({ db, logs })
   ]
 
   async function process(message: any): Promise<MessageProcessorResult> {
@@ -60,7 +69,10 @@ export async function createMessageProcessorComponent({
 
     const handlers:
       | IEventHandlerComponent<
-          DeploymentToSqs | AssetBundleConversionManuallyQueuedEvent | AssetBundleConversionFinishedEvent
+          | DeploymentToSqs
+          | AssetBundleConversionManuallyQueuedEvent
+          | AssetBundleConversionFinishedEvent
+          | WorldScenesUndeploymentEvent
         >[]
       | undefined = processors.filter(
       (p) =>

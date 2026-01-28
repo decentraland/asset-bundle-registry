@@ -28,7 +28,6 @@ async function getComponents() {
     const dbPassword = await config.requireString('PG_COMPONENT_PSQL_PASSWORD')
     databaseUrl = `postgres://${dbUser}:${dbPassword}@${dbHost}:${dbPort}/${dbDatabaseName}`
   }
-
   const pg = await createPgComponent({ logs, config, metrics })
   const db = createDbAdapter({ pg })
   const logger = logs.getLogger('db-purger-worker')

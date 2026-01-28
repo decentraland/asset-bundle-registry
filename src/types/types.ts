@@ -53,7 +53,8 @@ export namespace Registry {
       mac: SimplifiedStatus
       webgl: SimplifiedStatus
     }
-    lods: {
+    // LODs are optional - worlds don't support LODs
+    lods?: {
       windows: SimplifiedStatus
       mac: SimplifiedStatus
       webgl: SimplifiedStatus
@@ -93,6 +94,7 @@ type StatusByPlatform = {
 export type EntityStatus = {
   entityId: string
   complete: boolean
+  // LODs are optional - worlds don't support LODs
   lods?: StatusByPlatform
   assetBundles: StatusByPlatform
   catalyst: Registry.SimplifiedStatus
@@ -131,7 +133,8 @@ export type RetryMessageData = {
 export enum EventHandlerName {
   DEPLOYMENT = 'Deployment Handler',
   TEXTURES = 'Textures Handler',
-  STATUS = 'Status Handler'
+  STATUS = 'Status Handler',
+  UNDEPLOYMENT = 'Undeployment Handler'
 }
 
 export type MessageProcessorResult = {

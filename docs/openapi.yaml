@@ -527,7 +527,7 @@ components:
           $ref: '#/components/schemas/PlatformStatus'
         lods:
           $ref: '#/components/schemas/PlatformStatus'
-          description: LOD generation status per platform. Not present for world entities.
+          description: LOD generation status per platform.
       required:
         - entityId
         - complete

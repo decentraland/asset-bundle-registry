@@ -56,9 +56,20 @@ export function createRequestMaker({ localFetch }: Pick<TestComponents, 'localFe
     path: string,
     identity: Identity,
     body: any,
-    metadata: Record<string, any> = {}
+    metadata: Record<string, any> = {},
+    queryParams?: Record<string, string>
   ) {
     let headers: Record<string, string> = {}
+    let url = path
+
+    // Add query parameters if provided
+    if (queryParams) {
+      const params = new URLSearchParams(queryParams)
+      const queryString = params.toString()
+      if (queryString) {
+        url = `${path}${path.includes('?') ? '&' : '?'}${queryString}`
+      }
+    }
 
     if (identity) {
       headers = getAuthHeaders(method, path, metadata, (payload) =>
@@ -73,7 +84,7 @@ export function createRequestMaker({ localFetch }: Pick<TestComponents, 'localFe
       )
     }
 
-    return localFetch.fetch(path, {
+    return localFetch.fetch(url, {
       method: method,
       headers: {
         ...headers,
@@ -94,6 +105,9 @@ export function createRegistryEntity(
   bundlesStatus: Registry.SimplifiedStatus,
   overrideProperties: Partial<Registry.DbEntity> = {}
 ): Registry.DbEntity {
+  // Worlds don't support LODs
+  const isWorld = overrideProperties.type === 'world'
+
   return {
     id: 'bafkreig6666666666666666666666666666666666666666666666666666666666666666',
     deployer: ownerAddress,
@@ -104,11 +118,16 @@ export function createRegistryEntity(
         mac: bundlesStatus,
         webgl: bundlesStatus
       },
-      lods: {
-        windows: bundlesStatus,
-        mac: bundlesStatus,
-        webgl: bundlesStatus
-      }
+      // Worlds don't support LODs
+      ...(isWorld
+        ? {}
+        : {
+            lods: {
+              windows: bundlesStatus,
+              mac: bundlesStatus,
+              webgl: bundlesStatus
+            }
+          })
     },
     pointers: ['1000,1000'], // out of scope pointer to avoid conflicts with entities
     timestamp: 0,

@@ -20,7 +20,8 @@ export interface IDbComponent {
   getSortedRegistriesByPointers(
     pointers: string[],
     statuses?: Registry.Status[],
-    descSort?: boolean
+    descSort?: boolean,
+    worldName?: string
   ): Promise<Registry.DbEntity[]>
   getRegistryById(id: string): Promise<Registry.DbEntity | null>
   insertRegistry(registry: Registry.DbEntity): Promise<Registry.DbEntity>
@@ -37,7 +38,11 @@ export interface IDbComponent {
     version: string,
     buildDate: string
   ): Promise<Registry.DbEntity | null>
-  getRelatedRegistries(registry: Pick<Registry.DbEntity, 'pointers' | 'id'>): Promise<Registry.PartialDbEntity[]>
+  getRelatedRegistries(
+    registry: Pick<Registry.DbEntity, 'pointers' | 'id'>,
+    worldName?: string
+  ): Promise<Registry.PartialDbEntity[]>
+  undeployRegistries(entityIds: string[]): Promise<number>
   deleteRegistries(entityIds: string[]): Promise<void>
   getBatchOfDeprecatedRegistriesOlderThan(
     dateInMilliseconds: number,
@@ -80,7 +85,7 @@ export interface ICatalystComponent {
 }
 
 export interface IWorldsComponent {
-  getWorld(worldId: string, worldContentServerUrl?: string): Promise<Entity | null>
+  getWorld(entityId: string, contentServerUrl?: string): Promise<Entity | null>
   isWorldDeployment(event: DeploymentToSqs): boolean
 }
 
