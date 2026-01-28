@@ -197,9 +197,10 @@ test('GET /entities/status/:id', function ({ components }) {
       entityId: registry.id,
       catalyst: 'complete',
       complete: true,
-      assetBundles: { mac: 'complete', windows: 'complete' },
-      lods: { mac: 'complete', windows: 'complete' }
+      assetBundles: { mac: 'complete', windows: 'complete' }
     })
+    // Worlds don't support LODs
+    expect(parsedResponse.lods).toBeUndefined()
   })
 
   it('should return the most recent entity status when querying with world coordinates and world_name', async function () {
@@ -253,9 +254,10 @@ test('GET /entities/status/:id', function ({ components }) {
       entityId: newerRegistry.id,
       catalyst: 'complete',
       complete: true,
-      assetBundles: { mac: 'complete', windows: 'complete' },
-      lods: { mac: 'complete', windows: 'complete' }
+      assetBundles: { mac: 'complete', windows: 'complete' }
     })
+    // Worlds don't support LODs
+    expect(parsedResponse.lods).toBeUndefined()
   })
 
   it('should return 404 when no entity is found', async function () {

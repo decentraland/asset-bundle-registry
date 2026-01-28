@@ -221,19 +221,53 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
     return result.rows[0] || null
   }
 
+  /**
+   * Gets registries related to a given registry by overlapping pointers.
+   *
+   * When worldName is not provided, coordinates are treated as Genesis City coordinates
+   * and world entities are excluded from results.
+   *
+   * When worldName is provided, only entities matching that world name (via metadata.worldConfiguration.name)
+   * are returned, avoiding collisions between world and Genesis City registries.
+   *
+   * @param registry - Registry with pointers and id to find related registries for
+   * @param worldName - Optional world name to filter by (for world registries)
+   * @returns Related registries that share pointers
+   */
   async function getRelatedRegistries(
-    registry: Pick<Registry.DbEntity, 'pointers' | 'id'>
+    registry: Pick<Registry.DbEntity, 'pointers' | 'id'>,
+    worldName?: string
   ): Promise<Registry.PartialDbEntity[]> {
     const lowerCasePointers = registry.pointers.map((p) => p.toLowerCase())
+
     const query: SQLStatement = SQL`
       SELECT 
         id, pointers, timestamp, status, bundles, versions
       FROM 
         registries
       WHERE 
-        pointers && ${lowerCasePointers}::varchar(255)[] AND LOWER(id) != ${registry.id.toLocaleLowerCase()} AND status != ${Registry.Status.OBSOLETE}
-      ORDER BY timestamp DESC
+        pointers && ${lowerCasePointers}::varchar(255)[]
+        AND LOWER(id) != ${registry.id.toLocaleLowerCase()}
+        AND status != ${Registry.Status.OBSOLETE}
     `
+
+    // Filter by world name if provided
+    if (worldName) {
+      const normalizedWorldName = worldName.toLowerCase()
+      // When worldName is provided, only return entities matching that world name
+      query.append(SQL`
+        AND LOWER(metadata->'worldConfiguration'->>'name') = ${normalizedWorldName}
+      `)
+    } else {
+      // When worldName is not provided, exclude worlds (treat coordinates as Genesis City)
+      query.append(SQL`
+        AND metadata->'worldConfiguration'->>'name' IS NULL
+      `)
+    }
+
+    query.append(SQL`
+      ORDER BY timestamp DESC
+    `)
 
     const result = await pg.query<Registry.PartialDbEntity>(query)
     return result.rows

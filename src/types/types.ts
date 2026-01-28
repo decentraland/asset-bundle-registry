@@ -52,7 +52,8 @@ export namespace Registry {
       mac: SimplifiedStatus
       webgl: SimplifiedStatus
     }
-    lods: {
+    // LODs are optional - worlds don't support LODs
+    lods?: {
       windows: SimplifiedStatus
       mac: SimplifiedStatus
       webgl: SimplifiedStatus
@@ -92,6 +93,7 @@ type StatusByPlatform = {
 export type EntityStatus = {
   entityId: string
   complete: boolean
+  // LODs are optional - worlds don't support LODs
   lods?: StatusByPlatform
   assetBundles: StatusByPlatform
   catalyst: Registry.SimplifiedStatus

@@ -38,7 +38,10 @@ export interface IDbComponent {
     version: string,
     buildDate: string
   ): Promise<Registry.DbEntity | null>
-  getRelatedRegistries(registry: Pick<Registry.DbEntity, 'pointers' | 'id'>): Promise<Registry.PartialDbEntity[]>
+  getRelatedRegistries(
+    registry: Pick<Registry.DbEntity, 'pointers' | 'id'>,
+    worldName?: string
+  ): Promise<Registry.PartialDbEntity[]>
   undeployRegistries(entityIds: string[]): Promise<number>
   deleteRegistries(entityIds: string[]): Promise<void>
   getBatchOfDeprecatedRegistriesOlderThan(

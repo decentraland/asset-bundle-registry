@@ -22,9 +22,12 @@ export const createTexturesEventHandler = ({
         const eventMetadata = event.metadata
         let entity: Registry.DbEntity | null = await db.getRegistryById(eventMetadata.entityId)
 
-        // Skip processing if the entity has been undeployed (marked as OBSOLETE)
-        if (entity?.status === Registry.Status.OBSOLETE) {
-          logger.info('Entity is OBSOLETE, skipping bundle update', { entityId: eventMetadata.entityId })
+        // Track if the entity was originally OBSOLETE to preserve its status later
+        const wasOriginallyObsolete = entity?.status === Registry.Status.OBSOLETE
+
+        // Skip LODs processing for worlds since they don't support LODs
+        if (eventMetadata.isWorld && eventMetadata.isLods) {
+          logger.info('Skipping LODs processing for world entity', { entityId: eventMetadata.entityId })
           return { ok: true, handlerName: HANDLER_NAME }
         }
 
@@ -53,11 +56,16 @@ export const createTexturesEventHandler = ({
               mac: Registry.SimplifiedStatus.PENDING,
               webgl: Registry.SimplifiedStatus.PENDING
             },
-            lods: {
-              windows: Registry.SimplifiedStatus.PENDING,
-              mac: Registry.SimplifiedStatus.PENDING,
-              webgl: Registry.SimplifiedStatus.PENDING
-            }
+            // Worlds don't support LODs
+            ...(event.metadata.isWorld
+              ? {}
+              : {
+                  lods: {
+                    windows: Registry.SimplifiedStatus.PENDING,
+                    mac: Registry.SimplifiedStatus.PENDING,
+                    webgl: Registry.SimplifiedStatus.PENDING
+                  }
+                })
           }
 
           const defaultVersions: Registry.Versions = {
@@ -87,7 +95,9 @@ export const createTexturesEventHandler = ({
 
         const bundleType = event.metadata.isLods ? 'lods' : 'assets'
         const platform = event.metadata.platform as keyof Registry.Bundles['assets']
-        const previousBundleStatus = entity.bundles[bundleType][platform]
+        // For worlds, lods bundle is undefined (we skip LODs processing for worlds earlier),
+        // but TypeScript needs the optional chaining for type safety
+        const previousBundleStatus = entity.bundles[bundleType]?.[platform]
 
         // If reconversion fails but previous bundles were COMPLETE, keep them as COMPLETE
         // The old bundles are still valid on CDN and should continue to be used
@@ -106,7 +116,7 @@ export const createTexturesEventHandler = ({
           bundleType,
           statusCode: event.metadata.statusCode,
           conversionSucceeded: String(conversionSucceeded),
-          previousStatus: previousBundleStatus,
+          previousStatus: previousBundleStatus ?? 'N/A',
           newStatus: status,
           preservingPreviousStatus: String(shouldPreservePreviousStatus)
         })
@@ -159,7 +169,12 @@ export const createTexturesEventHandler = ({
           bundles: JSON.stringify(registry.bundles)
         })
 
-        await registryOrchestrator.persistAndRotateStates(registry)
+        // Skip status rotation for OBSOLETE entities - their status should be preserved
+        if (!wasOriginallyObsolete) {
+          await registryOrchestrator.persistAndRotateStates(registry)
+        } else {
+          logger.info('Entity was OBSOLETE, skipping status rotation', { entityId: eventMetadata.entityId })
+        }
 
         return { ok: true, handlerName: HANDLER_NAME }
       } catch (errors: any) {
