@@ -1,6 +1,11 @@
-import { AppComponents, Registry } from '../../types'
-import { RelatedEntities, UndeploymentResult, SpawnRecalculationParams, SpawnRecalculationResult } from './types'
-import { calculateCenter, isCoordinateInParcels } from '../coordinates'
+import {
+  AppComponents,
+  Registry,
+  UndeploymentResult,
+  SpawnRecalculationParams,
+  SpawnRecalculationResult
+} from '../../types'
+import { RelatedEntities } from './types'
 
 export interface IRegistryComponent {
   /**
@@ -19,8 +24,9 @@ export interface IRegistryComponent {
 export function createRegistryComponent({
   db,
   logs,
-  metrics
-}: Pick<AppComponents, 'db' | 'logs' | 'metrics'>): IRegistryComponent {
+  metrics,
+  coordinates
+}: Pick<AppComponents, 'db' | 'logs' | 'metrics' | 'coordinates'>): IRegistryComponent {
   const logger = logs.getLogger('registry')
 
   function categorizeRelatedEntities(
@@ -150,31 +156,31 @@ export function createRegistryComponent({
 
     // If no spawn exists, calculate center
     if (!currentSpawn) {
-      const center = calculateCenter(parcels)
+      const center = coordinates.calculateCenter(parcels)
       return { action: 'upsert', x: center.x, y: center.y, isUserSet: false }
     }
 
     // If spawn is not user-set, recalculate center
     if (!currentSpawn.isUserSet) {
-      const center = calculateCenter(parcels)
+      const center = coordinates.calculateCenter(parcels)
       return { action: 'upsert', x: center.x, y: center.y, isUserSet: false }
     }
 
     // If user-set spawn is still valid, keep it
     const currentCoord = { x: currentSpawn.x, y: currentSpawn.y }
-    if (isCoordinateInParcels(currentCoord, parcels)) {
+    if (coordinates.isCoordinateInParcels(currentCoord, parcels)) {
       return { action: 'none' }
     }
 
     // User-set spawn is no longer valid, recalculate center
-    const center = calculateCenter(parcels)
+    const center = coordinates.calculateCenter(parcels)
     return { action: 'upsert', x: center.x, y: center.y, isUserSet: false }
   }
 
   async function undeployWorldScenes(entityIds: string[]): Promise<UndeploymentResult> {
     logger.info('Undeploying world scenes', { entityIds: entityIds.join(', ') })
 
-    const result = await db.undeployWorldScenesAtomic(entityIds, calculateSpawnAction)
+    const result = await db.undeployWorldScenes(entityIds, calculateSpawnAction)
 
     logger.info('World scenes undeployed', {
       undeployedCount: result.undeployedCount,

@@ -1,6 +1,5 @@
 import { Events, WorldScenesUndeploymentEvent } from '@dcl/schemas'
 import { AppComponents, IEventHandlerComponent, EventHandlerName, EventHandlerResult } from '../../types'
-import { IRegistryComponent } from '../registry'
 
 /**
  * Type guard to validate if a message is a WorldScenesUndeploymentEvent.
@@ -31,7 +30,7 @@ function isWorldScenesUndeploymentEvent(event: any): event is WorldScenesUndeplo
 export const createUndeploymentEventHandler = ({
   registry,
   logs
-}: Pick<AppComponents, 'logs'> & { registry: IRegistryComponent }): IEventHandlerComponent<WorldScenesUndeploymentEvent> => {
+}: Pick<AppComponents, 'logs' | 'registry'>): IEventHandlerComponent<WorldScenesUndeploymentEvent> => {
   const HANDLER_NAME = EventHandlerName.UNDEPLOYMENT
   const logger = logs.getLogger('undeployment-handler')
 

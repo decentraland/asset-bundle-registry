@@ -44,6 +44,42 @@ export type SpawnRecalculationResult = {
   isUserSet?: boolean
 }
 
+/**
+ * Parameters passed to the spawn recalculation function using bounding rectangle.
+ * Used for efficient recalculation without fetching all parcels.
+ */
+export type SpawnRecalculationWithBoundsParams = {
+  worldName: string
+  boundingRectangle: WorldBoundingRectangle
+  currentSpawn: SpawnCoordinate | null
+}
+
+/**
+ * Result of getting world manifest data atomically.
+ */
+export type WorldManifestData = {
+  parcels: string[]
+  spawnCoordinate: SpawnCoordinate | null
+}
+
+/**
+ * Bounding rectangle that covers all parcels in a world.
+ * Returns null if the world has no processed scenes.
+ */
+export type WorldBoundingRectangle = {
+  minX: number
+  maxX: number
+  minY: number
+  maxY: number
+} | null
+
+/**
+ * Result of setting a spawn coordinate atomically.
+ */
+export type SetSpawnCoordinateResult = {
+  boundingRectangle: WorldBoundingRectangle
+}
+
 export interface IDbComponent {
   getSortedRegistriesByOwner(owner: EthAddress): Promise<Registry.DbEntity[]>
   getSortedRegistriesByPointers(
@@ -95,9 +131,16 @@ export interface IDbComponent {
   upsertSpawnCoordinate(worldName: string, x: number, y: number, isUserSet: boolean): Promise<void>
   deleteSpawnCoordinate(worldName: string): Promise<void>
   getProcessedWorldParcels(worldName: string): Promise<string[]>
+  getWorldBoundingRectangle(worldName: string): Promise<WorldBoundingRectangle>
   getRegistriesByIds(entityIds: string[]): Promise<Registry.DbEntity[]>
   // Atomic operations
-  undeployWorldScenesAtomic(
+  getWorldManifestData(worldName: string): Promise<WorldManifestData>
+  setSpawnCoordinate(worldName: string, x: number, y: number, isUserSet: boolean): Promise<SetSpawnCoordinateResult>
+  recalculateSpawnCoordinate(
+    worldName: string,
+    calculateSpawn: (params: SpawnRecalculationWithBoundsParams) => SpawnRecalculationResult
+  ): Promise<void>
+  undeployWorldScenes(
     entityIds: string[],
     calculateSpawnCoordinate: (params: SpawnRecalculationParams) => SpawnRecalculationResult
   ): Promise<UndeploymentResult>

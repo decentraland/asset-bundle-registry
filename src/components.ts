@@ -178,10 +178,15 @@ export async function initComponents(): Promise<AppComponents> {
     db
   })
   const worlds = await createWorldsAdapter({ logs, config, fetch })
+  const coordinates = createCoordinatesComponent({
+    db,
+    logs
+  })
   const registry = createRegistryComponent({
     logs,
     db,
-    metrics
+    metrics,
+    coordinates
   })
   const entityStatusFetcher = await createEntityStatusFetcherComponent({
     fetch,
@@ -190,10 +195,6 @@ export async function initComponents(): Promise<AppComponents> {
   })
   const queuesStatusManager = createQueuesStatusManagerComponent({
     memoryStorage
-  })
-  const coordinates = createCoordinatesComponent({
-    db,
-    logs
   })
   const messageProcessor = await createMessageProcessorComponent({
     catalyst,

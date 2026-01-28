@@ -20,7 +20,6 @@ import { createTexturesEventHandler } from './handlers/textures-handler'
 import { createUndeploymentEventHandler } from './handlers/undeployment-handler'
 import { createSpawnCoordinateEventHandler } from './handlers/spawn-coordinate-handler'
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
-import { IRegistryComponent } from './registry'
 
 export async function createMessageProcessorComponent({
   catalyst,
@@ -31,10 +30,9 @@ export async function createMessageProcessorComponent({
   db,
   logs,
   config
-}: Pick<
-  AppComponents,
-  'catalyst' | 'worlds' | 'registry' | 'queuesStatusManager' | 'db' | 'logs' | 'config'
-> & { coordinates: ICoordinatesComponent }): Promise<IMessageProcessorComponent> {
+}: Pick<AppComponents, 'catalyst' | 'worlds' | 'registry' | 'queuesStatusManager' | 'db' | 'logs' | 'config'> & {
+  coordinates: ICoordinatesComponent
+}): Promise<IMessageProcessorComponent> {
   const MAX_RETRIES: number = (await config.getNumber('MAX_RETRIES')) || 3
   const log = logs.getLogger('message-processor')
   const processors: IEventHandlerComponent<

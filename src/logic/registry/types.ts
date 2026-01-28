@@ -8,10 +8,3 @@ export type RelatedEntities = {
   olderEntities: Registry.PartialDbEntity[]
   fallback: Registry.PartialDbEntity | null
 }
-
-// Re-export db types for convenience
-export type {
-  UndeploymentResult,
-  SpawnRecalculationParams,
-  SpawnRecalculationResult
-} from '../../types/service'

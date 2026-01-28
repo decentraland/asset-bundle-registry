@@ -32,8 +32,12 @@ export function createDbMockComponent(): jest.Mocked<IDbComponent> {
     upsertSpawnCoordinate: jest.fn(),
     deleteSpawnCoordinate: jest.fn(),
     getProcessedWorldParcels: jest.fn(),
+    getWorldBoundingRectangle: jest.fn(),
     getRegistriesByIds: jest.fn(),
     // Atomic operations
-    undeployWorldScenesAtomic: jest.fn()
+    getWorldManifestData: jest.fn(),
+    setSpawnCoordinate: jest.fn(),
+    recalculateSpawnCoordinate: jest.fn(),
+    undeployWorldScenes: jest.fn()
   }
 }

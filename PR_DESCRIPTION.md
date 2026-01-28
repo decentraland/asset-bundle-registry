@@ -19,6 +19,7 @@ GET /worlds/:world-name/manifest
 ```
 
 Response schema:
+
 ```json
 {
   "occupied": ["0,0", "0,1", "1,0", "1,1"],
@@ -55,11 +56,13 @@ src/logic/coordinates/
 ```
 
 The component provides:
+
 - `recalculateSpawnIfNeeded(worldName)` - Intelligently updates spawn after shape changes
 - `setUserSpawnCoordinate(worldName, coordinate)` - Sets user-specified spawn
 - `getWorldManifest(worldName)` - Returns the world manifest
 
 Utility functions (exported for reuse):
+
 - `parseCoordinate(coord)` - Parse "x,y" string to {x, y} object
 - `formatCoordinate(coord)` - Format {x, y} to "x,y" string
 - `calculateCenter(parcels)` - Calculate geometric center of parcels
@@ -68,6 +71,7 @@ Utility functions (exported for reuse):
 ### Database Changes
 
 New table `world_spawn_coordinates`:
+
 ```sql
 CREATE TABLE world_spawn_coordinates (
   world_name VARCHAR(255) PRIMARY KEY,
@@ -79,10 +83,12 @@ CREATE TABLE world_spawn_coordinates (
 ```
 
 The `is_user_set` flag distinguishes between:
+
 - User-explicitly-set coordinates (preserved when valid)
 - Auto-calculated coordinates (freely recalculated)
 
 New database methods in `db.ts`:
+
 - `getSpawnCoordinate(worldName)`
 - `upsertSpawnCoordinate(worldName, x, y, isUserSet)`
 - `deleteSpawnCoordinate(worldName)`
@@ -101,6 +107,7 @@ This ensures the world shape reflects only scenes that have been fully processed
 ## Migration Notes
 
 The migration (`1769300000000_world-spawn-coordinates.ts`):
+
 1. Creates the `world_spawn_coordinates` table
 2. Populates default spawn coordinates for all existing worlds using:
    - `metadata.scene.base` as the primary source
@@ -110,6 +117,7 @@ The migration (`1769300000000_world-spawn-coordinates.ts`):
 ## Files Changed
 
 ### New Files
+
 - `src/migrations/1769300000000_world-spawn-coordinates.ts`
 - `src/logic/coordinates/index.ts`
 - `src/logic/coordinates/component.ts`
@@ -121,6 +129,7 @@ The migration (`1769300000000_world-spawn-coordinates.ts`):
 - `test/unit/mocks/coordinates.ts`
 
 ### Modified Files
+
 - `src/adapters/db.ts` - Added spawn coordinate methods
 - `src/types/service.ts` - Added interfaces
 - `src/types/system.ts` - Added coordinates to BaseComponents
@@ -136,14 +145,104 @@ The migration (`1769300000000_world-spawn-coordinates.ts`):
 ## Testing
 
 Unit tests cover:
+
 - Coordinate utility functions (parsing, formatting, center calculation, containment)
 - Coordinates component behavior (recalculation logic, user-set preservation)
 - Spawn coordinate event handler
 - Updated undeployment handler with coordinates integration
 
 Run tests:
+
 ```bash
 npm test -- --testPathPattern="spawn-coordinate-handler|coordinates/component|undeployment-handler"
+```
+
+## Spawn Coordinate Change Flowcharts
+
+### 1. User Sets Spawn Coordinate (`WORLD_SPAWN_COORDINATE_SET` Event)
+
+```mermaid
+flowchart TD
+    A[WORLD_SPAWN_COORDINATE_SET Event] --> B[Spawn Coordinate Handler]
+    B --> C[setUserSpawnCoordinate]
+    C --> D[Store coordinate with<br/>is_user_set = true]
+    D --> E{Coordinate within<br/>world bounds?}
+    E -->|Yes| F[Log: User spawn coordinate set]
+    E -->|No| G[Log: Warning - coordinate<br/>outside current bounds]
+    F --> H[Done]
+    G --> H
+```
+
+### 2. Scene Processing Completes (Textures Handler)
+
+```mermaid
+flowchart TD
+    A[AssetBundleConversionFinished Event] --> B[Textures Handler]
+    B --> C{Is world entity?}
+    C -->|No| D[Done]
+    C -->|Yes| E{Status is COMPLETE<br/>or FALLBACK?}
+    E -->|No| D
+    E -->|Yes| F[recalculateSpawnIfNeeded]
+    F --> G[calculateSpawnAction]
+    G --> H{World has<br/>processed scenes?}
+    H -->|No| I[Delete spawn coordinate]
+    H -->|Yes| J{Spawn exists?}
+    J -->|No| K[Calculate center from bounds<br/>Set with is_user_set = false]
+    J -->|Yes| L{is_user_set?}
+    L -->|No| M[Recalculate center from bounds<br/>Update with is_user_set = false]
+    L -->|Yes| N{Coordinate still<br/>within bounds?}
+    N -->|Yes| O[Keep existing spawn]
+    N -->|No| P[Recalculate center from bounds<br/>Set with is_user_set = false]
+    I --> D
+    K --> D
+    M --> D
+    O --> D
+    P --> D
+```
+
+### 3. Scene Undeployment (Undeployment Handler)
+
+```mermaid
+flowchart TD
+    A[WorldScenesUndeployment Event] --> B[Undeployment Handler]
+    B --> C[registry.undeployWorldScenes]
+    C --> D[Mark entities as OBSOLETE]
+    D --> E[Mark FALLBACK registries<br/>sharing pointers as OBSOLETE]
+    E --> F[For each affected world]
+    F --> G[recalculateSpawnIfNeeded]
+    G --> H[calculateSpawnAction]
+    H --> I{World has<br/>processed scenes?}
+    I -->|No| J[Delete spawn coordinate]
+    I -->|Yes| K{Spawn exists?}
+    K -->|No| L[Calculate center from bounds<br/>Set with is_user_set = false]
+    K -->|Yes| M{is_user_set?}
+    M -->|No| N[Recalculate center from bounds<br/>Update with is_user_set = false]
+    M -->|Yes| O{Coordinate still<br/>within bounds?}
+    O -->|Yes| P[Keep existing spawn]
+    O -->|No| Q[Recalculate center from bounds<br/>Set with is_user_set = false]
+    J --> R[Done]
+    L --> R
+    N --> R
+    P --> R
+    Q --> R
+```
+
+### Core Decision Logic (`calculateSpawnAction`)
+
+```mermaid
+flowchart TD
+    A[calculateSpawnAction] --> B{boundingRectangle<br/>exists?}
+    B -->|No| C["Return { action: 'delete' }"]
+    B -->|Yes| D{currentSpawn<br/>exists?}
+    D -->|No| E[Calculate center from bounds]
+    E --> F["Return { action: 'upsert',<br/>isUserSet: false }"]
+    D -->|Yes| G{is_user_set?}
+    G -->|No| H[Calculate center from bounds]
+    H --> I["Return { action: 'upsert',<br/>isUserSet: false }"]
+    G -->|Yes| J{Coordinate within<br/>bounds?}
+    J -->|Yes| K["Return { action: 'none' }"]
+    J -->|No| L[Calculate center from bounds]
+    L --> M["Return { action: 'upsert',<br/>isUserSet: false }"]
 ```
 
 ## How to Verify

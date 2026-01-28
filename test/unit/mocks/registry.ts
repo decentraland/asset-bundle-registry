@@ -1,5 +1,5 @@
-import { IRegistryComponent, UndeploymentResult } from '../../../src/logic/registry'
-import { Registry } from '../../../src/types'
+import { IRegistryComponent } from '../../../src/logic/registry'
+import { Registry, UndeploymentResult } from '../../../src/types'
 
 export function createRegistryMockComponent(): jest.Mocked<IRegistryComponent> {
   return {
