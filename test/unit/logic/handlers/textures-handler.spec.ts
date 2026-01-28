@@ -868,7 +868,7 @@ describe('textures-handler', () => {
               }
             }
             db.getRegistryById = jest.fn().mockResolvedValue(worldDbEntity)
-            db.upsertRegistryBundle = jest.fn().mockResolvedValue({
+            const updatedWorldDbEntity = {
               ...worldDbEntity,
               bundles: {
                 assets: {
@@ -877,9 +877,10 @@ describe('textures-handler', () => {
                   webgl: Registry.SimplifiedStatus.PENDING
                 }
               }
-            })
+            }
+            db.upsertRegistryBundle = jest.fn().mockResolvedValue(updatedWorldDbEntity)
             db.updateRegistryVersionWithBuildDate = jest.fn().mockResolvedValue({
-              ...worldDbEntity,
+              ...updatedWorldDbEntity,
               versions: {
                 assets: {
                   windows: { version: 'v1', buildDate: '2024-01-01' },
