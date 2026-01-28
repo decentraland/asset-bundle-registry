@@ -1,6 +1,6 @@
 import { IDbComponent } from '../../../src/types'
 
-export function createDbMockComponent(): IDbComponent {
+export function createDbMockComponent(): jest.Mocked<IDbComponent> {
   return {
     getSortedRegistriesByPointers: jest.fn(),
     getRegistryById: jest.fn(),
@@ -11,6 +11,7 @@ export function createDbMockComponent(): IDbComponent {
     deleteRegistries: jest.fn(),
     getSortedRegistriesByOwner: jest.fn(),
     updateRegistriesStatus: jest.fn(),
+    undeployRegistries: jest.fn(),
     getBatchOfDeprecatedRegistriesOlderThan: jest.fn(),
     insertHistoricalRegistry: jest.fn(),
     getSortedHistoricalRegistriesByOwner: jest.fn(),
@@ -26,6 +27,18 @@ export function createDbMockComponent(): IDbComponent {
     deleteFailedProfileFetch: jest.fn(),
     updateFailedProfileFetchRetry: jest.fn(),
     getFailedProfileFetches: jest.fn(),
-    getFailedProfileFetchByEntityId: jest.fn()
+    getFailedProfileFetchByEntityId: jest.fn(),
+    // World spawn coordinate methods
+    getSpawnCoordinate: jest.fn(),
+    upsertSpawnCoordinate: jest.fn(),
+    deleteSpawnCoordinate: jest.fn(),
+    getProcessedWorldParcels: jest.fn(),
+    getWorldBoundingRectangle: jest.fn(),
+    getRegistriesByIds: jest.fn(),
+    // Atomic operations
+    getWorldManifestData: jest.fn(),
+    setSpawnCoordinate: jest.fn(),
+    recalculateSpawnCoordinate: jest.fn(),
+    undeployWorldScenes: jest.fn()
   }
 }

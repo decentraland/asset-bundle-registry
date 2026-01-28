@@ -22,7 +22,7 @@ function parseRegistryStatus(registry: Registry.DbEntity): EntityStatus {
     catalyst: Registry.SimplifiedStatus.COMPLETE, // if there is a registry, it was already uploaded to catalyst
     complete: isComplete,
     assetBundles,
-    lods: registry.type === 'world' ? undefined : lods // worlds don't have lods
+    lods
   }
 }
 
@@ -34,11 +34,14 @@ export async function getEntityStatusHandler(context: HandlerContextWithPath<'db
 
   const idOrPointer: string | undefined = params.id
 
+  // Extract world_name from query parameters
+  const worldName = context.url.searchParams.get('world_name') || undefined
+
   const entity =
     (await db.getRegistryById(idOrPointer)) ||
     (await db.getHistoricalRegistryById(idOrPointer)) ||
     // in case a pointer was provided:
-    (await db.getSortedRegistriesByPointers([idOrPointer], undefined, true))[0] // if found, we kept the most recent registry ([0])
+    (await db.getSortedRegistriesByPointers([idOrPointer], undefined, true, worldName))[0] // if found, we kept the most recent registry ([0])
 
   if (entity) {
     const entityStatus = parseRegistryStatus(entity)

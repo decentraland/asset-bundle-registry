@@ -31,7 +31,7 @@
     "@dcl/http-server": "^1.0.1",
     "@dcl/memory-queue-component": "^2.0.0",
     "@dcl/platform-crypto-middleware": "^1.1.0",
-    "@dcl/schemas": "^18.1.0",
+    "@dcl/schemas": "^22.2.0",
     "@dcl/snapshots-fetcher": "^9.2.2",
     "@dcl/sqs-component": "^2.0.4",
     "@sentry/node": "9.12.0",

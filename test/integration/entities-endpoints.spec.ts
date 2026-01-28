@@ -289,6 +289,270 @@ test('POST /entities endpoints', async function ({ components }) {
             expect(parsedResponse).toEqual(parseResponse([registry]))
           })
         })
+
+        describe('and querying with world coordinates using world_name parameter', () => {
+          describe('and the entity has world coordinates', () => {
+            let registry: Registry.DbEntity
+
+            beforeEach(async () => {
+              registry = createRegistryEntity(
+                identity.realAccount.address,
+                Registry.Status.COMPLETE,
+                Registry.SimplifiedStatus.COMPLETE,
+                {
+                  id: 'world-scene-entity-1',
+                  type: 'world',
+                  pointers: ['0,0', '1,0'],
+                  metadata: {
+                    worldConfiguration: {
+                      name: 'testworld.dcl.eth'
+                    }
+                  }
+                }
+              )
+              await createRegistryOnDatabase(registry)
+            })
+
+            it('should return the entity when querying with coordinates and world_name', async () => {
+              const response = await fetchLocally(
+                'POST',
+                path,
+                undefined,
+                {
+                  pointers: ['0,0']
+                },
+                {},
+                { world_name: 'testworld.dcl.eth' }
+              )
+              const parsedResponse = await response.json()
+
+              expect(parsedResponse).toEqual(parseResponse([registry]))
+            })
+          })
+
+          describe('and multiple entities exist in the same world', () => {
+            let registryA: Registry.DbEntity
+            let registryB: Registry.DbEntity
+
+            beforeEach(async () => {
+              registryA = createRegistryEntity(
+                identity.realAccount.address,
+                Registry.Status.COMPLETE,
+                Registry.SimplifiedStatus.COMPLETE,
+                {
+                  id: 'world-scene-entity-2a',
+                  type: 'world',
+                  pointers: ['0,0'],
+                  metadata: {
+                    worldConfiguration: {
+                      name: 'anotherworld.dcl.eth'
+                    }
+                  }
+                }
+              )
+              registryB = createRegistryEntity(
+                identity.realAccount.address,
+                Registry.Status.COMPLETE,
+                Registry.SimplifiedStatus.COMPLETE,
+                {
+                  id: 'world-scene-entity-2b',
+                  type: 'world',
+                  pointers: ['1,0'],
+                  metadata: {
+                    worldConfiguration: {
+                      name: 'anotherworld.dcl.eth'
+                    }
+                  }
+                }
+              )
+              await createRegistryOnDatabase(registryA)
+              await createRegistryOnDatabase(registryB)
+            })
+
+            it('should return all entities in the world when querying with coordinates and world_name', async () => {
+              const response = await fetchLocally(
+                'POST',
+                path,
+                undefined,
+                {
+                  pointers: ['0,0', '1,0']
+                },
+                {},
+                { world_name: 'anotherworld.dcl.eth' }
+              )
+              const parsedResponse = await response.json()
+
+              expect(parsedResponse).toEqual(parseResponse([registryA, registryB]))
+            })
+          })
+
+          describe('and the entity has a legacy world pointer (not world scene pointer)', () => {
+            let registry: Registry.DbEntity
+
+            beforeEach(async () => {
+              registry = createRegistryEntity(
+                identity.realAccount.address,
+                Registry.Status.COMPLETE,
+                Registry.SimplifiedStatus.COMPLETE,
+                { id: 'legacy-world-entity', pointers: ['legacyworld.dcl.eth'] }
+              )
+              await createRegistryOnDatabase(registry)
+            })
+
+            it('should return the entity when querying with the same legacy world pointer', async () => {
+              const response = await fetchLocally('POST', path, undefined, {
+                pointers: ['legacyworld.dcl.eth']
+              })
+              const parsedResponse = await response.json()
+
+              expect(parsedResponse).toEqual(parseResponse([registry]))
+            })
+          })
+
+          describe('and mixing world coordinates with genesis coordinates', () => {
+            let worldRegistry: Registry.DbEntity
+            let genesisRegistry: Registry.DbEntity
+
+            beforeEach(async () => {
+              worldRegistry = createRegistryEntity(
+                identity.realAccount.address,
+                Registry.Status.COMPLETE,
+                Registry.SimplifiedStatus.COMPLETE,
+                {
+                  id: 'mixed-world-entity',
+                  type: 'world',
+                  pointers: ['0,0'],
+                  metadata: {
+                    worldConfiguration: {
+                      name: 'mixedworld.dcl.eth'
+                    }
+                  }
+                }
+              )
+              genesisRegistry = createRegistryEntity(
+                identity.realAccount.address,
+                Registry.Status.COMPLETE,
+                Registry.SimplifiedStatus.COMPLETE,
+                { id: 'mixed-genesis-entity', pointers: ['2000,2000'] }
+              )
+              await createRegistryOnDatabase(worldRegistry)
+              await createRegistryOnDatabase(genesisRegistry)
+            })
+
+            it('should return both entities when querying with world coordinates (with world_name) and genesis coordinates', async () => {
+              // Query for world entity with world_name parameter
+              const worldResponse = await fetchLocally(
+                'POST',
+                path,
+                undefined,
+                {
+                  pointers: ['0,0']
+                },
+                {},
+                { world_name: 'mixedworld.dcl.eth' }
+              )
+              const worldParsedResponse = await worldResponse.json()
+
+              // Query for genesis entity (no world_name parameter)
+              const genesisResponse = await fetchLocally('POST', path, undefined, {
+                pointers: ['2000,2000']
+              })
+              const genesisParsedResponse = await genesisResponse.json()
+
+              // Combine results
+              const allResults = [...worldParsedResponse, ...genesisParsedResponse]
+
+              expect(allResults).toEqual(parseResponse([worldRegistry, genesisRegistry]))
+            })
+          })
+
+          describe('and the world has no entities', () => {
+            it('should return an empty array', async () => {
+              const response = await fetchLocally(
+                'POST',
+                path,
+                undefined,
+                {
+                  pointers: ['0,0']
+                },
+                {},
+                { world_name: 'nonexistentworld.dcl.eth' }
+              )
+              const parsedResponse = await response.json()
+
+              expect(parsedResponse).toEqual([])
+            })
+          })
+        })
+
+        describe('and querying with world coordinates directly', () => {
+          let registry: Registry.DbEntity
+
+          beforeEach(async () => {
+            registry = createRegistryEntity(
+              identity.realAccount.address,
+              Registry.Status.COMPLETE,
+              Registry.SimplifiedStatus.COMPLETE,
+              {
+                id: 'direct-world-scene-entity',
+                type: 'world',
+                pointers: ['5,5'],
+                metadata: {
+                  worldConfiguration: {
+                    name: 'directworld.dcl.eth'
+                  }
+                }
+              }
+            )
+            await createRegistryOnDatabase(registry)
+          })
+
+          describe('and the query uses the exact coordinate with world_name', () => {
+            let response: Response
+            let parsedResponse: any
+
+            beforeEach(async () => {
+              response = await fetchLocally(
+                'POST',
+                path,
+                undefined,
+                {
+                  pointers: ['5,5']
+                },
+                {},
+                { world_name: 'directworld.dcl.eth' }
+              )
+              parsedResponse = await response.json()
+            })
+
+            it('should return the entity', async () => {
+              expect(parsedResponse).toEqual(parseResponse([registry]))
+            })
+          })
+
+          describe('and the query uses a different coordinate in the same world', () => {
+            let response: Response
+            let parsedResponse: any
+
+            beforeEach(async () => {
+              response = await fetchLocally(
+                'POST',
+                path,
+                undefined,
+                {
+                  pointers: ['0,0']
+                },
+                {},
+                { world_name: 'directworld.dcl.eth' }
+              )
+              parsedResponse = await response.json()
+            })
+
+            it('should return an empty array', async () => {
+              expect(parsedResponse).toEqual([])
+            })
+          })
+        })
       })
 
       describe('when no entities are found', () => {

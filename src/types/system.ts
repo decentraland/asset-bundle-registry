@@ -14,7 +14,7 @@ import {
   IMessageProcessorComponent,
   IQueueComponent,
   IEntityStatusFetcherComponent,
-  IRegistryOrchestratorComponent,
+  IRegistryComponent,
   ICacheStorage,
   IWorldsComponent,
   IQueuesStatusManagerComponent,
@@ -25,7 +25,8 @@ import {
   IProfileRetrieverComponent,
   IFailedProfilesRetrierComponent,
   IProfilesSynchronizerComponent,
-  ISynchronizerComponent
+  ISynchronizerComponent,
+  ICoordinatesComponent
 } from './service'
 import { metricDeclarations } from '../metrics'
 import { IContentStorageComponent } from '@dcl/catalyst-storage'
@@ -44,12 +45,13 @@ export type BaseComponents = {
   db: IDbComponent
   catalyst: ICatalystComponent
   entityStatusFetcher: IEntityStatusFetcherComponent
-  registryOrchestrator: IRegistryOrchestratorComponent
+  registry: IRegistryComponent
   queuesStatusManager: IQueuesStatusManagerComponent
   memoryStorage: ICacheStorage
   profileSanitizer: IProfileSanitizerComponent
   profileRetriever: IProfileRetrieverComponent
   synchronizer: ISynchronizerComponent
+  coordinates: ICoordinatesComponent
 }
 
 // components used in runtime
