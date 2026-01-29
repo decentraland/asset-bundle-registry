@@ -793,7 +793,7 @@ describe('textures-handler', () => {
             'v2',
             new Date(event.timestamp).toISOString()
           )
-          expect(registryOrchestrator.persistAndRotateStates).not.toHaveBeenCalled()
+          expect(registry.persistAndRotateStates).not.toHaveBeenCalled()
         })
       })
 
