@@ -15,13 +15,22 @@ import { Entity, EthAddress } from '@dcl/schemas'
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
 import { Profile } from 'dcl-catalyst-client/dist/client/specs/lambdas-client'
 
+export enum SortOrder {
+  ASC = 'asc',
+  DESC = 'desc'
+}
+
+export interface GetSortedRegistriesByPointersOptions {
+  statuses?: Registry.Status[]
+  sortOrder?: SortOrder
+  worldName?: string
+}
+
 export interface IDbComponent {
   getSortedRegistriesByOwner(owner: EthAddress): Promise<Registry.DbEntity[]>
   getSortedRegistriesByPointers(
     pointers: string[],
-    statuses?: Registry.Status[],
-    descSort?: boolean,
-    worldName?: string
+    options?: GetSortedRegistriesByPointersOptions
   ): Promise<Registry.DbEntity[]>
   getRegistryById(id: string): Promise<Registry.DbEntity | null>
   insertRegistry(registry: Registry.DbEntity): Promise<Registry.DbEntity>

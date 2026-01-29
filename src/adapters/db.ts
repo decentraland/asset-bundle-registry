@@ -1,5 +1,5 @@
 import SQL, { SQLStatement } from 'sql-template-strings'
-import { AppComponents, IDbComponent, Registry, Sync } from '../types'
+import { AppComponents, GetSortedRegistriesByPointersOptions, IDbComponent, Registry, SortOrder, Sync } from '../types'
 import { EthAddress } from '@dcl/schemas'
 
 export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent {
@@ -28,17 +28,18 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
    * are returned.
    *
    * @param pointers - Array of pointers to search for (coordinates)
-   * @param statuses - Optional status filter
-   * @param descSort - Whether to sort by timestamp descending
-   * @param worldName - Optional world name to filter by
+   * @param options - Optional query options
+   * @param options.statuses - Optional status filter
+   * @param options.sortOrder - Sort order for results ('asc' or 'desc')
+   * @param options.worldName - Optional world name to filter by
    * @returns Matching registries
    */
   async function getSortedRegistriesByPointers(
     pointers: string[],
-    statuses?: Registry.Status[],
-    descSort: boolean = false,
-    worldName?: string
+    options?: GetSortedRegistriesByPointersOptions
   ): Promise<Registry.DbEntity[]> {
+    const { statuses, sortOrder, worldName } = options ?? {}
+    const order = sortOrder === SortOrder.DESC ? 'DESC' : 'ASC'
     const lowerCasePointers = pointers.map((p) => p.toLowerCase())
 
     // Build the base query with array overlap
@@ -76,10 +77,8 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
       `)
     }
 
-    if (descSort) {
-      query.append(SQL`
-        ORDER BY timestamp DESC
-      `)
+    if (sortOrder) {
+      query.append(`ORDER BY timestamp ${order}`)
     }
 
     const result = await pg.query<Registry.DbEntity>(query)

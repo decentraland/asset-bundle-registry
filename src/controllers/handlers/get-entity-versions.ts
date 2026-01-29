@@ -22,12 +22,10 @@ export async function getEntityVersionsHandler(context: HandlerContextWithPath<'
   // Extract world_name from query parameters
   const worldName = context.url.searchParams.get('world_name') || undefined
 
-  const entities = await db.getSortedRegistriesByPointers(
-    pointers,
-    [Registry.Status.COMPLETE, Registry.Status.FALLBACK],
-    false,
+  const entities = await db.getSortedRegistriesByPointers(pointers, {
+    statuses: [Registry.Status.COMPLETE, Registry.Status.FALLBACK],
     worldName
-  )
+  })
 
   const entitiesByPointers: Pick<Registry.DbEntity, 'pointers' | 'versions' | 'bundles'>[] =
     getMostUpdatedRegistryByPointers(entities).map((entity) => ({
