@@ -1,3 +1,4 @@
+import { IBaseComponent } from '@well-known-components/interfaces'
 import { AppComponents, ISynchronizerComponent } from '../../types'
 import { withRetry } from '../../utils/timer'
 
@@ -44,20 +45,16 @@ export async function createSynchronizerComponent(
     }
   }
 
-  async function waitForDatabaseReady(): Promise<void> {
-    let isReady: boolean = false
-    while (!isReady) {
-      try {
-        await db.getLatestProfileTimestamp()
-        isReady = true
-      } catch (error: any) {
-        logger.info('Waiting for database migrations to complete', { error: error.message })
-        await new Promise((resolve) => setTimeout(resolve, 1000))
-      }
+  async function waitForComponentsReady(startedFn: () => boolean, abortSignal: AbortSignal): Promise<boolean> {
+    while (!startedFn() && !abortSignal.aborted) {
+      await new Promise((resolve) => setTimeout(resolve, 100))
     }
-    // if service is starting from scratch, it will take a while until the migrations are done
-    // TODO: handle database ready directly in the service lifecycle
-    logger.info('Database is ready, synchronizer can start')
+    if (abortSignal.aborted) {
+      logger.debug('Synchronizer aborted before components were ready')
+      return false
+    }
+    logger.info('All components started, synchronizer can begin')
+    return true
   }
 
   async function loop(
@@ -135,7 +132,7 @@ export async function createSynchronizerComponent(
     }
   }
 
-  async function start(_startOptions?: any): Promise<void> {
+  async function start(startOptions: IBaseComponent.ComponentStartOptions): Promise<void> {
     const isSinchronizerDisabled = (await config.getString('DISABLE_PROFILE_SYNC')) === 'true'
     if (isSinchronizerDisabled) {
       logger.info('Profile sync is disabled, skipping')
@@ -145,14 +142,21 @@ export async function createSynchronizerComponent(
     running = true
     abortController = new AbortController()
 
-    await waitForDatabaseReady()
-    const lastCursor = await loadLastCursor()
+    const syncPromise = (async () => {
+      const ready = await waitForComponentsReady(startOptions.started, abortController!.signal)
+      if (!ready) return
 
-    logger.info('Starting profile synchronizer', { lastCursor })
+      const lastCursor = await loadLastCursor()
+      logger.info('Starting profile synchronizer', { lastCursor })
 
-    void withRetry(async () => await syncProfiles(lastCursor, abortController!.signal)).catch((error) => {
+      await withRetry(async () => await syncProfiles(lastCursor, abortController!.signal))
+    })()
+
+    syncPromise.catch((error) => {
       logger.error('Sync workflow failed', { error: error.message })
     })
+
+    loopPromises.push(syncPromise)
   }
 
   async function stop(): Promise<void> {

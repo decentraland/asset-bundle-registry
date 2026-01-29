@@ -80,13 +80,22 @@ export type SetSpawnCoordinateResult = {
   boundingRectangle: WorldBoundingRectangle
 }
 
+export enum SortOrder {
+  ASC = 'asc',
+  DESC = 'desc'
+}
+
+export interface GetSortedRegistriesByPointersOptions {
+  statuses?: Registry.Status[]
+  sortOrder?: SortOrder
+  worldName?: string
+}
+
 export interface IDbComponent {
   getSortedRegistriesByOwner(owner: EthAddress): Promise<Registry.DbEntity[]>
   getSortedRegistriesByPointers(
     pointers: string[],
-    statuses?: Registry.Status[],
-    descSort?: boolean,
-    worldName?: string
+    options?: GetSortedRegistriesByPointersOptions
   ): Promise<Registry.DbEntity[]>
   getRegistryById(id: string): Promise<Registry.DbEntity | null>
   insertRegistry(registry: Registry.DbEntity): Promise<Registry.DbEntity>
@@ -103,7 +112,10 @@ export interface IDbComponent {
     version: string,
     buildDate: string
   ): Promise<Registry.DbEntity | null>
-  getRelatedRegistries(registry: Pick<Registry.DbEntity, 'pointers' | 'id'>): Promise<Registry.PartialDbEntity[]>
+  getRelatedRegistries(
+    registry: Pick<Registry.DbEntity, 'pointers' | 'id'>,
+    worldName?: string
+  ): Promise<Registry.PartialDbEntity[]>
   undeployRegistries(entityIds: string[]): Promise<number>
   deleteRegistries(entityIds: string[]): Promise<void>
   getBatchOfDeprecatedRegistriesOlderThan(
@@ -116,6 +128,7 @@ export interface IDbComponent {
   getHistoricalRegistryById(id: string): Promise<Registry.DbEntity | null>
   // profiles
   upsertProfileIfNewer(profile: Sync.ProfileDbEntity): Promise<boolean>
+  bulkUpsertProfilesIfNewer(profiles: Sync.ProfileDbEntity[]): Promise<string[]>
   getProfileByPointer(pointer: string): Promise<Sync.ProfileDbEntity | null>
   getProfilesByPointers(pointers: string[]): Promise<Sync.ProfileDbEntity[]>
   getLatestProfileTimestamp(): Promise<number | null>
@@ -160,6 +173,7 @@ export interface ICatalystComponent {
   getEntityByPointers(pointers: string[]): Promise<Entity[]>
   getContent(id: string): Promise<Entity | undefined>
   getProfiles(pointers: string[]): Promise<Profile[]>
+  convertLambdasProfileToEntity(profile: Profile): Entity | null
 }
 
 export interface IWorldsComponent {

@@ -10,7 +10,9 @@ import {
   Sync,
   UndeploymentResult,
   WorldBoundingRectangle,
-  WorldManifestData
+  WorldManifestData,
+  GetSortedRegistriesByPointersOptions,
+  SortOrder
 } from '../types'
 import { EthAddress } from '@dcl/schemas'
 import { SpawnCoordinate } from '../logic/coordinates/types'
@@ -49,17 +51,18 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
    * are returned.
    *
    * @param pointers - Array of pointers to search for (coordinates)
-   * @param statuses - Optional status filter
-   * @param descSort - Whether to sort by timestamp descending
-   * @param worldName - Optional world name to filter by
+   * @param options - Optional query options
+   * @param options.statuses - Optional status filter
+   * @param options.sortOrder - Sort order for results ('asc' or 'desc')
+   * @param options.worldName - Optional world name to filter by
    * @returns Matching registries
    */
   async function getSortedRegistriesByPointers(
     pointers: string[],
-    statuses?: Registry.Status[],
-    descSort: boolean = false,
-    worldName?: string
+    options?: GetSortedRegistriesByPointersOptions
   ): Promise<Registry.DbEntity[]> {
+    const { statuses, sortOrder, worldName } = options ?? {}
+    const order = sortOrder === SortOrder.DESC ? 'DESC' : 'ASC'
     const lowerCasePointers = pointers.map((p) => p.toLowerCase())
 
     // Build the base query with array overlap
@@ -70,9 +73,8 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
         registries
       WHERE (
         pointers && ${lowerCasePointers}::varchar(255)[]
+      )
     `
-
-    query.append(SQL`)`)
 
     // Filter by world name if provided
     if (worldName) {
@@ -98,10 +100,8 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
       `)
     }
 
-    if (descSort) {
-      query.append(SQL`
-        ORDER BY timestamp DESC
-      `)
+    if (sortOrder) {
+      query.append(`ORDER BY timestamp ${order}`)
     }
 
     const result = await pg.query<Registry.DbEntity>(query)
@@ -242,19 +242,53 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
     return result.rows[0] || null
   }
 
+  /**
+   * Gets registries related to a given registry by overlapping pointers.
+   *
+   * When worldName is not provided, coordinates are treated as Genesis City coordinates
+   * and world entities are excluded from results.
+   *
+   * When worldName is provided, only entities matching that world name (via metadata.worldConfiguration.name)
+   * are returned, avoiding collisions between world and Genesis City registries.
+   *
+   * @param registry - Registry with pointers and id to find related registries for
+   * @param worldName - Optional world name to filter by (for world registries)
+   * @returns Related registries that share pointers
+   */
   async function getRelatedRegistries(
-    registry: Pick<Registry.DbEntity, 'pointers' | 'id'>
+    registry: Pick<Registry.DbEntity, 'pointers' | 'id'>,
+    worldName?: string
   ): Promise<Registry.PartialDbEntity[]> {
     const lowerCasePointers = registry.pointers.map((p) => p.toLowerCase())
+
     const query: SQLStatement = SQL`
       SELECT 
         id, pointers, timestamp, status, bundles, versions
       FROM 
         registries
       WHERE 
-        pointers && ${lowerCasePointers}::varchar(255)[] AND LOWER(id) != ${registry.id.toLocaleLowerCase()} AND status != ${Registry.Status.OBSOLETE}
-      ORDER BY timestamp DESC
+        pointers && ${lowerCasePointers}::varchar(255)[]
+        AND LOWER(id) != ${registry.id.toLocaleLowerCase()}
+        AND status != ${Registry.Status.OBSOLETE}
     `
+
+    // Filter by world name if provided
+    if (worldName) {
+      const normalizedWorldName = worldName.toLowerCase()
+      // When worldName is provided, only return entities matching that world name
+      query.append(SQL`
+        AND LOWER(metadata->'worldConfiguration'->>'name') = ${normalizedWorldName}
+      `)
+    } else {
+      // When worldName is not provided, exclude worlds (treat coordinates as Genesis City)
+      query.append(SQL`
+        AND metadata->'worldConfiguration'->>'name' IS NULL
+      `)
+    }
+
+    query.append(SQL`
+      ORDER BY timestamp DESC
+    `)
 
     const result = await pg.query<Registry.PartialDbEntity>(query)
     return result.rows
@@ -444,6 +478,52 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
 
     const result = await pg.query(query)
     return (result.rowCount ?? 0) > 0
+  }
+
+  async function bulkUpsertProfilesIfNewer(profiles: Sync.ProfileDbEntity[]): Promise<string[]> {
+    if (profiles.length === 0) {
+      return []
+    }
+
+    const ids: string[] = []
+    const pointers: string[] = []
+    const timestamps: number[] = []
+    const contents: string[] = []
+    const metadatas: string[] = []
+    const localTimestamps: number[] = []
+
+    for (const profile of profiles) {
+      ids.push(profile.id)
+      pointers.push(profile.pointer.toLowerCase())
+      timestamps.push(profile.timestamp)
+      contents.push(JSON.stringify(profile.content))
+      metadatas.push(JSON.stringify(profile.metadata))
+      localTimestamps.push(profile.localTimestamp)
+    }
+
+    const query = SQL`
+      INSERT INTO profiles (id, pointer, timestamp, content, metadata, local_timestamp)
+      SELECT * FROM UNNEST(
+        ${ids}::varchar[],
+        ${pointers}::varchar[],
+        ${timestamps}::bigint[],
+        ${contents}::jsonb[],
+        ${metadatas}::jsonb[],
+        ${localTimestamps}::bigint[]
+      )
+      ON CONFLICT (pointer) DO UPDATE
+      SET
+        id = EXCLUDED.id,
+        timestamp = EXCLUDED.timestamp,
+        content = EXCLUDED.content,
+        metadata = EXCLUDED.metadata,
+        local_timestamp = EXCLUDED.local_timestamp
+      WHERE profiles.timestamp < EXCLUDED.timestamp
+      RETURNING pointer
+    `
+
+    const result = await pg.query<{ pointer: string }>(query)
+    return result.rows.map((row) => row.pointer)
   }
 
   async function getProfileByPointer(pointer: string): Promise<Sync.ProfileDbEntity | null> {
@@ -1073,6 +1153,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
     getSortedHistoricalRegistriesByOwner,
     getHistoricalRegistryById,
     upsertProfileIfNewer,
+    bulkUpsertProfilesIfNewer,
     getProfileByPointer,
     getProfilesByPointers,
     getLatestProfileTimestamp,

@@ -17,6 +17,7 @@ export function createDbMockComponent(): jest.Mocked<IDbComponent> {
     getSortedHistoricalRegistriesByOwner: jest.fn(),
     getHistoricalRegistryById: jest.fn(),
     upsertProfileIfNewer: jest.fn(),
+    bulkUpsertProfilesIfNewer: jest.fn().mockResolvedValue([]),
     getProfileByPointer: jest.fn(),
     getProfilesByPointers: jest.fn(),
     getLatestProfileTimestamp: jest.fn(),

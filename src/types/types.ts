@@ -1,9 +1,10 @@
 import { Entity, EntityType, EthAddress, Profile } from '@dcl/schemas'
 
 export namespace Sync {
-  export type ProfileDbEntity = Omit<Entity, 'version' | 'pointers'> & {
+  export type ProfileDbEntity = Omit<Entity, 'version' | 'pointers' | 'content'> & {
     localTimestamp: number
     pointer: string // single pointer ensurance for simplicity over B-tree database index
+    content: Entity['content'] | null // nullable for profiles fetched from lambdas-only
   }
 
   export type FailedProfileDbEntity = {
@@ -52,7 +53,8 @@ export namespace Registry {
       mac: SimplifiedStatus
       webgl: SimplifiedStatus
     }
-    lods: {
+    // LODs are optional - worlds don't support LODs
+    lods?: {
       windows: SimplifiedStatus
       mac: SimplifiedStatus
       webgl: SimplifiedStatus
@@ -92,6 +94,7 @@ type StatusByPlatform = {
 export type EntityStatus = {
   entityId: string
   complete: boolean
+  // LODs are optional - worlds don't support LODs
   lods?: StatusByPlatform
   assetBundles: StatusByPlatform
   catalyst: Registry.SimplifiedStatus

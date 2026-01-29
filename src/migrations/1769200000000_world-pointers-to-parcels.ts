@@ -12,17 +12,15 @@ export const shorthands: ColumnDefinitions | undefined = undefined
  */
 export async function up(pgm: MigrationBuilder): Promise<void> {
   // Update pointers for all world registries (those with worldConfiguration.name set)
-  // Filter the pointers array to only keep coordinate-like values
-  // Using a regex pattern that matches Genesis City coordinates: -?\d+,-?\d+
+  // Set pointers from metadata.scene.parcels array
   pgm.sql(`
     UPDATE registries
     SET pointers = (
       SELECT COALESCE(
-        array_agg(LOWER(pointer)),
+        array_agg(LOWER(parcel::text)),
         ARRAY[]::varchar(255)[]
       )
-      FROM unnest(pointers) AS pointer
-      WHERE pointer ~ '^-?\\d+,-?\\d+$'
+      FROM jsonb_array_elements_text(metadata->'scene'->'parcels') AS parcel
     )
     WHERE metadata->'worldConfiguration'->>'name' IS NOT NULL
   `)

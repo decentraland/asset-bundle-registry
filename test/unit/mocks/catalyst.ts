@@ -6,6 +6,7 @@ export function createCatalystMockComponent(): jest.Mocked<ICatalystComponent> {
     getEntityByPointers: jest.fn(),
     getContent: jest.fn(),
     getEntitiesByIds: jest.fn(),
-    getProfiles: jest.fn()
+    getProfiles: jest.fn(),
+    convertLambdasProfileToEntity: jest.fn()
   }
 }

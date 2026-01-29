@@ -1,5 +1,5 @@
 import { DecentralandSignatureContext } from '@dcl/platform-crypto-middleware'
-import { EntityStatus, HandlerContextWithPath, Registry } from '../../types'
+import { EntityStatus, HandlerContextWithPath, Registry, SortOrder } from '../../types'
 import { EthAddress } from '@dcl/schemas'
 
 function parseRegistryStatus(registry: Registry.DbEntity): EntityStatus {
@@ -9,8 +9,8 @@ function parseRegistryStatus(registry: Registry.DbEntity): EntityStatus {
   }
 
   const lods = {
-    mac: registry.bundles.lods.mac || Registry.SimplifiedStatus.PENDING,
-    windows: registry.bundles.lods.windows || Registry.SimplifiedStatus.PENDING
+    mac: registry.bundles.lods?.mac || Registry.SimplifiedStatus.PENDING,
+    windows: registry.bundles.lods?.windows || Registry.SimplifiedStatus.PENDING
   }
 
   const isComplete =
@@ -41,7 +41,7 @@ export async function getEntityStatusHandler(context: HandlerContextWithPath<'db
     (await db.getRegistryById(idOrPointer)) ||
     (await db.getHistoricalRegistryById(idOrPointer)) ||
     // in case a pointer was provided:
-    (await db.getSortedRegistriesByPointers([idOrPointer], undefined, true, worldName))[0] // if found, we kept the most recent registry ([0])
+    (await db.getSortedRegistriesByPointers([idOrPointer], { sortOrder: SortOrder.DESC, worldName }))[0] // if found, we kept the most recent registry ([0])
 
   if (entity) {
     const entityStatus = parseRegistryStatus(entity)

@@ -25,12 +25,10 @@ export async function getActiveEntityHandler(context: HandlerContextWithPath<'db
   // Track the number of pointers in this request
   metrics.observe('pointers_per_request', {}, pointers.length)
 
-  const entities = await db.getSortedRegistriesByPointers(
-    pointers,
-    [Registry.Status.COMPLETE, Registry.Status.FALLBACK],
-    false,
+  const entities = await db.getSortedRegistriesByPointers(pointers, {
+    statuses: [Registry.Status.COMPLETE, Registry.Status.FALLBACK],
     worldName
-  )
+  })
 
   if (entities.length === 0) {
     metrics.increment('registries_missmatch_count', {}, pointers.length)

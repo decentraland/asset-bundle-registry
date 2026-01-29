@@ -1,7 +1,7 @@
 import { Entity, EntityType, Profile, Avatar, AvatarInfo } from '@dcl/schemas'
 import { Sync } from '../../../../src/types'
 
-export function createAvatarInfo(overrides: Partial<AvatarInfo> = {}): AvatarInfo {
+export function createAvatarInfo(overrides: Partial<AvatarInfo> = {}, entityId: string = 'bafkreitest'): AvatarInfo {
   return {
     bodyShape: 'dcl://base-avatars/BaseFemale',
     eyes: { color: { r: 0.5, g: 0.5, b: 0.5 } },
@@ -10,7 +10,10 @@ export function createAvatarInfo(overrides: Partial<AvatarInfo> = {}): AvatarInf
     wearables: [],
     forceRender: [],
     emotes: [],
-    snapshots: { face256: '', body: '' },
+    snapshots: {
+      face256: `https://profile-images.decentraland.org/entities/${entityId}/face.png`,
+      body: `https://profile-images.decentraland.org/entities/${entityId}/body.png`
+    },
     ...overrides
   }
 }
@@ -28,9 +31,9 @@ export function createAvatar(overrides: Partial<Avatar> = {}): Avatar {
   } as Avatar
 }
 
-export function createFullAvatar(overrides: Partial<Avatar> = {}): Avatar {
+export function createFullAvatar(overrides: Partial<Avatar> = {}, entityId: string = 'bafkreitest'): Avatar {
   return createAvatar({
-    avatar: createAvatarInfo(),
+    avatar: createAvatarInfo({}, entityId),
     ...overrides
   })
 }

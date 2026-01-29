@@ -1,19 +1,59 @@
-import { Entity } from '@dcl/schemas'
-
-import { AppComponents, ICatalystComponent, CatalystFetchOptions } from '../types'
+import { Entity, EntityType } from '@dcl/schemas'
 import { ContentClient, createContentClient, createLambdasClient } from 'dcl-catalyst-client'
 import { Profile } from 'dcl-catalyst-client/dist/client/specs/lambdas-client'
+
+import { AppComponents, ICatalystComponent, CatalystFetchOptions } from '../types'
+
+const ENTITY_ID_FROM_SNAPSHOT_REGEX = /\/entities\/([^/]+)\//
 
 export async function createCatalystAdapter({
   config,
   logs,
   fetch
 }: Pick<AppComponents, 'config' | 'logs' | 'fetch'>): Promise<ICatalystComponent> {
-  const log = logs.getLogger('catalyst-client')
-  const catalystLoadBalancer = await config.requireString('CATALYST_LOADBALANCER_HOST')
+  const logger = logs.getLogger('catalyst-client')
 
+  const catalystLoadBalancer = await config.requireString('CATALYST_LOADBALANCER_HOST')
   const defaultContentClient = createContentClient({ fetcher: fetch, url: ensureContentUrl(catalystLoadBalancer) })
-  const defaultLambdasClient = createLambdasClient({ fetcher: fetch, url: ensureLambdasUrl(catalystLoadBalancer) })
+
+  // We use a historical catalyst (instead of the load balancer) because some official nodes
+  // have garbage-collected old profiles. The historical catalyst retains all profile data
+  const historicalCatalyst = await config.requireString('CATALYST_WITH_HISTORICAL_DATA')
+  const historicalLambdasClient = createLambdasClient({ fetcher: fetch, url: ensureLambdasUrl(historicalCatalyst) })
+
+  function extractEntityIdFromSnapshotUrl(snapshotUrl: string): string | null {
+    const match = snapshotUrl.match(ENTITY_ID_FROM_SNAPSHOT_REGEX)
+    return match ? match[1] : null
+  }
+
+  function convertLambdasProfileToEntity(profile: Profile): Entity | null {
+    const avatar = profile.avatars?.[0]
+    if (!avatar?.ethAddress) {
+      return null
+    }
+
+    const snapshotUrl = avatar.avatar?.snapshots?.body || avatar.avatar?.snapshots?.face256
+    if (!snapshotUrl) {
+      logger.warn('Profile has no snapshot URL to extract entity ID', { pointer: avatar.ethAddress })
+      return null
+    }
+
+    const entityId = extractEntityIdFromSnapshotUrl(snapshotUrl)
+    if (!entityId) {
+      logger.warn('Could not extract entity ID from snapshot URL', { snapshotUrl, pointer: avatar.ethAddress })
+      return null
+    }
+
+    return {
+      version: 'v3',
+      id: entityId,
+      type: EntityType.PROFILE,
+      pointers: [avatar.ethAddress.toLowerCase()],
+      timestamp: profile.timestamp!,
+      content: [],
+      metadata: { avatars: profile.avatars }
+    }
+  }
 
   function ensureContentUrl(url: string): string {
     return url.endsWith('/content') ? url : url + '/content'
@@ -72,7 +112,7 @@ export async function createCatalystAdapter({
         return await contentClient.fetchEntityById(id)
       }
     } catch (error: any) {
-      log.error('Error fetching entity by id', { id, error: error?.message || 'Unknown error' })
+      logger.error('Error fetching entity by id', { id, error: error?.message || 'Unknown error' })
       return null
     }
   }
@@ -91,7 +131,7 @@ export async function createCatalystAdapter({
         return await contentClient.fetchEntitiesByIds(ids)
       }
     } catch (error: any) {
-      log.error('Error fetching entities by ids', { ids: ids.join(', '), error: error?.message || 'Unknown error' })
+      logger.error('Error fetching entities by ids', { ids: ids.join(', '), error: error?.message || 'Unknown error' })
       return []
     }
   }
@@ -118,13 +158,13 @@ export async function createCatalystAdapter({
     }
 
     try {
-      const profiles = await defaultLambdasClient.getAvatarsDetailsByPost({ ids: pointers })
+      const profiles = await historicalLambdasClient.getAvatarsDetailsByPost({ ids: pointers })
       const profilesWithAvatars = profiles.filter(
         (profile) => profile.avatars && profile.avatars.length > 0 && profile.avatars[0].ethAddress
       )
       return profilesWithAvatars
     } catch (error: any) {
-      log.error('Error fetching sanitized profiles from lamb2', {
+      logger.error('Error fetching profiles from historical catalyst lambdas', {
         error: error?.message || 'Unknown error',
         count: pointers.length
       })
@@ -137,6 +177,7 @@ export async function createCatalystAdapter({
     getEntitiesByIds: withBatches(getEntitiesByIds),
     getEntityByPointers: withBatches(getEntityByPointers),
     getContent,
-    getProfiles
+    getProfiles,
+    convertLambdasProfileToEntity
   }
 }

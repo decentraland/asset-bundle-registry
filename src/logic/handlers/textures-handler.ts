@@ -28,17 +28,14 @@ export const createTexturesEventHandler = ({
   return {
     handle: async (event: AssetBundleConversionFinishedEvent): Promise<EventHandlerResult> => {
       try {
-        const metadata = event.metadata
-        let entity: Registry.DbEntity | null = await db.getRegistryById(metadata.entityId)
+        const eventMetadata = event.metadata
+        let entity: Registry.DbEntity | null = await db.getRegistryById(eventMetadata.entityId)
 
-        // Skip processing if the entity has been undeployed (marked as OBSOLETE)
-        if (entity?.status === Registry.Status.OBSOLETE) {
-          logger.info('Entity is OBSOLETE, skipping bundle update', { entityId: metadata.entityId })
-          return { ok: true, handlerName: HANDLER_NAME }
-        }
+        // Track if the entity was originally OBSOLETE to preserve its status later
+        const wasOriginallyObsolete = entity?.status === Registry.Status.OBSOLETE
 
         if (!entity) {
-          logger.info('Entity not found in the database, will create it', { entityId: metadata.entityId })
+          logger.info('Entity not found in the database, will create it', { entityId: eventMetadata.entityId })
           let fetchedEntity: Entity | null
 
           if (event.metadata.isWorld) {
@@ -51,7 +48,7 @@ export const createTexturesEventHandler = ({
             logger.error('Entity not found', { event: JSON.stringify(event) })
             return {
               ok: false,
-              errors: [`Entity with id ${metadata.entityId} was not found`],
+              errors: [`Entity with id ${eventMetadata.entityId} was not found`],
               handlerName: HANDLER_NAME
             }
           }
@@ -85,8 +82,8 @@ export const createTexturesEventHandler = ({
           })
         }
 
-        if (!metadata.isLods) {
-          await queuesStatusManager.markAsFinished(metadata.platform, metadata.entityId)
+        if (!eventMetadata.isLods) {
+          await queuesStatusManager.markAsFinished(eventMetadata.platform, eventMetadata.entityId)
         }
 
         const conversionSucceeded =
@@ -96,7 +93,7 @@ export const createTexturesEventHandler = ({
 
         const bundleType = event.metadata.isLods ? 'lods' : 'assets'
         const platform = event.metadata.platform as keyof Registry.Bundles['assets']
-        const previousBundleStatus = entity.bundles[bundleType][platform]
+        const previousBundleStatus = entity.bundles[bundleType]?.[platform]
 
         // If reconversion fails but previous bundles were COMPLETE, keep them as COMPLETE
         // The old bundles are still valid on CDN and should continue to be used
@@ -115,15 +112,15 @@ export const createTexturesEventHandler = ({
           bundleType,
           statusCode: event.metadata.statusCode,
           conversionSucceeded: String(conversionSucceeded),
-          previousStatus: previousBundleStatus,
+          previousStatus: previousBundleStatus ?? 'N/A',
           newStatus: status,
           preservingPreviousStatus: String(shouldPreservePreviousStatus)
         })
 
         let registryEntity: Registry.DbEntity | null = await db.upsertRegistryBundle(
-          metadata.entityId,
-          metadata.platform,
-          !!metadata.isLods,
+          eventMetadata.entityId,
+          eventMetadata.platform,
+          !!eventMetadata.isLods,
           status
         )
 
@@ -168,33 +165,36 @@ export const createTexturesEventHandler = ({
           bundles: JSON.stringify(registryEntity.bundles)
         })
 
-        const updatedRegistry = await registry.persistAndRotateStates(registryEntity)
-
-        // If this is a world entity and it's now processed (COMPLETE or FALLBACK),
-        // trigger spawn coordinate recalculation
-        if (
-          event.metadata.isWorld &&
-          (updatedRegistry.status === Registry.Status.COMPLETE || updatedRegistry.status === Registry.Status.FALLBACK)
-        ) {
-          const worldName = (updatedRegistry.metadata as any)?.worldConfiguration?.name
-          if (worldName) {
-            logger.info('Triggering spawn coordinate recalculation for world', {
-              worldName,
-              entityId: updatedRegistry.id,
-              status: updatedRegistry.status
-            })
-            try {
-              await coordinates.recalculateSpawnIfNeeded(worldName)
-            } catch (spawnError: any) {
-              // Log but don't fail the handler - spawn coordinate update is secondary
-              logger.error('Failed to recalculate spawn coordinate', {
+        // Skip status rotation for OBSOLETE entities - their status should be preserved
+        if (!wasOriginallyObsolete) {
+          const updatedRegistry = await registry.persistAndRotateStates(registryEntity)
+          // If this is a world entity and it's now processed (COMPLETE or FALLBACK),
+          // trigger spawn coordinate recalculation
+          if (
+            event.metadata.isWorld &&
+            (updatedRegistry.status === Registry.Status.COMPLETE || updatedRegistry.status === Registry.Status.FALLBACK)
+          ) {
+            const worldName = (updatedRegistry.metadata as any)?.worldConfiguration?.name
+            if (worldName) {
+              logger.info('Triggering spawn coordinate recalculation for world', {
                 worldName,
-                error: spawnError?.message || 'Unknown error'
+                entityId: updatedRegistry.id,
+                status: updatedRegistry.status
               })
+              try {
+                await coordinates.recalculateSpawnIfNeeded(worldName)
+              } catch (spawnError: any) {
+                // Log but don't fail the handler - spawn coordinate update is secondary
+                logger.error('Failed to recalculate spawn coordinate', {
+                  worldName,
+                  error: spawnError?.message || 'Unknown error'
+                })
+              }
             }
           }
+        } else {
+          logger.info('Entity was OBSOLETE, skipping status rotation', { entityId: eventMetadata.entityId })
         }
-
         return { ok: true, handlerName: HANDLER_NAME }
       } catch (errors: any) {
         logger.error('Failed to process', {

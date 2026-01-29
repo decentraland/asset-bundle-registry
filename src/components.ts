@@ -175,7 +175,8 @@ export async function initComponents(): Promise<AppComponents> {
     catalyst,
     profilesCache,
     profileSanitizer,
-    db
+    db,
+    metrics
   })
   const worlds = await createWorldsAdapter({ logs, config, fetch })
   const coordinates = createCoordinatesComponent({

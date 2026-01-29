@@ -46,9 +46,7 @@ export async function createWorldsAdapter({
 
       // For worlds, only store the coordinates (parcels) as pointers
       // Filter to only include coordinate-like pointers
-      const transformedPointers = originalPointers
-        .filter((pointer) => GENESIS_COORDINATES_REGEX.test(pointer))
-        .map((pointer) => pointer.toLowerCase())
+      const transformedPointers = originalPointers.filter((pointer) => GENESIS_COORDINATES_REGEX.test(pointer))
 
       logger.debug('Transformed world pointers', {
         entityId,

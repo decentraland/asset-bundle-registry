@@ -728,6 +728,75 @@ describe('textures-handler', () => {
         expect(result.errors).toEqual(['Error storing version'])
       })
 
+      describe('and the entity is OBSOLETE', () => {
+        let event: AssetBundleConversionFinishedEvent
+        let obsoleteDbEntity: Registry.DbEntity
+        let updatedDbEntity: Registry.DbEntity
+        let result: { ok: boolean; errors?: string[] }
+
+        beforeEach(async () => {
+          event = createEvent({
+            metadata: {
+              entityId: '123',
+              platform: 'windows',
+              statusCode: ManifestStatusCode.SUCCESS,
+              isLods: false,
+              isWorld: false,
+              version: 'v2'
+            }
+          })
+          const entity = createEntity()
+          obsoleteDbEntity = {
+            ...createDbEntity(entity),
+            status: Registry.Status.OBSOLETE,
+            bundles: {
+              assets: {
+                windows: Registry.SimplifiedStatus.COMPLETE,
+                mac: Registry.SimplifiedStatus.COMPLETE,
+                webgl: Registry.SimplifiedStatus.PENDING
+              },
+              lods: {
+                windows: Registry.SimplifiedStatus.PENDING,
+                mac: Registry.SimplifiedStatus.PENDING,
+                webgl: Registry.SimplifiedStatus.PENDING
+              }
+            }
+          }
+          updatedDbEntity = {
+            ...obsoleteDbEntity,
+            versions: {
+              assets: {
+                windows: { version: 'v2', buildDate: '2024-01-02' },
+                mac: { version: 'v1', buildDate: '2024-01-01' },
+                webgl: { version: '', buildDate: '' }
+              }
+            }
+          }
+          db.getRegistryById = jest.fn().mockResolvedValue(obsoleteDbEntity)
+          db.upsertRegistryBundle = jest.fn().mockResolvedValue(obsoleteDbEntity)
+          db.updateRegistryVersionWithBuildDate = jest.fn().mockResolvedValue(updatedDbEntity)
+
+          result = await handler.handle(event)
+        })
+
+        it('should succeed, update the bundle status and the version and not call persistAndRotateStates to preserve OBSOLETE status', () => {
+          expect(result.ok).toBe(true)
+          expect(db.upsertRegistryBundle).toHaveBeenCalledWith(
+            '123',
+            'windows',
+            false,
+            Registry.SimplifiedStatus.COMPLETE
+          )
+          expect(db.updateRegistryVersionWithBuildDate).toHaveBeenCalledWith(
+            '123',
+            'windows',
+            'v2',
+            new Date(event.timestamp).toISOString()
+          )
+          expect(registryOrchestrator.persistAndRotateStates).not.toHaveBeenCalled()
+        })
+      })
+
       it('should update bundle status for assets', async () => {
         const event = createEvent({
           metadata: {

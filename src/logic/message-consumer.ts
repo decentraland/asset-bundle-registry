@@ -9,15 +9,14 @@ export function createMessagesConsumerComponent({
   const logger = logs.getLogger('messages-consumer')
   const intervalToWaitInSeconds = 5 // wait time when no messages are found in the queue
   let isRunning = false
+  let loopPromise: Promise<void> | null = null
 
   async function removeMessageFromQueue(messageHandle: string) {
     logger.info('Removing message from queue', { messageHandle })
     await queue.deleteMessage(messageHandle)
   }
 
-  async function start() {
-    logger.info('Starting to listen messages from queue')
-    isRunning = true
+  async function consumeLoop() {
     while (isRunning) {
       const messages = await queue.receiveMessages(10)
 
@@ -79,8 +78,17 @@ export function createMessagesConsumerComponent({
     }
   }
 
+  async function start() {
+    logger.info('Starting to listen messages from queue')
+    isRunning = true
+    loopPromise = consumeLoop()
+  }
+
   async function stop() {
     isRunning = false
+    if (loopPromise) {
+      await loopPromise
+    }
   }
 
   return {
