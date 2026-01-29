@@ -25,12 +25,6 @@ export const createTexturesEventHandler = ({
         // Track if the entity was originally OBSOLETE to preserve its status later
         const wasOriginallyObsolete = entity?.status === Registry.Status.OBSOLETE
 
-        // Skip LODs processing for worlds since they don't support LODs
-        if (eventMetadata.isWorld && eventMetadata.isLods) {
-          logger.info('Skipping LODs processing for world entity', { entityId: eventMetadata.entityId })
-          return { ok: true, handlerName: HANDLER_NAME }
-        }
-
         if (!entity) {
           logger.info('Entity not found in the database, will create it', { entityId: eventMetadata.entityId })
           let fetchedEntity: Entity | null
@@ -56,16 +50,11 @@ export const createTexturesEventHandler = ({
               mac: Registry.SimplifiedStatus.PENDING,
               webgl: Registry.SimplifiedStatus.PENDING
             },
-            // Worlds don't support LODs
-            ...(event.metadata.isWorld
-              ? {}
-              : {
-                  lods: {
-                    windows: Registry.SimplifiedStatus.PENDING,
-                    mac: Registry.SimplifiedStatus.PENDING,
-                    webgl: Registry.SimplifiedStatus.PENDING
-                  }
-                })
+            lods: {
+              windows: Registry.SimplifiedStatus.PENDING,
+              mac: Registry.SimplifiedStatus.PENDING,
+              webgl: Registry.SimplifiedStatus.PENDING
+            }
           }
 
           const defaultVersions: Registry.Versions = {
@@ -95,8 +84,6 @@ export const createTexturesEventHandler = ({
 
         const bundleType = event.metadata.isLods ? 'lods' : 'assets'
         const platform = event.metadata.platform as keyof Registry.Bundles['assets']
-        // For worlds, lods bundle is undefined (we skip LODs processing for worlds earlier),
-        // but TypeScript needs the optional chaining for type safety
         const previousBundleStatus = entity.bundles[bundleType]?.[platform]
 
         // If reconversion fails but previous bundles were COMPLETE, keep them as COMPLETE

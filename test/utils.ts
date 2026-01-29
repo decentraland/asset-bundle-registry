@@ -105,9 +105,6 @@ export function createRegistryEntity(
   bundlesStatus: Registry.SimplifiedStatus,
   overrideProperties: Partial<Registry.DbEntity> = {}
 ): Registry.DbEntity {
-  // Worlds don't support LODs
-  const isWorld = overrideProperties.type === 'world'
-
   return {
     id: 'bafkreig6666666666666666666666666666666666666666666666666666666666666666',
     deployer: ownerAddress,
@@ -118,16 +115,11 @@ export function createRegistryEntity(
         mac: bundlesStatus,
         webgl: bundlesStatus
       },
-      // Worlds don't support LODs
-      ...(isWorld
-        ? {}
-        : {
-            lods: {
-              windows: bundlesStatus,
-              mac: bundlesStatus,
-              webgl: bundlesStatus
-            }
-          })
+      lods: {
+        windows: bundlesStatus,
+        mac: bundlesStatus,
+        webgl: bundlesStatus
+      }
     },
     pointers: ['1000,1000'], // out of scope pointer to avoid conflicts with entities
     timestamp: 0,

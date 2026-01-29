@@ -8,13 +8,10 @@ function parseRegistryStatus(registry: Registry.DbEntity): EntityStatus {
     windows: registry.bundles.assets.windows || Registry.SimplifiedStatus.PENDING
   }
 
-  // LODs are optional - worlds don't support LODs
-  const lods = registry.bundles.lods
-    ? {
-        mac: registry.bundles.lods.mac || Registry.SimplifiedStatus.PENDING,
-        windows: registry.bundles.lods.windows || Registry.SimplifiedStatus.PENDING
-      }
-    : undefined
+  const lods = {
+    mac: registry.bundles.lods?.mac || Registry.SimplifiedStatus.PENDING,
+    windows: registry.bundles.lods?.windows || Registry.SimplifiedStatus.PENDING
+  }
 
   const isComplete =
     assetBundles.mac === Registry.SimplifiedStatus.COMPLETE &&

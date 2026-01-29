@@ -155,7 +155,7 @@ describe('textures-handler', () => {
         )
       })
 
-      it('should create entity with default bundle status (without lods) when fetched from worlds', async () => {
+      it('should create entity with default bundle status when fetched from worlds', async () => {
         const event = createEvent({
           metadata: {
             entityId: '123',
@@ -167,33 +167,28 @@ describe('textures-handler', () => {
           }
         })
         const entity = createEntity()
-        // World entities don't have lods
-        const worldDbEntity = {
-          ...createDbEntity(entity),
-          bundles: {
-            assets: {
-              windows: Registry.SimplifiedStatus.PENDING,
-              mac: Registry.SimplifiedStatus.PENDING,
-              webgl: Registry.SimplifiedStatus.PENDING
-            }
-          }
-        }
+        const dbEntity = createDbEntity(entity)
         db.getRegistryById = jest.fn().mockResolvedValue(null)
         worlds.getWorld = jest.fn().mockResolvedValue(entity)
         // persistAndRotateStates must return the created entity so we can access bundles later
-        registryOrchestrator.persistAndRotateStates = jest.fn().mockResolvedValue(worldDbEntity)
+        registryOrchestrator.persistAndRotateStates = jest.fn().mockResolvedValue(dbEntity)
         db.upsertRegistryBundle = jest.fn().mockResolvedValue({
-          ...worldDbEntity,
+          ...dbEntity,
           bundles: {
             assets: {
               windows: Registry.SimplifiedStatus.COMPLETE,
+              mac: Registry.SimplifiedStatus.PENDING,
+              webgl: Registry.SimplifiedStatus.PENDING
+            },
+            lods: {
+              windows: Registry.SimplifiedStatus.PENDING,
               mac: Registry.SimplifiedStatus.PENDING,
               webgl: Registry.SimplifiedStatus.PENDING
             }
           }
         })
         db.updateRegistryVersionWithBuildDate = jest.fn().mockResolvedValue({
-          ...worldDbEntity,
+          ...dbEntity,
           versions: {
             assets: {
               windows: { version: 'v1', buildDate: '2024-01-01' },
@@ -207,14 +202,6 @@ describe('textures-handler', () => {
 
         expect(result.ok).toBe(true)
         expect(worlds.getWorld).toHaveBeenCalledWith(event.metadata.entityId)
-        // Verify that persistAndRotateStates was called with bundles without lods
-        expect(registryOrchestrator.persistAndRotateStates).toHaveBeenCalledWith(
-          expect.objectContaining({
-            bundles: expect.not.objectContaining({
-              lods: expect.anything()
-            })
-          })
-        )
         expect(db.updateRegistryVersionWithBuildDate).toHaveBeenCalledWith(
           '123',
           'windows',
@@ -805,118 +792,6 @@ describe('textures-handler', () => {
             new Date(event.timestamp).toISOString()
           )
           expect(registryOrchestrator.persistAndRotateStates).not.toHaveBeenCalled()
-        })
-      })
-
-      describe('and the event is for a world entity', () => {
-        describe('and the event is for LODs', () => {
-          let event: AssetBundleConversionFinishedEvent
-          let result: { ok: boolean; errors?: string[] }
-
-          beforeEach(async () => {
-            event = createEvent({
-              metadata: {
-                entityId: '123',
-                platform: 'windows',
-                statusCode: ManifestStatusCode.SUCCESS,
-                isLods: true,
-                isWorld: true,
-                version: 'v1'
-              }
-            })
-            const entity = createEntity()
-            const dbEntity = createDbEntity(entity)
-            db.getRegistryById = jest.fn().mockResolvedValue(dbEntity)
-
-            result = await handler.handle(event)
-          })
-
-          it('should succeed and not update the bundle status or the version', () => {
-            expect(result.ok).toBe(true)
-            expect(db.upsertRegistryBundle).not.toHaveBeenCalled()
-            expect(db.updateRegistryVersionWithBuildDate).not.toHaveBeenCalled()
-            expect(registryOrchestrator.persistAndRotateStates).not.toHaveBeenCalled()
-          })
-        })
-
-        describe('and the event is for assets', () => {
-          let event: AssetBundleConversionFinishedEvent
-          let result: { ok: boolean; errors?: string[] }
-          let worldDbEntity: Registry.DbEntity
-
-          beforeEach(async () => {
-            event = createEvent({
-              metadata: {
-                entityId: '123',
-                platform: 'windows',
-                statusCode: ManifestStatusCode.SUCCESS,
-                isLods: false,
-                isWorld: true,
-                version: 'v1'
-              }
-            })
-            const entity = createEntity()
-            worldDbEntity = {
-              ...createDbEntity(entity),
-              // World entities don't have lods
-              bundles: {
-                assets: {
-                  windows: Registry.SimplifiedStatus.PENDING,
-                  mac: Registry.SimplifiedStatus.PENDING,
-                  webgl: Registry.SimplifiedStatus.PENDING
-                }
-              }
-            }
-            db.getRegistryById = jest.fn().mockResolvedValue(worldDbEntity)
-            const updatedWorldDbEntity = {
-              ...worldDbEntity,
-              bundles: {
-                assets: {
-                  windows: Registry.SimplifiedStatus.COMPLETE,
-                  mac: Registry.SimplifiedStatus.PENDING,
-                  webgl: Registry.SimplifiedStatus.PENDING
-                }
-              }
-            }
-            db.upsertRegistryBundle = jest.fn().mockResolvedValue(updatedWorldDbEntity)
-            db.updateRegistryVersionWithBuildDate = jest.fn().mockResolvedValue({
-              ...updatedWorldDbEntity,
-              versions: {
-                assets: {
-                  windows: { version: 'v1', buildDate: '2024-01-01' },
-                  mac: { version: '', buildDate: '' },
-                  webgl: { version: '', buildDate: '' }
-                }
-              }
-            })
-
-            result = await handler.handle(event)
-          })
-
-          it('should succeed, update the bundle status and the version and call persistAndRotateStates', () => {
-            expect(result.ok).toBe(true)
-            expect(db.upsertRegistryBundle).toHaveBeenCalledWith(
-              '123',
-              'windows',
-              false,
-              Registry.SimplifiedStatus.COMPLETE
-            )
-            expect(db.updateRegistryVersionWithBuildDate).toHaveBeenCalledWith(
-              '123',
-              'windows',
-              'v1',
-              new Date(event.timestamp).toISOString()
-            )
-            expect(registryOrchestrator.persistAndRotateStates).toHaveBeenCalledWith(
-              expect.objectContaining({
-                bundles: expect.objectContaining({
-                  assets: expect.objectContaining({
-                    windows: Registry.SimplifiedStatus.COMPLETE
-                  })
-                })
-              })
-            )
-          })
         })
       })
 
