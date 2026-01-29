@@ -49,9 +49,8 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
         registries
       WHERE (
         pointers && ${lowerCasePointers}::varchar(255)[]
+      )
     `
-
-    query.append(SQL`)`)
 
     // Filter by world name if provided
     if (worldName) {
