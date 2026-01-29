@@ -15,12 +15,22 @@ import { Entity, EthAddress } from '@dcl/schemas'
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
 import { Profile } from 'dcl-catalyst-client/dist/client/specs/lambdas-client'
 
+export enum SortOrder {
+  ASC = 'asc',
+  DESC = 'desc'
+}
+
+export interface GetSortedRegistriesByPointersOptions {
+  statuses?: Registry.Status[]
+  sortOrder?: SortOrder
+  worldName?: string
+}
+
 export interface IDbComponent {
   getSortedRegistriesByOwner(owner: EthAddress): Promise<Registry.DbEntity[]>
   getSortedRegistriesByPointers(
     pointers: string[],
-    statuses?: Registry.Status[],
-    descSort?: boolean
+    options?: GetSortedRegistriesByPointersOptions
   ): Promise<Registry.DbEntity[]>
   getRegistryById(id: string): Promise<Registry.DbEntity | null>
   insertRegistry(registry: Registry.DbEntity): Promise<Registry.DbEntity>
@@ -37,7 +47,11 @@ export interface IDbComponent {
     version: string,
     buildDate: string
   ): Promise<Registry.DbEntity | null>
-  getRelatedRegistries(registry: Pick<Registry.DbEntity, 'pointers' | 'id'>): Promise<Registry.PartialDbEntity[]>
+  getRelatedRegistries(
+    registry: Pick<Registry.DbEntity, 'pointers' | 'id'>,
+    worldName?: string
+  ): Promise<Registry.PartialDbEntity[]>
+  undeployRegistries(entityIds: string[]): Promise<number>
   deleteRegistries(entityIds: string[]): Promise<void>
   getBatchOfDeprecatedRegistriesOlderThan(
     dateInMilliseconds: number,
@@ -80,7 +94,7 @@ export interface ICatalystComponent {
 }
 
 export interface IWorldsComponent {
-  getWorld(worldId: string, worldContentServerUrl?: string): Promise<Entity | null>
+  getWorld(entityId: string, contentServerUrl?: string): Promise<Entity | null>
   isWorldDeployment(event: DeploymentToSqs): boolean
 }
 

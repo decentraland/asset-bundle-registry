@@ -1,6 +1,6 @@
 import { ICatalystComponent } from '../../../src/types'
 
-export function createCatalystMockComponent(): ICatalystComponent {
+export function createCatalystMockComponent(): jest.Mocked<ICatalystComponent> {
   return {
     getEntityById: jest.fn(),
     getEntityByPointers: jest.fn(),

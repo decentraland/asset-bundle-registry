@@ -19,12 +19,14 @@ export const createTexturesEventHandler = ({
   return {
     handle: async (event: AssetBundleConversionFinishedEvent): Promise<EventHandlerResult> => {
       try {
-        let entity: Registry.DbEntity | null = await db.getRegistryById(event.metadata.entityId)
+        const eventMetadata = event.metadata
+        let entity: Registry.DbEntity | null = await db.getRegistryById(eventMetadata.entityId)
+
+        // Track if the entity was originally OBSOLETE to preserve its status later
+        const wasOriginallyObsolete = entity?.status === Registry.Status.OBSOLETE
 
         if (!entity) {
-          logger.info('Entity not found in the database, will create it', {
-            entityId: event.metadata.entityId
-          })
+          logger.info('Entity not found in the database, will create it', { entityId: eventMetadata.entityId })
           let fetchedEntity: Entity | null
 
           if (event.metadata.isWorld) {
@@ -37,7 +39,7 @@ export const createTexturesEventHandler = ({
             logger.error('Entity not found', { event: JSON.stringify(event) })
             return {
               ok: false,
-              errors: [`Entity with id ${event.metadata.entityId} was not found`],
+              errors: [`Entity with id ${eventMetadata.entityId} was not found`],
               handlerName: HANDLER_NAME
             }
           }
@@ -71,8 +73,8 @@ export const createTexturesEventHandler = ({
           })
         }
 
-        if (!event.metadata.isLods) {
-          await queuesStatusManager.markAsFinished(event.metadata.platform, event.metadata.entityId)
+        if (!eventMetadata.isLods) {
+          await queuesStatusManager.markAsFinished(eventMetadata.platform, eventMetadata.entityId)
         }
 
         const conversionSucceeded =
@@ -82,7 +84,7 @@ export const createTexturesEventHandler = ({
 
         const bundleType = event.metadata.isLods ? 'lods' : 'assets'
         const platform = event.metadata.platform as keyof Registry.Bundles['assets']
-        const previousBundleStatus = entity.bundles[bundleType][platform]
+        const previousBundleStatus = entity.bundles[bundleType]?.[platform]
 
         // If reconversion fails but previous bundles were COMPLETE, keep them as COMPLETE
         // The old bundles are still valid on CDN and should continue to be used
@@ -101,15 +103,15 @@ export const createTexturesEventHandler = ({
           bundleType,
           statusCode: event.metadata.statusCode,
           conversionSucceeded: String(conversionSucceeded),
-          previousStatus: previousBundleStatus,
+          previousStatus: previousBundleStatus ?? 'N/A',
           newStatus: status,
           preservingPreviousStatus: String(shouldPreservePreviousStatus)
         })
 
         let registry: Registry.DbEntity | null = await db.upsertRegistryBundle(
-          event.metadata.entityId,
-          event.metadata.platform,
-          !!event.metadata.isLods,
+          eventMetadata.entityId,
+          eventMetadata.platform,
+          !!eventMetadata.isLods,
           status
         )
 
@@ -154,7 +156,12 @@ export const createTexturesEventHandler = ({
           bundles: JSON.stringify(registry.bundles)
         })
 
-        await registryOrchestrator.persistAndRotateStates(registry)
+        // Skip status rotation for OBSOLETE entities - their status should be preserved
+        if (!wasOriginallyObsolete) {
+          await registryOrchestrator.persistAndRotateStates(registry)
+        } else {
+          logger.info('Entity was OBSOLETE, skipping status rotation', { entityId: eventMetadata.entityId })
+        }
 
         return { ok: true, handlerName: HANDLER_NAME }
       } catch (errors: any) {

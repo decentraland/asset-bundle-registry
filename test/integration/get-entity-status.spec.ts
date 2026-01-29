@@ -165,6 +165,99 @@ test('GET /entities/status/:id', function ({ components }) {
     })
   })
 
+  it('should return entity status correctly when querying with world coordinates and world_name', async function () {
+    const registry = createRegistryEntity(
+      identity.realAccount.address,
+      Registry.Status.COMPLETE,
+      Registry.SimplifiedStatus.COMPLETE,
+      {
+        id: 'world-scene-status-entity',
+        type: 'world',
+        pointers: ['0,0'],
+        metadata: {
+          worldConfiguration: {
+            name: 'statusworld.dcl.eth'
+          }
+        }
+      }
+    )
+    await createRegistryOnDatabase(registry)
+
+    const response = await fetchLocally(
+      'GET',
+      `/entities/status/${encodeURIComponent('0,0')}`,
+      identity,
+      undefined,
+      {},
+      { world_name: 'statusworld.dcl.eth' }
+    )
+    const parsedResponse = await response.json()
+
+    expect(parsedResponse).toMatchObject({
+      entityId: registry.id,
+      catalyst: 'complete',
+      complete: true,
+      assetBundles: { mac: 'complete', windows: 'complete' },
+      lods: { mac: 'complete', windows: 'complete' }
+    })
+  })
+
+  it('should return the most recent entity status when querying with world coordinates and world_name', async function () {
+    const olderRegistry = createRegistryEntity(
+      identity.realAccount.address,
+      Registry.Status.COMPLETE,
+      Registry.SimplifiedStatus.COMPLETE,
+      {
+        id: 'older-world-scene-entity',
+        type: 'world',
+        pointers: ['0,0'],
+        timestamp: 1000,
+        metadata: {
+          worldConfiguration: {
+            name: 'legacystatusworld.dcl.eth'
+          }
+        }
+      }
+    )
+    const newerRegistry = createRegistryEntity(
+      identity.realAccount.address,
+      Registry.Status.COMPLETE,
+      Registry.SimplifiedStatus.COMPLETE,
+      {
+        id: 'newer-world-scene-entity',
+        type: 'world',
+        pointers: ['1,0'],
+        timestamp: 2000,
+        metadata: {
+          worldConfiguration: {
+            name: 'legacystatusworld.dcl.eth'
+          }
+        }
+      }
+    )
+    await createRegistryOnDatabase(olderRegistry)
+    await createRegistryOnDatabase(newerRegistry)
+
+    const response = await fetchLocally(
+      'GET',
+      `/entities/status/${encodeURIComponent('1,0')}`,
+      identity,
+      undefined,
+      {},
+      { world_name: 'legacystatusworld.dcl.eth' }
+    )
+    const parsedResponse = await response.json()
+
+    // Should return the most recent entity (descSort is true in the handler)
+    expect(parsedResponse).toMatchObject({
+      entityId: newerRegistry.id,
+      catalyst: 'complete',
+      complete: true,
+      assetBundles: { mac: 'complete', windows: 'complete' },
+      lods: { mac: 'complete', windows: 'complete' }
+    })
+  })
+
   it('should return 404 when no entity is found', async function () {
     const response = await fetchLocally('GET', `/entities/status/nonexistentId`, identity)
     const parsedResponse = await response.json()

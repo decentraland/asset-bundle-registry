@@ -1,6 +1,6 @@
 import { IDbComponent } from '../../../src/types'
 
-export function createDbMockComponent(): IDbComponent {
+export function createDbMockComponent(): jest.Mocked<IDbComponent> {
   return {
     getSortedRegistriesByPointers: jest.fn(),
     getRegistryById: jest.fn(),
@@ -11,6 +11,7 @@ export function createDbMockComponent(): IDbComponent {
     deleteRegistries: jest.fn(),
     getSortedRegistriesByOwner: jest.fn(),
     updateRegistriesStatus: jest.fn(),
+    undeployRegistries: jest.fn(),
     getBatchOfDeprecatedRegistriesOlderThan: jest.fn(),
     insertHistoricalRegistry: jest.fn(),
     getSortedHistoricalRegistriesByOwner: jest.fn(),

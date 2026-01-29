@@ -19,13 +19,16 @@ export async function getActiveEntityHandler(context: HandlerContextWithPath<'db
     }
   }
 
+  // Extract world_name from query parameters
+  const worldName = context.url.searchParams.get('world_name') || undefined
+
   // Track the number of pointers in this request
   metrics.observe('pointers_per_request', {}, pointers.length)
 
-  const entities = await db.getSortedRegistriesByPointers(pointers, [
-    Registry.Status.COMPLETE,
-    Registry.Status.FALLBACK
-  ])
+  const entities = await db.getSortedRegistriesByPointers(pointers, {
+    statuses: [Registry.Status.COMPLETE, Registry.Status.FALLBACK],
+    worldName
+  })
 
   if (entities.length === 0) {
     metrics.increment('registries_missmatch_count', {}, pointers.length)

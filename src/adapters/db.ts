@@ -1,5 +1,5 @@
 import SQL, { SQLStatement } from 'sql-template-strings'
-import { AppComponents, IDbComponent, Registry, Sync } from '../types'
+import { AppComponents, GetSortedRegistriesByPointersOptions, IDbComponent, Registry, SortOrder, Sync } from '../types'
 import { EthAddress } from '@dcl/schemas'
 
 export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent {
@@ -18,20 +18,58 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
     return result.rows
   }
 
+  /**
+   * Queries registries by pointers.
+   *
+   * When worldName is not provided, coordinates are treated as Genesis City coordinates
+   * and world entities are excluded from results.
+   *
+   * When worldName is provided, only entities matching that world name (via metadata.worldConfiguration.name)
+   * are returned.
+   *
+   * @param pointers - Array of pointers to search for (coordinates)
+   * @param options - Optional query options
+   * @param options.statuses - Optional status filter
+   * @param options.sortOrder - Sort order for results ('asc' or 'desc')
+   * @param options.worldName - Optional world name to filter by
+   * @returns Matching registries
+   */
   async function getSortedRegistriesByPointers(
     pointers: string[],
-    statuses?: Registry.Status[],
-    descSort: boolean = false
+    options?: GetSortedRegistriesByPointersOptions
   ): Promise<Registry.DbEntity[]> {
+    const { statuses, sortOrder, worldName } = options ?? {}
+    const order = sortOrder === SortOrder.DESC ? 'DESC' : 'ASC'
     const lowerCasePointers = pointers.map((p) => p.toLowerCase())
+
+    // Build the base query with array overlap
     const query = SQL`
       SELECT 
         id, type, timestamp, deployer, pointers, content, metadata, status, bundles, versions
       FROM 
         registries
-      WHERE 
+      WHERE (
         pointers && ${lowerCasePointers}::varchar(255)[]
+      )
     `
+
+    // Filter by world name if provided
+    if (worldName) {
+      const normalizedWorldName = worldName.toLowerCase()
+      // When worldName is provided, only return entities matching that world name
+      // The index idx_registries_world_configuration_name covers non-null cases,
+      // so this query will use the index efficiently
+      query.append(SQL`
+        AND LOWER(metadata->'worldConfiguration'->>'name') = ${normalizedWorldName}
+      `)
+    } else {
+      // When worldName is not provided, exclude worlds (treat coordinates as Genesis City)
+      // Exclude entities that are worlds (have worldConfiguration.name)
+      // Note: This won't use the index since we're filtering for NULL values
+      query.append(SQL`
+        AND metadata->'worldConfiguration'->>'name' IS NULL
+      `)
+    }
 
     if (statuses) {
       query.append(SQL`
@@ -39,10 +77,8 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
       `)
     }
 
-    if (descSort) {
-      query.append(SQL`
-        ORDER BY timestamp DESC
-      `)
+    if (sortOrder) {
+      query.append(`ORDER BY timestamp ${order}`)
     }
 
     const result = await pg.query<Registry.DbEntity>(query)
@@ -183,22 +219,97 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
     return result.rows[0] || null
   }
 
+  /**
+   * Gets registries related to a given registry by overlapping pointers.
+   *
+   * When worldName is not provided, coordinates are treated as Genesis City coordinates
+   * and world entities are excluded from results.
+   *
+   * When worldName is provided, only entities matching that world name (via metadata.worldConfiguration.name)
+   * are returned, avoiding collisions between world and Genesis City registries.
+   *
+   * @param registry - Registry with pointers and id to find related registries for
+   * @param worldName - Optional world name to filter by (for world registries)
+   * @returns Related registries that share pointers
+   */
   async function getRelatedRegistries(
-    registry: Pick<Registry.DbEntity, 'pointers' | 'id'>
+    registry: Pick<Registry.DbEntity, 'pointers' | 'id'>,
+    worldName?: string
   ): Promise<Registry.PartialDbEntity[]> {
     const lowerCasePointers = registry.pointers.map((p) => p.toLowerCase())
+
     const query: SQLStatement = SQL`
       SELECT 
         id, pointers, timestamp, status, bundles, versions
       FROM 
         registries
       WHERE 
-        pointers && ${lowerCasePointers}::varchar(255)[] AND LOWER(id) != ${registry.id.toLocaleLowerCase()} AND status != ${Registry.Status.OBSOLETE}
-      ORDER BY timestamp DESC
+        pointers && ${lowerCasePointers}::varchar(255)[]
+        AND LOWER(id) != ${registry.id.toLocaleLowerCase()}
+        AND status != ${Registry.Status.OBSOLETE}
     `
+
+    // Filter by world name if provided
+    if (worldName) {
+      const normalizedWorldName = worldName.toLowerCase()
+      // When worldName is provided, only return entities matching that world name
+      query.append(SQL`
+        AND LOWER(metadata->'worldConfiguration'->>'name') = ${normalizedWorldName}
+      `)
+    } else {
+      // When worldName is not provided, exclude worlds (treat coordinates as Genesis City)
+      query.append(SQL`
+        AND metadata->'worldConfiguration'->>'name' IS NULL
+      `)
+    }
+
+    query.append(SQL`
+      ORDER BY timestamp DESC
+    `)
 
     const result = await pg.query<Registry.PartialDbEntity>(query)
     return result.rows
+  }
+
+  /**
+   * Marks registries and all their related fallbacks as OBSOLETE in a single atomic operation.
+   *
+   * This is used for world scene undeployments where:
+   * 1. The target entities are marked as OBSOLETE
+   * 2. Any registries sharing pointers with target entities that have FALLBACK status are also marked as OBSOLETE
+   *
+   * @param entityIds - Array of entity IDs to undeploy
+   * @returns The total number of registries marked as OBSOLETE (including fallbacks)
+   */
+  async function undeployRegistries(entityIds: string[]): Promise<number> {
+    if (entityIds.length === 0) {
+      return 0
+    }
+
+    const parsedIds = entityIds.map((id) => id.toLowerCase())
+
+    // Single atomic query that:
+    // 1. Collects all pointers from target entities in a CTE
+    // 2. Updates target entities and any FALLBACK registries sharing pointers
+    // Uses array overlap (&&) operator for efficient index usage
+    const query: SQLStatement = SQL`
+      WITH target_pointers AS (
+        SELECT array_agg(DISTINCT p) AS pointers
+        FROM registries, unnest(pointers) AS p
+        WHERE LOWER(id) = ANY(${parsedIds}::varchar(255)[])
+      )
+      UPDATE registries
+      SET status = ${Registry.Status.OBSOLETE}
+      WHERE
+        LOWER(id) = ANY(${parsedIds}::varchar(255)[])
+        OR (
+          status = ${Registry.Status.FALLBACK}
+          AND pointers && (SELECT pointers FROM target_pointers)
+        )
+    `
+
+    const result = await pg.query(query)
+    return result.rowCount ?? 0
   }
 
   async function deleteRegistries(entityIds: string[]): Promise<void> {
@@ -569,6 +680,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
     getRegistryById,
     getRelatedRegistries,
     deleteRegistries,
+    undeployRegistries,
     getBatchOfDeprecatedRegistriesOlderThan,
     insertHistoricalRegistry,
     getSortedHistoricalRegistriesByOwner,
