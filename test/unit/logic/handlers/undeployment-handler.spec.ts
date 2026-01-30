@@ -113,15 +113,14 @@ describe('when handling undeployment events', () => {
         event = createUndeploymentEvent(['entity-1', 'entity-2'])
         registry.undeployWorldScenes.mockResolvedValue({
           undeployedCount: 2,
-          affectedWorlds: [],
-          spawnCoordinatesUpdated: []
+          worldName: null
         })
       })
 
-      it('should call undeployWorldScenes with the entity IDs', async () => {
+      it('should undeploy the world scenes for the given entity IDs', async () => {
         await handler.handle(event)
 
-        expect(registry.undeployWorldScenes).toHaveBeenCalledWith(['entity-1', 'entity-2'])
+        expect(registry.undeployWorldScenes).toHaveBeenCalledWith(['entity-1', 'entity-2'], event.timestamp)
       })
 
       it('should return ok', async () => {
@@ -132,15 +131,14 @@ describe('when handling undeployment events', () => {
       })
     })
 
-    describe('and the undeployment affects worlds with spawn coordinate updates', () => {
+    describe('and the undeployment affects a world', () => {
       let event: WorldScenesUndeploymentEvent
 
       beforeEach(() => {
         event = createUndeploymentEvent(['entity-1'])
         registry.undeployWorldScenes.mockResolvedValue({
           undeployedCount: 1,
-          affectedWorlds: ['test-world'],
-          spawnCoordinatesUpdated: ['test-world']
+          worldName: 'test-world'
         })
       })
 
@@ -159,8 +157,7 @@ describe('when handling undeployment events', () => {
         event = createUndeploymentEvent(['entity-1'])
         registry.undeployWorldScenes.mockResolvedValue({
           undeployedCount: 3,
-          affectedWorlds: [],
-          spawnCoordinatesUpdated: []
+          worldName: 'test-world'
         })
       })
 
@@ -179,8 +176,7 @@ describe('when handling undeployment events', () => {
         event = createUndeploymentEvent(['non-existent-entity'])
         registry.undeployWorldScenes.mockResolvedValue({
           undeployedCount: 0,
-          affectedWorlds: [],
-          spawnCoordinatesUpdated: []
+          worldName: null
         })
       })
 

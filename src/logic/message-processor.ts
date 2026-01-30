@@ -11,8 +11,7 @@ import {
   IMessageProcessorComponent,
   MessageProcessorResult,
   EventHandlerResult,
-  RetryMessageData,
-  ICoordinatesComponent
+  RetryMessageData
 } from '../types'
 import { createDeploymentEventHandler } from './handlers/deployment-handler'
 import { createStatusEventHandler } from './handlers/status-handler'
@@ -30,9 +29,10 @@ export async function createMessageProcessorComponent({
   db,
   logs,
   config
-}: Pick<AppComponents, 'catalyst' | 'worlds' | 'registry' | 'queuesStatusManager' | 'db' | 'logs' | 'config'> & {
-  coordinates: ICoordinatesComponent
-}): Promise<IMessageProcessorComponent> {
+}: Pick<
+  AppComponents,
+  'catalyst' | 'worlds' | 'registry' | 'queuesStatusManager' | 'db' | 'logs' | 'config' | 'coordinates'
+>): Promise<IMessageProcessorComponent> {
   const MAX_RETRIES: number = (await config.getNumber('MAX_RETRIES')) || 3
   const log = logs.getLogger('message-processor')
   const processors: IEventHandlerComponent<

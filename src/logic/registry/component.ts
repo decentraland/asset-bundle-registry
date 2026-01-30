@@ -1,10 +1,4 @@
-import {
-  AppComponents,
-  Registry,
-  UndeploymentResult,
-  SpawnRecalculationParams,
-  SpawnRecalculationResult
-} from '../../types'
+import { AppComponents, Registry, UndeploymentResult } from '../../types'
 import { RelatedEntities } from './types'
 
 export interface IRegistryComponent {
@@ -15,10 +9,13 @@ export interface IRegistryComponent {
   persistAndRotateStates(registry: Omit<Registry.DbEntity, 'status'>): Promise<Registry.DbEntity>
 
   /**
-   * Atomically undeploys world scenes and recalculates spawn coordinates.
-   * All operations are performed within a database transaction.
+   * Undeploys world scenes and recalculates spawn coordinates.
+   * Operations are performed in separate transactions with timestamp-based conflict resolution.
+   *
+   * @param entityIds - Array of entity IDs to undeploy
+   * @param eventTimestamp - The timestamp of the event that triggered this undeployment
    */
-  undeployWorldScenes(entityIds: string[]): Promise<UndeploymentResult>
+  undeployWorldScenes(entityIds: string[], eventTimestamp: number): Promise<UndeploymentResult>
 }
 
 export function createRegistryComponent({
@@ -142,51 +139,22 @@ export function createRegistryComponent({
     return insertedRegistry
   }
 
-  /**
-   * Pure function to calculate spawn coordinate action.
-   * Contains the business logic, no DB calls.
-   */
-  function calculateSpawnAction(params: SpawnRecalculationParams): SpawnRecalculationResult {
-    const { parcels, currentSpawn } = params
+  async function undeployWorldScenes(entityIds: string[], eventTimestamp: number): Promise<UndeploymentResult> {
+    logger.info('Undeploying world scenes', { entityIds: entityIds.join(', '), eventTimestamp })
 
-    // If world is empty, delete spawn coordinate
-    if (parcels.length === 0) {
-      return { action: 'delete' }
-    }
+    // 1. Undeploy registries and get the world name
+    const result = await db.undeployWorldScenes(entityIds)
 
-    // If no spawn exists, calculate center
-    if (!currentSpawn) {
-      const center = coordinates.calculateCenter(parcels)
-      return { action: 'upsert', x: center.x, y: center.y, isUserSet: false }
-    }
-
-    // If spawn is not user-set, recalculate center
-    if (!currentSpawn.isUserSet) {
-      const center = coordinates.calculateCenter(parcels)
-      return { action: 'upsert', x: center.x, y: center.y, isUserSet: false }
-    }
-
-    // If user-set spawn is still valid, keep it
-    const currentCoord = { x: currentSpawn.x, y: currentSpawn.y }
-    if (coordinates.isCoordinateInParcels(currentCoord, parcels)) {
-      return { action: 'none' }
-    }
-
-    // User-set spawn is no longer valid, recalculate center
-    const center = coordinates.calculateCenter(parcels)
-    return { action: 'upsert', x: center.x, y: center.y, isUserSet: false }
-  }
-
-  async function undeployWorldScenes(entityIds: string[]): Promise<UndeploymentResult> {
-    logger.info('Undeploying world scenes', { entityIds: entityIds.join(', ') })
-
-    const result = await db.undeployWorldScenes(entityIds, calculateSpawnAction)
-
-    logger.info('World scenes undeployed', {
+    logger.info('Registries marked as obsolete', {
       undeployedCount: result.undeployedCount,
-      affectedWorlds: result.affectedWorlds.join(', '),
-      spawnCoordinatesUpdated: result.spawnCoordinatesUpdated.join(', ')
+      worldName: result.worldName || 'none',
+      eventTimestamp
     })
+
+    // 2. Recalculate spawn coordinate for the affected world (if any)
+    if (result.worldName) {
+      await coordinates.recalculateSpawnIfNeeded(result.worldName, eventTimestamp)
+    }
 
     return result
   }

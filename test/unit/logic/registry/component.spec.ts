@@ -1,5 +1,5 @@
 import { EntityType } from '@dcl/schemas'
-import { Registry, SpawnRecalculationParams } from '../../../../src/types'
+import { Registry } from '../../../../src/types'
 import { createDbMockComponent } from '../../mocks/db'
 import { createLogMockComponent } from '../../mocks/logs'
 import { createCoordinatesMockComponent } from '../../mocks/coordinates'
@@ -323,126 +323,63 @@ describe('when using the registry component', () => {
 
   describe('and calling undeployWorldScenes', () => {
     let entityIds: string[]
+    let eventTimestamp: number
 
     beforeEach(() => {
       entityIds = ['entity-1', 'entity-2']
+      eventTimestamp = Date.now()
     })
 
-    describe('when the undeployment is successful', () => {
-      let undeploymentResult: any
-
+    describe('when the undeployment is successful and a world is found', () => {
       beforeEach(() => {
-        undeploymentResult = {
+        db.undeployWorldScenes.mockResolvedValue({
           undeployedCount: 2,
-          affectedWorlds: ['world-1'],
-          spawnCoordinatesUpdated: ['world-1']
-        }
-        db.undeployWorldScenes.mockResolvedValue(undeploymentResult)
+          worldName: 'test-world'
+        })
       })
 
-      it('should call undeploy the world scenes with the entity IDs and spawn calculation function', async () => {
-        await component.undeployWorldScenes(entityIds)
+      it('should undeploy the world scenes for the given entity IDs', async () => {
+        await component.undeployWorldScenes(entityIds, eventTimestamp)
 
-        expect(db.undeployWorldScenes).toHaveBeenCalledWith(entityIds, expect.any(Function))
-        expect(coordinates.calculateCenter).toHaveBeenCalledWith(['0,0', '1,0'])
+        expect(db.undeployWorldScenes).toHaveBeenCalledWith(entityIds)
+      })
+
+      it('should recalculate the spawn coordinates for the affected world', async () => {
+        await component.undeployWorldScenes(entityIds, eventTimestamp)
+
+        expect(coordinates.recalculateSpawnIfNeeded).toHaveBeenCalledWith('test-world', eventTimestamp)
+      })
+
+      it('should return the undeployment result', async () => {
+        const result = await component.undeployWorldScenes(entityIds, eventTimestamp)
+
+        expect(result).toEqual({
+          undeployedCount: 2,
+          worldName: 'test-world'
+        })
       })
     })
 
-    describe('and the spawn calculation function is invoked', () => {
-      let capturedCalculateSpawnAction: ((params: SpawnRecalculationParams) => any) | null
-
+    describe('when no world is found in the registries', () => {
       beforeEach(() => {
-        capturedCalculateSpawnAction = null
-        db.undeployWorldScenes.mockImplementation(async (_entityIds, calculateSpawn) => {
-          capturedCalculateSpawnAction = calculateSpawn
-          return { undeployedCount: 0, affectedWorlds: [], spawnCoordinatesUpdated: [] }
+        db.undeployWorldScenes.mockResolvedValue({
+          undeployedCount: 0,
+          worldName: null
         })
       })
 
-      describe('and the world has no parcels', () => {
-        it('should return delete action', async () => {
-          await component.undeployWorldScenes(entityIds)
+      it('should not recalculate spawn coordinates', async () => {
+        await component.undeployWorldScenes(entityIds, eventTimestamp)
 
-          const result = capturedCalculateSpawnAction!({
-            worldName: 'test-world',
-            parcels: [],
-            currentSpawn: null
-          })
-
-          expect(result).toEqual({ action: 'delete' })
-        })
+        expect(coordinates.recalculateSpawnIfNeeded).not.toHaveBeenCalled()
       })
 
-      describe('and there is no current spawn', () => {
-        beforeEach(() => {
-          coordinates.calculateCenter.mockReturnValue({ x: 1, y: 0 })
-        })
+      it('should return the undeployment result with null worldName', async () => {
+        const result = await component.undeployWorldScenes(entityIds, eventTimestamp)
 
-        it('should return upsert action with calculated center', async () => {
-          await component.undeployWorldScenes(entityIds)
-
-          const result = capturedCalculateSpawnAction!({
-            worldName: 'test-world',
-            parcels: ['0,0', '1,0', '2,0'],
-            currentSpawn: null
-          })
-
-          expect(result).toEqual({ action: 'upsert', x: 1, y: 0, isUserSet: false })
-        })
-      })
-
-      describe('and the current spawn is not user-set', () => {
-        beforeEach(() => {
-          coordinates.calculateCenter.mockReturnValue({ x: 2, y: 0 })
-        })
-
-        it('should return upsert action with recalculated center', async () => {
-          await component.undeployWorldScenes(entityIds)
-
-          const result = capturedCalculateSpawnAction!({
-            worldName: 'test-world',
-            parcels: ['0,0', '1,0', '2,0', '3,0', '4,0'],
-            currentSpawn: { worldName: 'test-world', x: 0, y: 0, isUserSet: false, timestamp: Date.now() }
-          })
-
-          expect(result).toEqual({ action: 'upsert', x: 2, y: 0, isUserSet: false })
-        })
-      })
-
-      describe('and the current spawn is user-set and still valid', () => {
-        beforeEach(() => {
-          coordinates.isCoordinateInParcels.mockReturnValue(true)
-        })
-
-        it('should return none action', async () => {
-          await component.undeployWorldScenes(entityIds)
-
-          const result = capturedCalculateSpawnAction!({
-            worldName: 'test-world',
-            parcels: ['0,0', '1,0', '2,0'],
-            currentSpawn: { worldName: 'test-world', x: 1, y: 0, isUserSet: true, timestamp: Date.now() }
-          })
-
-          expect(result).toEqual({ action: 'none' })
-        })
-      })
-
-      describe('and the current spawn is user-set but no longer valid', () => {
-        beforeEach(() => {
-          coordinates.isCoordinateInParcels.mockReturnValue(false)
-          coordinates.calculateCenter.mockReturnValue({ x: 6, y: 5 })
-        })
-
-        it('should return upsert action with recalculated center', async () => {
-          await component.undeployWorldScenes(entityIds)
-
-          const result = capturedCalculateSpawnAction!({
-            worldName: 'test-world',
-            parcels: ['5,5', '6,5', '7,5'],
-            currentSpawn: { worldName: 'test-world', x: 0, y: 0, isUserSet: true, timestamp: Date.now() }
-          })
-
-          expect(result).toEqual({ action: 'upsert', x: 6, y: 5, isUserSet: false })
+        expect(result).toEqual({
+          undeployedCount: 0,
+          worldName: null
         })
       })
     })

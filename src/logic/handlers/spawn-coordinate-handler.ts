@@ -1,11 +1,5 @@
 import { Events, WorldSpawnCoordinateSetEvent } from '@dcl/schemas'
-import {
-  AppComponents,
-  IEventHandlerComponent,
-  EventHandlerName,
-  EventHandlerResult,
-  ICoordinatesComponent
-} from '../../types'
+import { AppComponents, IEventHandlerComponent, EventHandlerName, EventHandlerResult } from '../../types'
 
 /**
  * Type guard to validate if a message is a WorldSpawnCoordinateSetEvent.
@@ -30,9 +24,7 @@ function isWorldSpawnCoordinateSetEvent(event: any): event is WorldSpawnCoordina
 export const createSpawnCoordinateEventHandler = ({
   coordinates,
   logs
-}: Pick<AppComponents, 'logs'> & {
-  coordinates: ICoordinatesComponent
-}): IEventHandlerComponent<WorldSpawnCoordinateSetEvent> => {
+}: Pick<AppComponents, 'logs' | 'coordinates'>): IEventHandlerComponent<WorldSpawnCoordinateSetEvent> => {
   const HANDLER_NAME = EventHandlerName.SPAWN_COORDINATE
   const logger = logs.getLogger('spawn-coordinate-handler')
 
@@ -43,28 +35,36 @@ export const createSpawnCoordinateEventHandler = ({
      * Sets the spawn coordinate for a world with is_user_set = true.
      * The coordinate is stored even if it's not currently valid for the world shape,
      * as it may become valid when matching scenes are deployed.
+     * Uses event timestamp for conflict resolution to prevent race conditions.
      *
      * @param event - The spawn coordinate set event
      * @returns EventHandlerResult indicating success or failure
      */
     handle: async (event: WorldSpawnCoordinateSetEvent): Promise<EventHandlerResult> => {
       const { name: worldName, newCoordinate, oldCoordinate } = event.metadata
+      const eventTimestamp = event.timestamp
 
       try {
         logger.info('Processing spawn coordinate set', {
           worldName,
           oldCoordinate: oldCoordinate ? `${oldCoordinate.x},${oldCoordinate.y}` : 'none',
-          newCoordinate: `${newCoordinate.x},${newCoordinate.y}`
+          newCoordinate: `${newCoordinate.x},${newCoordinate.y}`,
+          eventTimestamp
         })
 
-        await coordinates.setUserSpawnCoordinate(worldName, {
-          x: newCoordinate.x,
-          y: newCoordinate.y
-        })
+        await coordinates.setUserSpawnCoordinate(
+          worldName,
+          {
+            x: newCoordinate.x,
+            y: newCoordinate.y
+          },
+          eventTimestamp
+        )
 
         logger.info('Spawn coordinate set complete', {
           worldName,
-          coordinate: `${newCoordinate.x},${newCoordinate.y}`
+          coordinate: `${newCoordinate.x},${newCoordinate.y}`,
+          eventTimestamp
         })
 
         return { ok: true, handlerName: HANDLER_NAME }
@@ -72,6 +72,7 @@ export const createSpawnCoordinateEventHandler = ({
         logger.error('Failed to process spawn coordinate set', {
           worldName,
           coordinate: `${newCoordinate.x},${newCoordinate.y}`,
+          eventTimestamp,
           error: error?.message || 'Unexpected processor failure',
           stack: JSON.stringify(error?.stack)
         })

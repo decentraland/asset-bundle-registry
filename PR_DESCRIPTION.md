@@ -159,90 +159,53 @@ npm test -- --testPathPattern="spawn-coordinate-handler|coordinates/component|un
 
 ## Spawn Coordinate Change Flowcharts
 
-### 1. User Sets Spawn Coordinate (`WORLD_SPAWN_COORDINATE_SET` Event)
+### Timestamp-Based Conflict Resolution
+
+All spawn coordinate updates use timestamp-based conflict resolution to handle race conditions when events arrive out of order:
 
 ```mermaid
 flowchart TD
-    A[WORLD_SPAWN_COORDINATE_SET Event] --> B[Spawn Coordinate Handler]
-    B --> C[setUserSpawnCoordinate]
-    C --> D[Store coordinate with<br/>is_user_set = true]
-    D --> E{Coordinate within<br/>world bounds?}
-    E -->|Yes| F[Log: User spawn coordinate set]
-    E -->|No| G[Log: Warning - coordinate<br/>outside current bounds]
-    F --> H[Done]
-    G --> H
+    A[Spawn Coordinate Update Request] --> B{Event timestamp ><br/>stored timestamp?}
+    B -->|No| C[Reject update<br/>Keep existing value]
+    B -->|Yes| D[Apply update]
+    C --> E[Done]
+    D --> E
 ```
 
-### 2. Scene Processing Completes (Textures Handler)
+### User Sets Spawn Coordinate
 
 ```mermaid
 flowchart TD
-    A[AssetBundleConversionFinished Event] --> B[Textures Handler]
-    B --> C{Is world entity?}
-    C -->|No| D[Done]
-    C -->|Yes| E{Status is COMPLETE<br/>or FALLBACK?}
-    E -->|No| D
-    E -->|Yes| F[recalculateSpawnIfNeeded]
-    F --> G[calculateSpawnAction]
-    G --> H{World has<br/>processed scenes?}
-    H -->|No| I[Delete spawn coordinate]
-    H -->|Yes| J{Spawn exists?}
-    J -->|No| K[Calculate center from bounds<br/>Set with is_user_set = false]
-    J -->|Yes| L{is_user_set?}
-    L -->|No| M[Recalculate center from bounds<br/>Update with is_user_set = false]
-    L -->|Yes| N{Coordinate still<br/>within bounds?}
-    N -->|Yes| O[Keep existing spawn]
-    N -->|No| P[Recalculate center from bounds<br/>Set with is_user_set = false]
-    I --> D
-    K --> D
-    M --> D
-    O --> D
-    P --> D
+    A[User Spawn Coordinate Event] --> B{Newer than<br/>stored timestamp?}
+    B -->|No| C[Ignore event]
+    B -->|Yes| D[Store coordinate<br/>as user-set]
+    C --> E[Done]
+    D --> E
 ```
 
-### 3. Scene Undeployment (Undeployment Handler)
+### Spawn Recalculation on Scene Changes
+
+When scenes are deployed, processed, or undeployed:
 
 ```mermaid
 flowchart TD
-    A[WorldScenesUndeployment Event] --> B[Undeployment Handler]
-    B --> C[registry.undeployWorldScenes]
-    C --> D[Mark entities as OBSOLETE]
-    D --> E[Mark FALLBACK registries<br/>sharing pointers as OBSOLETE]
-    E --> F[For each affected world]
-    F --> G[recalculateSpawnIfNeeded]
-    G --> H[calculateSpawnAction]
-    H --> I{World has<br/>processed scenes?}
-    I -->|No| J[Delete spawn coordinate]
-    I -->|Yes| K{Spawn exists?}
-    K -->|No| L[Calculate center from bounds<br/>Set with is_user_set = false]
-    K -->|Yes| M{is_user_set?}
-    M -->|No| N[Recalculate center from bounds<br/>Update with is_user_set = false]
-    M -->|Yes| O{Coordinate still<br/>within bounds?}
-    O -->|Yes| P[Keep existing spawn]
-    O -->|No| Q[Recalculate center from bounds<br/>Set with is_user_set = false]
-    J --> R[Done]
-    L --> R
-    N --> R
-    P --> R
-    Q --> R
-```
-
-### Core Decision Logic (`calculateSpawnAction`)
-
-```mermaid
-flowchart TD
-    A[calculateSpawnAction] --> B{boundingRectangle<br/>exists?}
-    B -->|No| C["Return { action: 'delete' }"]
-    B -->|Yes| D{currentSpawn<br/>exists?}
-    D -->|No| E[Calculate center from bounds]
-    E --> F["Return { action: 'upsert',<br/>isUserSet: false }"]
-    D -->|Yes| G{is_user_set?}
-    G -->|No| H[Calculate center from bounds]
-    H --> I["Return { action: 'upsert',<br/>isUserSet: false }"]
-    G -->|Yes| J{Coordinate within<br/>bounds?}
-    J -->|Yes| K["Return { action: 'none' }"]
-    J -->|No| L[Calculate center from bounds]
-    L --> M["Return { action: 'upsert',<br/>isUserSet: false }"]
+    A[Scene Change Event] --> B{Newer than<br/>stored timestamp?}
+    B -->|No| C[Ignore event]
+    B -->|Yes| D{World has<br/>processed scenes?}
+    D -->|No| E[Delete spawn coordinate]
+    D -->|Yes| F{Spawn coordinate<br/>exists?}
+    F -->|No| G[Calculate center<br/>from world bounds]
+    F -->|Yes| H{Is user-set?}
+    H -->|No| I[Recalculate center<br/>from world bounds]
+    H -->|Yes| J{Still within<br/>world bounds?}
+    J -->|Yes| K[Keep existing spawn]
+    J -->|No| L[Recalculate center<br/>Mark as not user-set]
+    C --> M[Done]
+    E --> M
+    G --> M
+    I --> M
+    K --> M
+    L --> M
 ```
 
 ## How to Verify

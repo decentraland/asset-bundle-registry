@@ -120,10 +120,10 @@ describe('when handling spawn coordinate set events', () => {
         coordinates.setUserSpawnCoordinate.mockResolvedValue(undefined)
       })
 
-      it('should call setUserSpawnCoordinate with the world name and new coordinate', async () => {
+      it('should store the user spawn coordinate for the world', async () => {
         await handler.handle(event)
 
-        expect(coordinates.setUserSpawnCoordinate).toHaveBeenCalledWith('test-world', { x: 5, y: 10 })
+        expect(coordinates.setUserSpawnCoordinate).toHaveBeenCalledWith('test-world', { x: 5, y: 10 }, event.timestamp)
       })
 
       it('should return ok', async () => {
@@ -142,10 +142,10 @@ describe('when handling spawn coordinate set events', () => {
         coordinates.setUserSpawnCoordinate.mockResolvedValue(undefined)
       })
 
-      it('should call setUserSpawnCoordinate correctly', async () => {
+      it('should store the user spawn coordinate for the world', async () => {
         await handler.handle(event)
 
-        expect(coordinates.setUserSpawnCoordinate).toHaveBeenCalledWith('new-world', { x: 3, y: 7 })
+        expect(coordinates.setUserSpawnCoordinate).toHaveBeenCalledWith('new-world', { x: 3, y: 7 }, event.timestamp)
       })
 
       it('should return ok', async () => {

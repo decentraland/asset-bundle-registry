@@ -9,7 +9,7 @@ import { createFetchComponent } from '@well-known-components/fetch-component'
 import { createMetricsComponent } from '@well-known-components/metrics'
 import { metricDeclarations } from './metrics'
 import { AppComponents, GlobalContext, Sync } from './types'
-import { createPgComponent } from '@well-known-components/pg-component'
+import { createPgComponent } from '@dcl/pg-component'
 import { createDbAdapter } from './adapters/db'
 import { createSqsComponent } from '@dcl/sqs-component'
 import { createMemoryQueueComponent } from '@dcl/memory-queue-component'
@@ -83,7 +83,6 @@ export async function initComponents(): Promise<AppComponents> {
     { logs, config, metrics },
     {
       migration: {
-        databaseUrl,
         dir: path.resolve(__dirname, 'migrations'),
         migrationsTable: 'pgmigrations',
         ignorePattern: '.*\\.map',

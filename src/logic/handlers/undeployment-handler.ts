@@ -40,28 +40,32 @@ export const createUndeploymentEventHandler = ({
      *
      * Delegates to the registry component which performs the entire operation
      * atomically within a database transaction, including spawn coordinate recalculation.
+     * Uses event timestamp for conflict resolution to prevent race conditions.
      *
      * @param event - The undeployment event containing entity IDs to undeploy
      * @returns EventHandlerResult indicating success or failure
      */
     handle: async (event: WorldScenesUndeploymentEvent): Promise<EventHandlerResult> => {
       const entityIds = event.metadata.entityIds
+      const eventTimestamp = event.timestamp
 
       try {
-        logger.info('Processing undeployment', { entityIds: entityIds.join(', ') })
+        logger.info('Processing undeployment', { entityIds: entityIds.join(', '), eventTimestamp })
 
-        const result = await registry.undeployWorldScenes(entityIds)
+        const result = await registry.undeployWorldScenes(entityIds, eventTimestamp)
 
         logger.info('Undeployment complete', {
           requestedEntityIds: entityIds.join(', '),
           totalUpdatedRegistries: result.undeployedCount,
-          affectedWorlds: result.affectedWorlds.join(', ')
+          worldName: result.worldName || 'none',
+          eventTimestamp
         })
 
         return { ok: true, handlerName: HANDLER_NAME }
       } catch (error: any) {
         logger.error('Failed to process undeployment', {
           entityIds: entityIds.join(', '),
+          eventTimestamp,
           error: error?.message || 'Unexpected processor failure',
           stack: JSON.stringify(error?.stack)
         })

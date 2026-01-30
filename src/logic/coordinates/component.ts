@@ -1,52 +1,5 @@
-import {
-  AppComponents,
-  SpawnRecalculationResult,
-  SpawnRecalculationWithBoundsParams,
-  WorldBoundingRectangle
-} from '../../types'
-import { Coordinate, WorldManifest } from './types'
-
-export interface ICoordinatesComponent {
-  /**
-   * Recalculates the spawn coordinate for a world if needed.
-   * - If no spawn exists: calculates center and sets it
-   * - If spawn exists and is NOT user-set: recalculates center
-   * - If spawn exists and IS user-set: keeps it if still valid, otherwise recalculates
-   */
-  recalculateSpawnIfNeeded(worldName: string): Promise<void>
-
-  /**
-   * Sets a user-specified spawn coordinate for a world.
-   * Stores with is_user_set = true.
-   */
-  setUserSpawnCoordinate(worldName: string, coordinate: Coordinate): Promise<void>
-
-  /**
-   * Gets the world manifest including occupied parcels and spawn coordinate.
-   */
-  getWorldManifest(worldName: string): Promise<WorldManifest>
-
-  /**
-   * Parses a coordinate string "x,y" into a Coordinate object.
-   */
-  parseCoordinate(coord: string): Coordinate
-
-  /**
-   * Formats a Coordinate object into a string "x,y".
-   */
-  formatCoordinate(coord: Coordinate): string
-
-  /**
-   * Calculates the geometric center of a set of parcels.
-   * Returns the parcel closest to the centroid that is actually in the set.
-   */
-  calculateCenter(parcels: string[]): Coordinate
-
-  /**
-   * Checks if a coordinate is within a set of parcels.
-   */
-  isCoordinateInParcels(coord: Coordinate, parcels: string[]): boolean
-}
+import { AppComponents, SpawnRecalculationParams, SpawnRecalculationResult, WorldBoundingRectangle } from '../../types'
+import { Coordinate, ICoordinatesComponent, WorldManifest } from './types'
 
 /**
  * Creates the Coordinates component for managing world spawn coordinates.
@@ -135,7 +88,7 @@ export function createCoordinatesComponent({ db, logs }: Pick<AppComponents, 'db
    * Pure function that calculates the spawn action based on current world state.
    * Used by both recalculateSpawnIfNeeded (via DB atomic operation) and can be tested independently.
    */
-  function calculateSpawnAction(params: SpawnRecalculationWithBoundsParams): SpawnRecalculationResult {
+  function calculateSpawnAction(params: SpawnRecalculationParams): SpawnRecalculationResult {
     const { boundingRectangle, currentSpawn } = params
 
     // If the world has no processed scenes, delete the spawn coordinate
@@ -167,41 +120,48 @@ export function createCoordinatesComponent({ db, logs }: Pick<AppComponents, 'db
     return { action: 'upsert', x: center.x, y: center.y, isUserSet: false }
   }
 
-  async function recalculateSpawnIfNeeded(worldName: string): Promise<void> {
+  async function recalculateSpawnIfNeeded(worldName: string, eventTimestamp: number): Promise<void> {
     const normalizedWorldName = worldName.toLowerCase()
 
-    // Use atomic DB operation to prevent race conditions
-    await db.recalculateSpawnCoordinate(normalizedWorldName, (params) => {
+    // Use atomic DB operation with timestamp-based conflict resolution
+    await db.recalculateSpawnCoordinate(normalizedWorldName, eventTimestamp, (params) => {
       const result = calculateSpawnAction(params)
 
       // Log based on the action
       if (result.action === 'delete') {
-        logger.info('World has no processed scenes, clearing spawn coordinate', { worldName: normalizedWorldName })
+        logger.info('World has no processed scenes, clearing spawn coordinate', {
+          worldName: normalizedWorldName,
+          eventTimestamp
+        })
       } else if (result.action === 'upsert') {
         const newCenter = formatCoordinate({ x: result.x!, y: result.y! })
         if (!params.currentSpawn) {
           logger.info('No spawn coordinate exists, setting center', {
             worldName: normalizedWorldName,
-            center: newCenter
+            center: newCenter,
+            eventTimestamp
           })
         } else if (!params.currentSpawn.isUserSet) {
           logger.info('Recalculating center for non-user-set spawn', {
             worldName: normalizedWorldName,
             oldSpawn: `${params.currentSpawn.x},${params.currentSpawn.y}`,
-            newCenter
+            newCenter,
+            eventTimestamp
           })
         } else {
           logger.info('User-set spawn coordinate is outside world bounds, recalculating center', {
             worldName: normalizedWorldName,
             oldSpawn: `${params.currentSpawn.x},${params.currentSpawn.y}`,
-            newCenter
+            newCenter,
+            eventTimestamp
           })
         }
       } else {
         // action === 'none'
         logger.debug('User-set spawn coordinate is still within bounds', {
           worldName: normalizedWorldName,
-          spawn: `${params.currentSpawn!.x},${params.currentSpawn!.y}`
+          spawn: `${params.currentSpawn!.x},${params.currentSpawn!.y}`,
+          eventTimestamp
         })
       }
 
@@ -209,11 +169,30 @@ export function createCoordinatesComponent({ db, logs }: Pick<AppComponents, 'db
     })
   }
 
-  async function setUserSpawnCoordinate(worldName: string, coordinate: Coordinate): Promise<void> {
+  async function setUserSpawnCoordinate(
+    worldName: string,
+    coordinate: Coordinate,
+    eventTimestamp: number
+  ): Promise<void> {
     const normalizedWorldName = worldName.toLowerCase()
 
-    // Set the spawn coordinate atomically and get the world bounds
-    const { boundingRectangle } = await db.setSpawnCoordinate(normalizedWorldName, coordinate.x, coordinate.y, true)
+    // Set the spawn coordinate atomically with timestamp-based conflict resolution
+    const { boundingRectangle, updated } = await db.setSpawnCoordinate(
+      normalizedWorldName,
+      coordinate.x,
+      coordinate.y,
+      true,
+      eventTimestamp
+    )
+
+    if (!updated) {
+      logger.info('User spawn coordinate update skipped - newer timestamp exists', {
+        worldName: normalizedWorldName,
+        coordinate: formatCoordinate(coordinate),
+        eventTimestamp
+      })
+      return
+    }
 
     // Log with bounding rectangle info
     const isWithinBounds = isCoordinateInBounds(coordinate, boundingRectangle)
@@ -223,12 +202,14 @@ export function createCoordinatesComponent({ db, logs }: Pick<AppComponents, 'db
         coordinate: formatCoordinate(coordinate),
         boundingRectangle: boundingRectangle
           ? `(${boundingRectangle.minX},${boundingRectangle.minY}) to (${boundingRectangle.maxX},${boundingRectangle.maxY})`
-          : 'none'
+          : 'none',
+        eventTimestamp
       })
     } else {
       logger.info('User spawn coordinate set', {
         worldName: normalizedWorldName,
-        coordinate: formatCoordinate(coordinate)
+        coordinate: formatCoordinate(coordinate),
+        eventTimestamp
       })
     }
   }
@@ -254,8 +235,8 @@ export function createCoordinatesComponent({ db, logs }: Pick<AppComponents, 'db
     return {
       occupied: parcels,
       spawn_coordinate: {
-        x: String(spawnCoordinate.x),
-        y: String(spawnCoordinate.y)
+        x: spawnCoordinate.x,
+        y: spawnCoordinate.y
       },
       total: parcels.length
     }
@@ -268,6 +249,8 @@ export function createCoordinatesComponent({ db, logs }: Pick<AppComponents, 'db
     parseCoordinate,
     formatCoordinate,
     calculateCenter,
-    isCoordinateInParcels
+    isCoordinateInParcels,
+    calculateCenterFromBounds,
+    isCoordinateInBounds
   }
 }

@@ -1,14 +1,6 @@
 import { AssetBundleConversionFinishedEvent, Entity } from '@dcl/schemas'
-import {
-  AppComponents,
-  IEventHandlerComponent,
-  EventHandlerName,
-  EventHandlerResult,
-  Registry,
-  ICoordinatesComponent
-} from '../../types'
+import { AppComponents, IEventHandlerComponent, EventHandlerName, EventHandlerResult, Registry } from '../../types'
 import { ManifestStatusCode } from '../entity-status-fetcher'
-import { IRegistryComponent } from '../registry'
 
 export const createTexturesEventHandler = ({
   logs,
@@ -18,10 +10,10 @@ export const createTexturesEventHandler = ({
   registry,
   queuesStatusManager,
   coordinates
-}: Pick<AppComponents, 'logs' | 'db' | 'catalyst' | 'worlds' | 'queuesStatusManager'> & {
-  registry: IRegistryComponent
-  coordinates: ICoordinatesComponent
-}): IEventHandlerComponent<AssetBundleConversionFinishedEvent> => {
+}: Pick<
+  AppComponents,
+  'logs' | 'db' | 'catalyst' | 'worlds' | 'queuesStatusManager' | 'registry' | 'coordinates'
+>): IEventHandlerComponent<AssetBundleConversionFinishedEvent> => {
   const HANDLER_NAME = EventHandlerName.TEXTURES
   const logger = logs.getLogger('textures-handler')
 
@@ -169,7 +161,7 @@ export const createTexturesEventHandler = ({
         if (!wasOriginallyObsolete) {
           const updatedRegistry = await registry.persistAndRotateStates(registryEntity)
           // If this is a world entity and it's now processed (COMPLETE or FALLBACK),
-          // trigger spawn coordinate recalculation
+          // trigger spawn coordinate recalculation using event timestamp for conflict resolution
           if (
             event.metadata.isWorld &&
             (updatedRegistry.status === Registry.Status.COMPLETE || updatedRegistry.status === Registry.Status.FALLBACK)
@@ -179,14 +171,16 @@ export const createTexturesEventHandler = ({
               logger.info('Triggering spawn coordinate recalculation for world', {
                 worldName,
                 entityId: updatedRegistry.id,
-                status: updatedRegistry.status
+                status: updatedRegistry.status,
+                eventTimestamp: event.timestamp
               })
               try {
-                await coordinates.recalculateSpawnIfNeeded(worldName)
+                await coordinates.recalculateSpawnIfNeeded(worldName, event.timestamp)
               } catch (spawnError: any) {
                 // Log but don't fail the handler - spawn coordinate update is secondary
                 logger.error('Failed to recalculate spawn coordinate', {
                   worldName,
+                  eventTimestamp: event.timestamp,
                   error: spawnError?.message || 'Unknown error'
                 })
               }

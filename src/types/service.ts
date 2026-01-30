@@ -17,12 +17,12 @@ import { Profile } from 'dcl-catalyst-client/dist/client/specs/lambdas-client'
 import { SpawnCoordinate } from '../logic/coordinates/types'
 
 /**
- * Result of an atomic world scenes undeployment operation.
+ * Result of a world scenes undeployment operation.
  */
 export type UndeploymentResult = {
   undeployedCount: number
-  affectedWorlds: string[]
-  spawnCoordinatesUpdated: string[]
+  /** The world name if found (null if no world entities were found) */
+  worldName: string | null
 }
 
 /**
@@ -30,7 +30,7 @@ export type UndeploymentResult = {
  */
 export type SpawnRecalculationParams = {
   worldName: string
-  parcels: string[]
+  boundingRectangle: WorldBoundingRectangle
   currentSpawn: SpawnCoordinate | null
 }
 
@@ -42,16 +42,6 @@ export type SpawnRecalculationResult = {
   x?: number
   y?: number
   isUserSet?: boolean
-}
-
-/**
- * Parameters passed to the spawn recalculation function using bounding rectangle.
- * Used for efficient recalculation without fetching all parcels.
- */
-export type SpawnRecalculationWithBoundsParams = {
-  worldName: string
-  boundingRectangle: WorldBoundingRectangle
-  currentSpawn: SpawnCoordinate | null
 }
 
 /**
@@ -78,6 +68,8 @@ export type WorldBoundingRectangle = {
  */
 export type SetSpawnCoordinateResult = {
   boundingRectangle: WorldBoundingRectangle
+  /** Whether the update was applied (false if skipped due to older timestamp) */
+  updated: boolean
 }
 
 export enum SortOrder {
@@ -141,22 +133,32 @@ export interface IDbComponent {
   getFailedProfileFetchByEntityId(entityId: string): Promise<Sync.FailedProfileDbEntity | null>
   // World spawn coordinate methods
   getSpawnCoordinate(worldName: string): Promise<SpawnCoordinate | null>
-  upsertSpawnCoordinate(worldName: string, x: number, y: number, isUserSet: boolean): Promise<void>
-  deleteSpawnCoordinate(worldName: string): Promise<void>
+  upsertSpawnCoordinate(
+    worldName: string,
+    x: number,
+    y: number,
+    isUserSet: boolean,
+    eventTimestamp: number
+  ): Promise<boolean>
+  deleteSpawnCoordinate(worldName: string, eventTimestamp: number): Promise<boolean>
   getProcessedWorldParcels(worldName: string): Promise<string[]>
   getWorldBoundingRectangle(worldName: string): Promise<WorldBoundingRectangle>
   getRegistriesByIds(entityIds: string[]): Promise<Registry.DbEntity[]>
   // Atomic operations
   getWorldManifestData(worldName: string): Promise<WorldManifestData>
-  setSpawnCoordinate(worldName: string, x: number, y: number, isUserSet: boolean): Promise<SetSpawnCoordinateResult>
+  setSpawnCoordinate(
+    worldName: string,
+    x: number,
+    y: number,
+    isUserSet: boolean,
+    eventTimestamp: number
+  ): Promise<SetSpawnCoordinateResult>
   recalculateSpawnCoordinate(
     worldName: string,
-    calculateSpawn: (params: SpawnRecalculationWithBoundsParams) => SpawnRecalculationResult
+    eventTimestamp: number,
+    calculateSpawn: (params: SpawnRecalculationParams) => SpawnRecalculationResult
   ): Promise<void>
-  undeployWorldScenes(
-    entityIds: string[],
-    calculateSpawnCoordinate: (params: SpawnRecalculationParams) => SpawnRecalculationResult
-  ): Promise<UndeploymentResult>
+  undeployWorldScenes(entityIds: string[]): Promise<UndeploymentResult>
 }
 
 export { IQueueComponent }
@@ -259,5 +261,3 @@ export interface IFailedProfilesRetrierComponent {
 }
 
 export interface ISynchronizerComponent extends IBaseComponent {}
-
-export { ICoordinatesComponent } from '../logic/coordinates/component'

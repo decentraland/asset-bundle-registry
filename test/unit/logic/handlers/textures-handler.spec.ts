@@ -489,11 +489,11 @@ describe('textures-handler', () => {
             )
           })
 
-          it('should not update version to avoid pointing to non-existent bundles', () => {
+          it('should not update the version to avoid pointing to non-existent bundles', () => {
             expect(db.updateRegistryVersionWithBuildDate).not.toHaveBeenCalled()
           })
 
-          it('should still call persistAndRotateStates', () => {
+          it('should still rotate the registry states', () => {
             expect(registry.persistAndRotateStates).toHaveBeenCalledWith(dbEntityWithCompleteBundles)
           })
         })
@@ -544,7 +544,7 @@ describe('textures-handler', () => {
             expect(db.upsertRegistryBundle).toHaveBeenCalledWith('123', 'mac', true, Registry.SimplifiedStatus.COMPLETE)
           })
 
-          it('should not update version', () => {
+          it('should not update the version', () => {
             expect(db.updateRegistryVersionWithBuildDate).not.toHaveBeenCalled()
           })
         })
@@ -630,7 +630,7 @@ describe('textures-handler', () => {
             )
           })
 
-          it('should call persistAndRotateStates with updated entity', () => {
+          it('should rotate the registry states with the updated entity', () => {
             expect(registry.persistAndRotateStates).toHaveBeenCalledWith(updatedDbEntity)
           })
         })
@@ -779,7 +779,7 @@ describe('textures-handler', () => {
           result = await handler.handle(event)
         })
 
-        it('should succeed, update the bundle status and the version and not call persistAndRotateStates to preserve OBSOLETE status', () => {
+        it('should succeed, update the bundle status and version, and preserve the OBSOLETE status by not rotating states', () => {
           expect(result.ok).toBe(true)
           expect(db.upsertRegistryBundle).toHaveBeenCalledWith(
             '123',

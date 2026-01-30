@@ -1,5 +1,6 @@
 import { ICoordinatesComponent } from '../../../src/logic/coordinates'
 import { Coordinate, WorldManifest } from '../../../src/logic/coordinates/types'
+import { WorldBoundingRectangle } from '../../../src/types'
 
 export function createCoordinatesMockComponent(): jest.Mocked<ICoordinatesComponent> {
   return {
@@ -7,7 +8,7 @@ export function createCoordinatesMockComponent(): jest.Mocked<ICoordinatesCompon
     setUserSpawnCoordinate: jest.fn().mockResolvedValue(undefined),
     getWorldManifest: jest.fn().mockResolvedValue({
       occupied: [],
-      spawn_coordinate: { x: '0', y: '0' },
+      spawn_coordinate: { x: 0, y: 0 },
       total: 0
     } as WorldManifest),
     parseCoordinate: jest.fn().mockImplementation((coord: string): Coordinate => {
@@ -35,6 +36,20 @@ export function createCoordinatesMockComponent(): jest.Mocked<ICoordinatesCompon
     isCoordinateInParcels: jest.fn().mockImplementation((coord: Coordinate, parcels: string[]): boolean => {
       const coordStr = `${coord.x},${coord.y}`.toLowerCase()
       return parcels.some((p) => p.toLowerCase() === coordStr)
+    }),
+    calculateCenterFromBounds: jest
+      .fn()
+      .mockImplementation((bounds: NonNullable<WorldBoundingRectangle>): Coordinate => {
+        return {
+          x: Math.round((bounds.minX + bounds.maxX) / 2),
+          y: Math.round((bounds.minY + bounds.maxY) / 2)
+        }
+      }),
+    isCoordinateInBounds: jest.fn().mockImplementation((coord: Coordinate, bounds: WorldBoundingRectangle): boolean => {
+      if (!bounds) {
+        return false
+      }
+      return coord.x >= bounds.minX && coord.x <= bounds.maxX && coord.y >= bounds.minY && coord.y <= bounds.maxY
     })
   }
 }
