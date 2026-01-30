@@ -4,7 +4,7 @@
 import { createRunner, createLocalFetchCompoment } from '@well-known-components/test-helpers'
 import { createDotEnvConfigComponent } from '@well-known-components/env-config-provider'
 import { createTestMetricsComponent } from '@well-known-components/metrics'
-import { createPgComponent } from '@well-known-components/pg-component'
+import { createPgComponent } from '@dcl/pg-component'
 
 import { initComponents as originalInitComponents } from '../src/components'
 import { metricDeclarations } from '../src/metrics'
@@ -13,6 +13,13 @@ import { main } from '../src/service'
 import { createDbAdapter } from '../src/adapters/db'
 import { extendDbComponent } from './db'
 import { createMessageConsumerMockComponent } from './unit/mocks/message-consumer'
+import { createMessageProcessorComponent } from '../src/logic/message-processor'
+import { createRegistryComponent } from '../src/logic/registry'
+import { createCoordinatesComponent } from '../src/logic/coordinates'
+import { createQueuesStatusManagerComponent } from '../src/logic/queues-status-manager'
+import { createInMemoryCacheComponent } from '../src/adapters/memory-cache'
+import { createWorldsMockComponent } from './unit/mocks/worlds'
+import { createCatalystMockComponent } from './unit/mocks/catalyst'
 
 /**
  * Behaves like Jest "describe" function, used to describe a test for a
@@ -44,6 +51,32 @@ async function initComponents(): Promise<TestComponents> {
   const pg = await createPgComponent(components)
 
   const db = createDbAdapter({ pg })
+  const logs = components.logs
+  const metrics = createTestMetricsComponent(metricDeclarations)
+
+  // Create coordinates component
+  const coordinates = createCoordinatesComponent({ db, logs })
+
+  // Create registry component
+  const registry = createRegistryComponent({ logs, db, metrics, coordinates })
+
+  // Create mocks for components not needed in integration tests
+  const catalyst = createCatalystMockComponent()
+  const worlds = createWorldsMockComponent()
+  const memoryStorage = createInMemoryCacheComponent()
+  const queuesStatusManager = createQueuesStatusManagerComponent({ memoryStorage })
+
+  // Create message processor for integration tests
+  const messageProcessor = await createMessageProcessorComponent({
+    catalyst,
+    worlds,
+    registry,
+    queuesStatusManager,
+    coordinates,
+    db,
+    logs,
+    config
+  })
 
   const messageConsumer = createMessageConsumerMockComponent()
 
@@ -51,9 +84,12 @@ async function initComponents(): Promise<TestComponents> {
     ...components,
     config,
     db,
-    metrics: createTestMetricsComponent(metricDeclarations),
+    coordinates,
+    registry,
+    metrics,
     localFetch: await createLocalFetchCompoment(config),
     messageConsumer,
+    messageProcessor,
     extendedDb: extendDbComponent({ db, pg })
   }
 }

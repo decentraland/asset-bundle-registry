@@ -1,8 +1,8 @@
 import { Events, WorldScenesUndeploymentEvent } from '@dcl/schemas'
 import { createUndeploymentEventHandler } from '../../../../src/logic/handlers/undeployment-handler'
 import { EventHandlerName } from '../../../../src/types'
-import { createDbMockComponent } from '../../mocks/db'
 import { createLogMockComponent } from '../../mocks/logs'
+import { createRegistryMockComponent } from '../../mocks/registry'
 
 describe('when handling undeployment events', () => {
   const createUndeploymentEvent = (entityIds: string[]): WorldScenesUndeploymentEvent => ({
@@ -17,13 +17,13 @@ describe('when handling undeployment events', () => {
 
   describe('and calling canHandle', () => {
     let logs: ReturnType<typeof createLogMockComponent>
-    let db: ReturnType<typeof createDbMockComponent>
+    let registry: ReturnType<typeof createRegistryMockComponent>
     let handler: ReturnType<typeof createUndeploymentEventHandler>
 
     beforeEach(() => {
       logs = createLogMockComponent()
-      db = createDbMockComponent()
-      handler = createUndeploymentEventHandler({ logs, db })
+      registry = createRegistryMockComponent()
+      handler = createUndeploymentEventHandler({ logs, registry })
     })
 
     afterEach(() => {
@@ -93,13 +93,13 @@ describe('when handling undeployment events', () => {
 
   describe('and calling handle', () => {
     let logs: ReturnType<typeof createLogMockComponent>
-    let db: ReturnType<typeof createDbMockComponent>
+    let registry: ReturnType<typeof createRegistryMockComponent>
     let handler: ReturnType<typeof createUndeploymentEventHandler>
 
     beforeEach(() => {
       logs = createLogMockComponent()
-      db = createDbMockComponent()
-      handler = createUndeploymentEventHandler({ logs, db })
+      registry = createRegistryMockComponent()
+      handler = createUndeploymentEventHandler({ logs, registry })
     })
 
     afterEach(() => {
@@ -111,13 +111,35 @@ describe('when handling undeployment events', () => {
 
       beforeEach(() => {
         event = createUndeploymentEvent(['entity-1', 'entity-2'])
-        db.undeployRegistries.mockResolvedValue(2)
+        registry.undeployWorldScenes.mockResolvedValue({
+          undeployedCount: 2,
+          worldName: null
+        })
       })
 
-      it('should call undeployRegistries with the entity IDs', async () => {
+      it('should undeploy the world scenes for the given entity IDs', async () => {
         await handler.handle(event)
 
-        expect(db.undeployRegistries).toHaveBeenCalledWith(['entity-1', 'entity-2'])
+        expect(registry.undeployWorldScenes).toHaveBeenCalledWith(['entity-1', 'entity-2'], event.timestamp)
+      })
+
+      it('should return ok', async () => {
+        const result = await handler.handle(event)
+
+        expect(result.ok).toBe(true)
+        expect(result.handlerName).toBe(EventHandlerName.UNDEPLOYMENT)
+      })
+    })
+
+    describe('and the undeployment affects a world', () => {
+      let event: WorldScenesUndeploymentEvent
+
+      beforeEach(() => {
+        event = createUndeploymentEvent(['entity-1'])
+        registry.undeployWorldScenes.mockResolvedValue({
+          undeployedCount: 1,
+          worldName: 'test-world'
+        })
       })
 
       it('should return ok', async () => {
@@ -133,7 +155,10 @@ describe('when handling undeployment events', () => {
 
       beforeEach(() => {
         event = createUndeploymentEvent(['entity-1'])
-        db.undeployRegistries.mockResolvedValue(3)
+        registry.undeployWorldScenes.mockResolvedValue({
+          undeployedCount: 3,
+          worldName: 'test-world'
+        })
       })
 
       it('should return ok', async () => {
@@ -149,7 +174,10 @@ describe('when handling undeployment events', () => {
 
       beforeEach(() => {
         event = createUndeploymentEvent(['non-existent-entity'])
-        db.undeployRegistries.mockResolvedValue(0)
+        registry.undeployWorldScenes.mockResolvedValue({
+          undeployedCount: 0,
+          worldName: null
+        })
       })
 
       it('should return ok', async () => {
@@ -160,12 +188,12 @@ describe('when handling undeployment events', () => {
       })
     })
 
-    describe('and the database operation fails', () => {
+    describe('and the registry operation fails', () => {
       let event: WorldScenesUndeploymentEvent
 
       beforeEach(() => {
         event = createUndeploymentEvent(['entity-1'])
-        db.undeployRegistries.mockRejectedValue(new Error('Database connection failed'))
+        registry.undeployWorldScenes.mockRejectedValue(new Error('Database connection failed'))
       })
 
       it('should return an error with the error message', async () => {
@@ -182,7 +210,7 @@ describe('when handling undeployment events', () => {
 
       beforeEach(() => {
         event = createUndeploymentEvent(['entity-1'])
-        db.undeployRegistries.mockRejectedValue({})
+        registry.undeployWorldScenes.mockRejectedValue({})
       })
 
       it('should return a generic error message', async () => {

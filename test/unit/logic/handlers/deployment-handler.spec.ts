@@ -7,6 +7,7 @@ import { createDbMockComponent } from '../../mocks/db'
 import { createLogMockComponent } from '../../mocks/logs'
 import { createCatalystMockComponent } from '../../mocks/catalyst'
 import { createWorldsMockComponent } from '../../mocks/worlds'
+import { createRegistryMockComponent } from '../../mocks/registry'
 
 describe('when handling deployment events', () => {
   const createDeploymentEvent = (entityId: string, contentServerUrls?: string[]): DeploymentToSqs => ({
@@ -39,7 +40,7 @@ describe('when handling deployment events', () => {
     let db: ReturnType<typeof createDbMockComponent>
     let catalyst: ReturnType<typeof createCatalystMockComponent>
     let worlds: ReturnType<typeof createWorldsMockComponent>
-    let registryOrchestrator: { persistAndRotateStates: jest.Mock }
+    let registry: ReturnType<typeof createRegistryMockComponent>
     let handler: ReturnType<typeof createDeploymentEventHandler>
 
     beforeEach(() => {
@@ -47,8 +48,8 @@ describe('when handling deployment events', () => {
       db = createDbMockComponent()
       catalyst = createCatalystMockComponent()
       worlds = createWorldsMockComponent()
-      registryOrchestrator = { persistAndRotateStates: jest.fn() }
-      handler = createDeploymentEventHandler({ logs, db, catalyst, worlds, registryOrchestrator })
+      registry = createRegistryMockComponent()
+      handler = createDeploymentEventHandler({ logs, db, catalyst, worlds, registry })
     })
 
     afterEach(() => {
@@ -85,7 +86,7 @@ describe('when handling deployment events', () => {
     let db: ReturnType<typeof createDbMockComponent>
     let catalyst: ReturnType<typeof createCatalystMockComponent>
     let worlds: ReturnType<typeof createWorldsMockComponent>
-    let registryOrchestrator: { persistAndRotateStates: jest.Mock }
+    let registry: ReturnType<typeof createRegistryMockComponent>
     let handler: ReturnType<typeof createDeploymentEventHandler>
 
     beforeEach(() => {
@@ -93,8 +94,8 @@ describe('when handling deployment events', () => {
       db = createDbMockComponent()
       catalyst = createCatalystMockComponent()
       worlds = createWorldsMockComponent()
-      registryOrchestrator = { persistAndRotateStates: jest.fn() }
-      handler = createDeploymentEventHandler({ logs, db, catalyst, worlds, registryOrchestrator })
+      registry = createRegistryMockComponent()
+      handler = createDeploymentEventHandler({ logs, db, catalyst, worlds, registry })
     })
 
     afterEach(() => {
@@ -144,7 +145,7 @@ describe('when handling deployment events', () => {
 
         expect(result.ok).toBe(true)
         expect(result.handlerName).toBe(EventHandlerName.DEPLOYMENT)
-        expect(registryOrchestrator.persistAndRotateStates).not.toHaveBeenCalled()
+        expect(registry.persistAndRotateStates).not.toHaveBeenCalled()
       })
     })
 
@@ -158,7 +159,7 @@ describe('when handling deployment events', () => {
         db.getRegistryById.mockResolvedValue(null)
         worlds.isWorldDeployment.mockReturnValue(false)
         catalyst.getEntityById.mockResolvedValue(entity)
-        registryOrchestrator.persistAndRotateStates.mockResolvedValue(undefined)
+        registry.persistAndRotateStates.mockResolvedValue(undefined as any)
       })
 
       it('should fetch the entity from the catalyst', async () => {
@@ -172,7 +173,7 @@ describe('when handling deployment events', () => {
       it('should persist the registry with default bundle statuses', async () => {
         await handler.handle(event)
 
-        expect(registryOrchestrator.persistAndRotateStates).toHaveBeenCalledWith(
+        expect(registry.persistAndRotateStates).toHaveBeenCalledWith(
           expect.objectContaining({
             id: 'genesis-entity-id',
             deployer: '0x1234567890abcdef1234567890abcdef12345678',
@@ -217,7 +218,7 @@ describe('when handling deployment events', () => {
         db.getRegistryById.mockResolvedValue(null)
         worlds.isWorldDeployment.mockReturnValue(false)
         catalyst.getEntityById.mockResolvedValue(entity)
-        registryOrchestrator.persistAndRotateStates.mockResolvedValue(undefined)
+        registry.persistAndRotateStates.mockResolvedValue(undefined as any)
       })
 
       it('should fetch the entity from the catalyst with the override URL', async () => {
@@ -239,7 +240,7 @@ describe('when handling deployment events', () => {
         db.getRegistryById.mockResolvedValue(null)
         worlds.isWorldDeployment.mockReturnValue(true)
         worlds.getWorld.mockResolvedValue(entity)
-        registryOrchestrator.persistAndRotateStates.mockResolvedValue(undefined)
+        registry.persistAndRotateStates.mockResolvedValue(undefined as any)
       })
 
       it('should fetch the entity from the worlds content server', async () => {
@@ -254,7 +255,7 @@ describe('when handling deployment events', () => {
       it('should persist the registry with default bundle statuses', async () => {
         await handler.handle(event)
 
-        expect(registryOrchestrator.persistAndRotateStates).toHaveBeenCalledWith(
+        expect(registry.persistAndRotateStates).toHaveBeenCalledWith(
           expect.objectContaining({
             id: 'world-entity-id',
             deployer: '0x1234567890abcdef1234567890abcdef12345678',
@@ -303,7 +304,7 @@ describe('when handling deployment events', () => {
       it('should not persist anything', async () => {
         await handler.handle(event)
 
-        expect(registryOrchestrator.persistAndRotateStates).not.toHaveBeenCalled()
+        expect(registry.persistAndRotateStates).not.toHaveBeenCalled()
       })
     })
 

@@ -6,7 +6,7 @@ import type {
   ILoggerComponent,
   IMetricsComponent
 } from '@well-known-components/interfaces'
-import { IPgComponent } from '@well-known-components/pg-component'
+import { IPgComponent } from '@dcl/pg-component'
 import {
   ICatalystComponent,
   IDbComponent,
@@ -14,7 +14,7 @@ import {
   IMessageProcessorComponent,
   IQueueComponent,
   IEntityStatusFetcherComponent,
-  IRegistryOrchestratorComponent,
+  IRegistryComponent,
   ICacheStorage,
   IWorldsComponent,
   IQueuesStatusManagerComponent,
@@ -29,6 +29,7 @@ import {
 } from './service'
 import { metricDeclarations } from '../metrics'
 import { IContentStorageComponent } from '@dcl/catalyst-storage'
+import { ICoordinatesComponent, SpawnCoordinate } from '../logic/coordinates'
 
 export type GlobalContext = {
   components: BaseComponents
@@ -44,12 +45,13 @@ export type BaseComponents = {
   db: IDbComponent
   catalyst: ICatalystComponent
   entityStatusFetcher: IEntityStatusFetcherComponent
-  registryOrchestrator: IRegistryOrchestratorComponent
+  registry: IRegistryComponent
   queuesStatusManager: IQueuesStatusManagerComponent
   memoryStorage: ICacheStorage
   profileSanitizer: IProfileSanitizerComponent
   profileRetriever: IProfileRetrieverComponent
   synchronizer: ISynchronizerComponent
+  coordinates: ICoordinatesComponent
 }
 
 // components used in runtime
@@ -76,9 +78,19 @@ export type TestComponents = BaseComponents & {
   // A fetch component that only hits the test server
   localFetch: IFetchComponent
   messageConsumer: IMessageConsumerComponent
+  messageProcessor: IMessageProcessorComponent
   extendedDb: IDbComponent & {
     deleteHistoricalRegistries: (ids: string[]) => Promise<void>
     deleteProfiles: (pointers: string[]) => Promise<void>
+    deleteSpawnCoordinates: (worldNames: string[]) => Promise<void>
+    insertSpawnCoordinate: (
+      worldName: string,
+      x: number,
+      y: number,
+      isUserSet: boolean,
+      timestamp: number
+    ) => Promise<void>
+    getSpawnCoordinateByWorldName: (worldName: string) => Promise<SpawnCoordinate | null>
     close: () => Promise<void>
   }
 }

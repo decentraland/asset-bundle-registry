@@ -9,7 +9,7 @@ import { createFetchComponent } from '@well-known-components/fetch-component'
 import { createMetricsComponent } from '@well-known-components/metrics'
 import { metricDeclarations } from './metrics'
 import { AppComponents, GlobalContext, Sync } from './types'
-import { createPgComponent } from '@well-known-components/pg-component'
+import { createPgComponent } from '@dcl/pg-component'
 import { createDbAdapter } from './adapters/db'
 import { createSqsComponent } from '@dcl/sqs-component'
 import { createMemoryQueueComponent } from '@dcl/memory-queue-component'
@@ -18,7 +18,7 @@ import { createCatalystAdapter } from './adapters/catalyst'
 import { createMessagesConsumerComponent } from './logic/message-consumer'
 import path from 'path'
 import { createEntityStatusFetcherComponent } from './logic/entity-status-fetcher'
-import { createRegistryOrchestratorComponent } from './logic/registry-orchestrator'
+import { createRegistryComponent } from './logic/registry'
 import { createWorkerManagerComponent } from './logic/workers/worker-manager'
 import { createRedisComponent } from './adapters/redis'
 import { createInMemoryCacheComponent } from './adapters/memory-cache'
@@ -36,6 +36,7 @@ import { createSnapshotsHandlerComponent } from './logic/sync/snapshots-handler'
 import { createPointerChangesHandlerComponent } from './logic/sync/pointer-changes-handler'
 import { createSynchronizerComponent } from './logic/sync/synchronizer'
 import { createOwnershipValidatorJob } from './logic/sync/ownership-validator-job'
+import { createCoordinatesComponent } from './logic/coordinates'
 
 // Initialize all the components of the app
 export async function initComponents(): Promise<AppComponents> {
@@ -82,7 +83,6 @@ export async function initComponents(): Promise<AppComponents> {
     { logs, config, metrics },
     {
       migration: {
-        databaseUrl,
         dir: path.resolve(__dirname, 'migrations'),
         migrationsTable: 'pgmigrations',
         ignorePattern: '.*\\.map',
@@ -178,10 +178,15 @@ export async function initComponents(): Promise<AppComponents> {
     metrics
   })
   const worlds = await createWorldsAdapter({ logs, config, fetch })
-  const registryOrchestrator = createRegistryOrchestratorComponent({
+  const coordinates = createCoordinatesComponent({
+    db,
+    logs
+  })
+  const registry = createRegistryComponent({
     logs,
     db,
-    metrics
+    metrics,
+    coordinates
   })
   const entityStatusFetcher = await createEntityStatusFetcherComponent({
     fetch,
@@ -194,8 +199,9 @@ export async function initComponents(): Promise<AppComponents> {
   const messageProcessor = await createMessageProcessorComponent({
     catalyst,
     worlds,
-    registryOrchestrator,
+    registry,
     queuesStatusManager,
+    coordinates,
     db,
     logs,
     config
@@ -221,11 +227,12 @@ export async function initComponents(): Promise<AppComponents> {
     catalyst,
     worlds,
     messageConsumer,
-    registryOrchestrator,
+    registry,
     entityStatusFetcher,
     workerManager,
     memoryStorage,
     queuesStatusManager,
+    coordinates,
     profileRetriever,
     profileSanitizer,
     entityDeploymentTracker,

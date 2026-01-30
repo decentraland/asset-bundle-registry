@@ -2,7 +2,7 @@ import { createDotEnvConfigComponent } from '@well-known-components/env-config-p
 import { createLogComponent } from '@well-known-components/logger'
 import { metricDeclarations } from '../../metrics'
 import { createMetricsComponent } from '@well-known-components/metrics'
-import { createPgComponent } from '@well-known-components/pg-component'
+import { createPgComponent } from '@dcl/pg-component'
 import { createDbAdapter } from '../../adapters/db'
 import { SQL } from 'sql-template-strings'
 

@@ -7,6 +7,8 @@ import { createCatalystMockComponent } from '../../mocks/catalyst'
 import { createDbMockComponent } from '../../mocks/db'
 import { createLogMockComponent } from '../../mocks/logs'
 import { createWorldsMockComponent } from '../../mocks/worlds'
+import { createRegistryMockComponent } from '../../mocks/registry'
+import { createCoordinatesMockComponent } from '../../mocks/coordinates'
 import { ManifestStatusCode } from '../../../../src/logic/entity-status-fetcher'
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
 
@@ -15,9 +17,8 @@ describe('textures-handler', () => {
   const db = createDbMockComponent()
   const catalyst = createCatalystMockComponent()
   const worlds = createWorldsMockComponent()
-  const registryOrchestrator = {
-    persistAndRotateStates: jest.fn()
-  }
+  const registry = createRegistryMockComponent()
+  const coordinates = createCoordinatesMockComponent()
   const memoryStorage = createInMemoryCacheComponent()
   const queuesStatusManager = createQueuesStatusManagerComponent({
     memoryStorage
@@ -84,8 +85,9 @@ describe('textures-handler', () => {
     db,
     catalyst,
     worlds,
-    registryOrchestrator,
-    queuesStatusManager
+    registry,
+    queuesStatusManager,
+    coordinates
   })
 
   beforeEach(() => {
@@ -125,7 +127,7 @@ describe('textures-handler', () => {
         db.getRegistryById = jest.fn().mockResolvedValue(null)
         catalyst.getEntityById = jest.fn().mockResolvedValue(entity)
         // persistAndRotateStates must return the created entity so we can access bundles later
-        registryOrchestrator.persistAndRotateStates = jest.fn().mockResolvedValue(dbEntity)
+        registry.persistAndRotateStates = jest.fn().mockResolvedValue(dbEntity)
         db.upsertRegistryBundle = jest.fn().mockResolvedValue({
           ...dbEntity,
           bundles: {
@@ -146,7 +148,7 @@ describe('textures-handler', () => {
         const result = await handler.handle(event)
 
         expect(result.ok).toBe(true)
-        expect(registryOrchestrator.persistAndRotateStates).toHaveBeenCalledWith(dbEntity)
+        expect(registry.persistAndRotateStates).toHaveBeenCalledWith(dbEntity)
         expect(db.updateRegistryVersionWithBuildDate).toHaveBeenCalledWith(
           '123',
           'windows',
@@ -171,7 +173,7 @@ describe('textures-handler', () => {
         db.getRegistryById = jest.fn().mockResolvedValue(null)
         worlds.getWorld = jest.fn().mockResolvedValue(entity)
         // persistAndRotateStates must return the created entity so we can access bundles later
-        registryOrchestrator.persistAndRotateStates = jest.fn().mockResolvedValue(dbEntity)
+        registry.persistAndRotateStates = jest.fn().mockResolvedValue(dbEntity)
         db.upsertRegistryBundle = jest.fn().mockResolvedValue({
           ...dbEntity,
           bundles: {
@@ -487,12 +489,12 @@ describe('textures-handler', () => {
             )
           })
 
-          it('should not update version to avoid pointing to non-existent bundles', () => {
+          it('should not update the version to avoid pointing to non-existent bundles', () => {
             expect(db.updateRegistryVersionWithBuildDate).not.toHaveBeenCalled()
           })
 
-          it('should still call persistAndRotateStates', () => {
-            expect(registryOrchestrator.persistAndRotateStates).toHaveBeenCalledWith(dbEntityWithCompleteBundles)
+          it('should still rotate the registry states', () => {
+            expect(registry.persistAndRotateStates).toHaveBeenCalledWith(dbEntityWithCompleteBundles)
           })
         })
 
@@ -542,7 +544,7 @@ describe('textures-handler', () => {
             expect(db.upsertRegistryBundle).toHaveBeenCalledWith('123', 'mac', true, Registry.SimplifiedStatus.COMPLETE)
           })
 
-          it('should not update version', () => {
+          it('should not update the version', () => {
             expect(db.updateRegistryVersionWithBuildDate).not.toHaveBeenCalled()
           })
         })
@@ -628,8 +630,8 @@ describe('textures-handler', () => {
             )
           })
 
-          it('should call persistAndRotateStates with updated entity', () => {
-            expect(registryOrchestrator.persistAndRotateStates).toHaveBeenCalledWith(updatedDbEntity)
+          it('should rotate the registry states with the updated entity', () => {
+            expect(registry.persistAndRotateStates).toHaveBeenCalledWith(updatedDbEntity)
           })
         })
       })
@@ -777,7 +779,7 @@ describe('textures-handler', () => {
           result = await handler.handle(event)
         })
 
-        it('should succeed, update the bundle status and the version and not call persistAndRotateStates to preserve OBSOLETE status', () => {
+        it('should succeed, update the bundle status and version, and preserve the OBSOLETE status by not rotating states', () => {
           expect(result.ok).toBe(true)
           expect(db.upsertRegistryBundle).toHaveBeenCalledWith(
             '123',
@@ -791,7 +793,7 @@ describe('textures-handler', () => {
             'v2',
             new Date(event.timestamp).toISOString()
           )
-          expect(registryOrchestrator.persistAndRotateStates).not.toHaveBeenCalled()
+          expect(registry.persistAndRotateStates).not.toHaveBeenCalled()
         })
       })
 

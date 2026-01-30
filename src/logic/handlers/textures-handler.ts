@@ -7,11 +7,12 @@ export const createTexturesEventHandler = ({
   db,
   catalyst,
   worlds,
-  registryOrchestrator,
-  queuesStatusManager
+  registry,
+  queuesStatusManager,
+  coordinates
 }: Pick<
   AppComponents,
-  'logs' | 'db' | 'catalyst' | 'worlds' | 'registryOrchestrator' | 'queuesStatusManager'
+  'logs' | 'db' | 'catalyst' | 'worlds' | 'queuesStatusManager' | 'registry' | 'coordinates'
 >): IEventHandlerComponent<AssetBundleConversionFinishedEvent> => {
   const HANDLER_NAME = EventHandlerName.TEXTURES
   const logger = logs.getLogger('textures-handler')
@@ -65,7 +66,7 @@ export const createTexturesEventHandler = ({
             }
           }
 
-          entity = await registryOrchestrator.persistAndRotateStates({
+          entity = await registry.persistAndRotateStates({
             ...fetchedEntity,
             deployer: '', // cannot infer from textures event
             bundles: defaultBundles,
@@ -108,14 +109,14 @@ export const createTexturesEventHandler = ({
           preservingPreviousStatus: String(shouldPreservePreviousStatus)
         })
 
-        let registry: Registry.DbEntity | null = await db.upsertRegistryBundle(
+        let registryEntity: Registry.DbEntity | null = await db.upsertRegistryBundle(
           eventMetadata.entityId,
           eventMetadata.platform,
           !!eventMetadata.isLods,
           status
         )
 
-        if (!registry) {
+        if (!registryEntity) {
           logger.error('Error storing bundle', {
             entityId: event.metadata.entityId,
             platform: event.metadata.platform
@@ -131,14 +132,14 @@ export const createTexturesEventHandler = ({
         // If we're preserving the previous COMPLETE status, we should also keep the old version
         // to avoid pointing clients to bundles that don't exist
         if (!shouldPreservePreviousStatus) {
-          registry = await db.updateRegistryVersionWithBuildDate(
+          registryEntity = await db.updateRegistryVersionWithBuildDate(
             event.metadata.entityId,
             event.metadata.platform,
             event.metadata.version,
             new Date(event.timestamp).toISOString()
           )
 
-          if (!registry) {
+          if (!registryEntity) {
             logger.error('Error updating version', {
               entityId: event.metadata.entityId,
               platform: event.metadata.platform
@@ -153,16 +154,41 @@ export const createTexturesEventHandler = ({
 
         logger.info(`Bundle stored`, {
           entityId: event.metadata.entityId,
-          bundles: JSON.stringify(registry.bundles)
+          bundles: JSON.stringify(registryEntity.bundles)
         })
 
         // Skip status rotation for OBSOLETE entities - their status should be preserved
         if (!wasOriginallyObsolete) {
-          await registryOrchestrator.persistAndRotateStates(registry)
+          const updatedRegistry = await registry.persistAndRotateStates(registryEntity)
+          // If this is a world entity and it's now processed (COMPLETE or FALLBACK),
+          // trigger spawn coordinate recalculation using event timestamp for conflict resolution
+          if (
+            event.metadata.isWorld &&
+            (updatedRegistry.status === Registry.Status.COMPLETE || updatedRegistry.status === Registry.Status.FALLBACK)
+          ) {
+            const worldName = (updatedRegistry.metadata as any)?.worldConfiguration?.name
+            if (worldName) {
+              logger.info('Triggering spawn coordinate recalculation for world', {
+                worldName,
+                entityId: updatedRegistry.id,
+                status: updatedRegistry.status,
+                eventTimestamp: event.timestamp
+              })
+              try {
+                await coordinates.recalculateSpawnIfNeeded(worldName, event.timestamp)
+              } catch (spawnError: any) {
+                // Log but don't fail the handler - spawn coordinate update is secondary
+                logger.error('Failed to recalculate spawn coordinate', {
+                  worldName,
+                  eventTimestamp: event.timestamp,
+                  error: spawnError?.message || 'Unknown error'
+                })
+              }
+            }
+          }
         } else {
           logger.info('Entity was OBSOLETE, skipping status rotation', { entityId: eventMetadata.entityId })
         }
-
         return { ok: true, handlerName: HANDLER_NAME }
       } catch (errors: any) {
         logger.error('Failed to process', {

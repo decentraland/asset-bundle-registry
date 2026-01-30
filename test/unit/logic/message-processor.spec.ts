@@ -8,6 +8,8 @@ import { createTexturesEventHandler } from '../../../src/logic/handlers/textures
 import { createDbMockComponent } from '../mocks/db'
 import { createCatalystMockComponent } from '../mocks/catalyst'
 import { createWorldsMockComponent } from '../mocks/worlds'
+import { createRegistryMockComponent } from '../mocks/registry'
+import { createCoordinatesMockComponent } from '../mocks/coordinates'
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
 import { AssetBundleConversionFinishedEvent, AssetBundleConversionManuallyQueuedEvent } from '@dcl/schemas'
 
@@ -46,24 +48,12 @@ describe('message processor', () => {
 
   const mockComponents: Pick<
     AppComponents,
-    | 'catalyst'
-    | 'worlds'
-    | 'entityStatusFetcher'
-    | 'registryOrchestrator'
-    | 'queuesStatusManager'
-    | 'db'
-    | 'logs'
-    | 'config'
-  > = {
+    'catalyst' | 'worlds' | 'registry' | 'queuesStatusManager' | 'db' | 'logs' | 'config'
+  > & { coordinates: ReturnType<typeof createCoordinatesMockComponent> } = {
     catalyst: createCatalystMockComponent(),
     worlds: createWorldsMockComponent(),
-    entityStatusFetcher: {
-      fetchBundleManifestData: jest.fn(),
-      fetchLODsStatus: jest.fn()
-    },
-    registryOrchestrator: {
-      persistAndRotateStates: jest.fn()
-    },
+    registry: createRegistryMockComponent(),
+    coordinates: createCoordinatesMockComponent(),
     queuesStatusManager: {
       markAsQueued: jest.fn(),
       markAsFinished: jest.fn(),
