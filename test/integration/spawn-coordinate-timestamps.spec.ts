@@ -125,7 +125,7 @@ test('spawn coordinate race conditions via message processor', async ({ componen
           expect(spawn).not.toBeNull()
           expect(spawn!.x).toBe(0)
           expect(spawn!.y).toBe(0)
-          expect(spawn!.timestamp).toBe(1000)
+          expect(Number(spawn!.timestamp)).toBe(1000)
         })
 
         describe('and a newer spawn coordinate event arrives', () => {
@@ -141,7 +141,7 @@ test('spawn coordinate race conditions via message processor', async ({ componen
 
             expect(spawn!.x).toBe(5)
             expect(spawn!.y).toBe(5)
-            expect(spawn!.timestamp).toBe(2000)
+            expect(Number(spawn!.timestamp)).toBe(2000)
           })
 
           describe('and an older spawn coordinate event arrives late', () => {
@@ -155,7 +155,7 @@ test('spawn coordinate race conditions via message processor', async ({ componen
 
               expect(spawn!.x).toBe(5)
               expect(spawn!.y).toBe(5)
-              expect(spawn!.timestamp).toBe(2000)
+              expect(Number(spawn!.timestamp)).toBe(2000)
             })
           })
         })
@@ -190,7 +190,7 @@ test('spawn coordinate race conditions via message processor', async ({ componen
           expect(spawn!.x).toBe(5)
           expect(spawn!.y).toBe(5)
           expect(spawn!.isUserSet).toBe(true)
-          expect(spawn!.timestamp).toBe(2000)
+          expect(Number(spawn!.timestamp)).toBe(2000)
         })
 
         describe('and an older spawn coordinate event arrives late', () => {
@@ -204,7 +204,7 @@ test('spawn coordinate race conditions via message processor', async ({ componen
 
             expect(spawn!.x).toBe(5)
             expect(spawn!.y).toBe(5)
-            expect(spawn!.timestamp).toBe(2000)
+            expect(Number(spawn!.timestamp)).toBe(2000)
           })
         })
       })
@@ -220,7 +220,7 @@ test('spawn coordinate race conditions via message processor', async ({ componen
 
           expect(spawn!.x).toBe(1)
           expect(spawn!.y).toBe(0)
-          expect(spawn!.timestamp).toBe(1000)
+          expect(Number(spawn!.timestamp)).toBe(1000)
         })
       })
 
@@ -235,7 +235,7 @@ test('spawn coordinate race conditions via message processor', async ({ componen
 
           expect(spawn!.x).toBe(1)
           expect(spawn!.y).toBe(0)
-          expect(spawn!.timestamp).toBe(1000)
+          expect(Number(spawn!.timestamp)).toBe(1000)
         })
       })
     })
@@ -269,7 +269,7 @@ test('spawn coordinate race conditions via message processor', async ({ componen
             expect(spawn!.x).toBe(5)
             expect(spawn!.y).toBe(5)
             expect(spawn!.isUserSet).toBe(true)
-            expect(spawn!.timestamp).toBe(2000)
+            expect(Number(spawn!.timestamp)).toBe(2000)
           })
         })
 
@@ -286,7 +286,7 @@ test('spawn coordinate race conditions via message processor', async ({ componen
 
             // Spawn may be null (deleted) or have updated timestamp
             if (spawn) {
-              expect(spawn.timestamp).toBeGreaterThanOrEqual(3000)
+              expect(Number(spawn.timestamp)).toBeGreaterThanOrEqual(3000)
             }
           })
         })
@@ -304,7 +304,7 @@ test('spawn coordinate race conditions via message processor', async ({ componen
           expect(spawn!.x).toBe(5)
           expect(spawn!.y).toBe(5)
           expect(spawn!.isUserSet).toBe(true)
-          expect(spawn!.timestamp).toBe(2000)
+          expect(Number(spawn!.timestamp)).toBe(2000)
         })
       })
     })
@@ -340,7 +340,7 @@ test('spawn coordinate race conditions via message processor', async ({ componen
 
         expect(spawn!.x).toBe(10)
         expect(spawn!.y).toBe(10)
-        expect(spawn!.timestamp).toBe(3000)
+        expect(Number(spawn!.timestamp)).toBe(3000)
       })
     })
 
@@ -361,7 +361,7 @@ test('spawn coordinate race conditions via message processor', async ({ componen
 
         expect(spawn!.x).toBe(10)
         expect(spawn!.y).toBe(10)
-        expect(spawn!.timestamp).toBe(3000)
+        expect(Number(spawn!.timestamp)).toBe(3000)
       })
     })
   })
@@ -390,7 +390,7 @@ test('spawn coordinate race conditions via message processor', async ({ componen
 
         expect(spawn!.x).toBe(2)
         expect(spawn!.y).toBe(0)
-        expect(spawn!.timestamp).toBe(1000)
+        expect(Number(spawn!.timestamp)).toBe(1000)
       })
 
       describe('and a user sets the spawn coordinate', () => {
@@ -404,7 +404,7 @@ test('spawn coordinate race conditions via message processor', async ({ componen
 
           expect(spawn!.x).toBe(0)
           expect(spawn!.y).toBe(0)
-          expect(spawn!.timestamp).toBe(2000)
+          expect(Number(spawn!.timestamp)).toBe(2000)
         })
 
         describe('and a late deployment recalculation arrives with older timestamp', () => {
@@ -418,7 +418,7 @@ test('spawn coordinate race conditions via message processor', async ({ componen
 
             expect(spawn!.x).toBe(0)
             expect(spawn!.y).toBe(0)
-            expect(spawn!.timestamp).toBe(2000)
+            expect(Number(spawn!.timestamp)).toBe(2000)
           })
         })
 
@@ -433,7 +433,7 @@ test('spawn coordinate race conditions via message processor', async ({ componen
 
             expect(spawn!.x).toBe(1)
             expect(spawn!.y).toBe(0)
-            expect(spawn!.timestamp).toBe(3000)
+            expect(Number(spawn!.timestamp)).toBe(3000)
           })
         })
       })
@@ -450,7 +450,7 @@ test('spawn coordinate race conditions via message processor', async ({ componen
 
         expect(spawn!.x).toBe(3)
         expect(spawn!.y).toBe(3)
-        expect(spawn!.timestamp).toBe(1000)
+        expect(Number(spawn!.timestamp)).toBe(1000)
       })
 
       describe('and an undeployment event arrives', () => {
@@ -474,7 +474,7 @@ test('spawn coordinate race conditions via message processor', async ({ componen
 
             expect(spawn!.x).toBe(1)
             expect(spawn!.y).toBe(0)
-            expect(spawn!.timestamp).toBe(3000)
+            expect(Number(spawn!.timestamp)).toBe(3000)
           })
         })
       })
