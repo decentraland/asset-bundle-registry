@@ -38,7 +38,7 @@ export function extendDbComponent({ db, pg }: Pick<AppComponents, 'db' | 'pg'>):
     deleteSpawnCoordinates: async (worldNames: string[]) => {
       const query: SQLStatement = SQL`
             DELETE FROM world_spawn_coordinates
-            WHERE LOWER(world_name) = ANY(${worldNames.map((n) => n.toLowerCase())}::varchar(255)[])
+            WHERE world_name = ANY(${worldNames.map((n) => n.toLowerCase())}::varchar(255)[])
           `
 
       await pg.query(query)
@@ -62,7 +62,7 @@ export function extendDbComponent({ db, pg }: Pick<AppComponents, 'db' | 'pg'>):
               is_user_set as "isUserSet",
               timestamp
             FROM world_spawn_coordinates
-            WHERE LOWER(world_name) = ${worldName.toLowerCase()}
+            WHERE world_name = ${worldName.toLowerCase()}
           `
 
       const result = await pg.query<SpawnCoordinate>(query)

@@ -30,7 +30,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   })
 
   // Index for efficient lookups by world name (case-insensitive)
-  pgm.createIndex('world_spawn_coordinates', 'LOWER(world_name)', {
+  pgm.createIndex('world_spawn_coordinates', 'world_name', {
     name: 'idx_world_spawn_coordinates_world_name_lower'
   })
 

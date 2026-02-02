@@ -722,7 +722,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
       FROM
         world_spawn_coordinates
       WHERE
-        LOWER(world_name) = ${worldName.toLowerCase()}
+        world_name = ${worldName}
     `
 
     const result = await executor.query<SpawnCoordinate>(query)
@@ -816,7 +816,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
   ): Promise<boolean> {
     const query = SQL`
       DELETE FROM world_spawn_coordinates
-      WHERE LOWER(world_name) = ${worldName.toLowerCase()}
+      WHERE world_name = ${worldName.toLowerCase()}
         AND timestamp < ${eventTimestamp}
     `
 
