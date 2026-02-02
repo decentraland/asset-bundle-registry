@@ -143,7 +143,6 @@ export interface IDbComponent {
   deleteSpawnCoordinate(worldName: string, eventTimestamp: number): Promise<boolean>
   getProcessedWorldParcels(worldName: string): Promise<string[]>
   getWorldBoundingRectangle(worldName: string): Promise<WorldBoundingRectangle>
-  getRegistriesByIds(entityIds: string[]): Promise<Registry.DbEntity[]>
   // Atomic operations
   getWorldManifestData(worldName: string): Promise<WorldManifestData>
   setSpawnCoordinate(
