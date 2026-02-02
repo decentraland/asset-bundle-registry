@@ -1,10 +1,10 @@
-import { Entity, EntityType, EthAddress, Profile } from '@dcl/schemas'
+import { Color3, Entity, EntityType, EthAddress, Profile } from '@dcl/schemas'
 
 export namespace Sync {
   export type ProfileDbEntity = Omit<Entity, 'version' | 'pointers' | 'content'> & {
     localTimestamp: number
     pointer: string // single pointer ensurance for simplicity over B-tree database index
-    content: Entity['content'] | null // nullable for profiles fetched from lambdas-only
+    content?: Entity['content'] | null // nullable for profiles fetched from lambdas-only
   }
 
   export type FailedProfileDbEntity = {
@@ -37,6 +37,7 @@ export type ProfileMetadataDTO = {
   pointer: EthAddress
   hasClaimedName: boolean
   name: string
+  nameColor?: Color3
   thumbnailUrl: string
 }
 

@@ -31,7 +31,7 @@
     "@dcl/http-server": "^1.0.1",
     "@dcl/memory-queue-component": "^2.0.0",
     "@dcl/platform-crypto-middleware": "^1.1.0",
-    "@dcl/schemas": "^22.2.0",
+    "@dcl/schemas": "^22.5.0",
     "@dcl/snapshots-fetcher": "^9.2.2",
     "@dcl/sqs-component": "^2.0.4",
     "@sentry/node": "9.12.0",
@@ -42,7 +42,7 @@
     "@well-known-components/metrics": "^2.1.0",
     "@well-known-components/pg-component": "^1.1.0",
     "bloom-filters": "^3.0.4",
-    "dcl-catalyst-client": "^21.10.2",
+    "dcl-catalyst-client": "https://sdk-team-cdn.decentraland.org/@dcl/catalyst-client/branch/chore/bump-catalyst-api-specs/dcl-catalyst-client-21.10.3-21598057260.commit-2b2de27.tgz",
     "lru-cache": "9.1.2",
     "redis": "^4.7.0",
     "sql-template-strings": "^2.2.2"
