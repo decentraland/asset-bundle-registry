@@ -1,4 +1,6 @@
+import { InvalidRequestError } from '@dcl/http-commons'
 import { HandlerContextWithPath } from '../../types'
+import { isWorldNameValid } from '../schemas/worlds'
 
 /**
  * Handler for GET /worlds/:worldName/manifest
@@ -18,20 +20,11 @@ export async function getWorldManifestHandler(
 
   const worldName = params.worldName
 
-  if (!worldName) {
-    return {
-      status: 400,
-      body: {
-        ok: false,
-        message: 'World name is required'
-      },
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    }
-  }
-
   try {
+    if (!isWorldNameValid(worldName)) {
+      throw new InvalidRequestError('A valid world name is required')
+    }
+
     const manifest = await coordinates.getWorldManifest(worldName)
 
     return {
@@ -42,6 +35,16 @@ export async function getWorldManifestHandler(
       }
     }
   } catch (error: any) {
+    if (error instanceof InvalidRequestError) {
+      return {
+        status: 400,
+        body: {
+          ok: false,
+          message: error.message
+        }
+      }
+    }
+
     return {
       status: 500,
       body: {
