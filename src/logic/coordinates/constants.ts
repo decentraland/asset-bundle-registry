@@ -1,0 +1,2 @@
+export const MIN_PARCEL_COORDINATE = -150
+export const MAX_PARCEL_COORDINATE = 150

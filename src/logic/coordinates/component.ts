@@ -1,4 +1,5 @@
 import { AppComponents, SpawnRecalculationParams, SpawnRecalculationResult, WorldBoundingRectangle } from '../../types'
+import { MAX_PARCEL_COORDINATE, MIN_PARCEL_COORDINATE } from './constants'
 import { Coordinate, ICoordinatesComponent, WorldManifest } from './types'
 
 /**
@@ -11,7 +12,30 @@ export function createCoordinatesComponent({ db, logs }: Pick<AppComponents, 'db
    * Parses a coordinate string "x,y" into a Coordinate object.
    */
   function parseCoordinate(coord: string): Coordinate {
-    const [x, y] = coord.split(',').map((n) => parseInt(n, 10))
+    const parts = coord.split(',')
+    if (parts.length !== 2) {
+      throw new Error(`Invalid coordinate format: ${coord}`)
+    }
+
+    const x = parseInt(parts[0], 10)
+    const y = parseInt(parts[1], 10)
+
+    if (isNaN(x) || isNaN(y)) {
+      throw new Error(`Invalid coordinate values: ${coord}`)
+    }
+
+    if (x < MIN_PARCEL_COORDINATE || x > MAX_PARCEL_COORDINATE) {
+      throw new Error(
+        `Coordinate X value ${x} is out of bounds. Must be between ${MIN_PARCEL_COORDINATE} and ${MAX_PARCEL_COORDINATE}.`
+      )
+    }
+
+    if (y < MIN_PARCEL_COORDINATE || y > MAX_PARCEL_COORDINATE) {
+      throw new Error(
+        `Coordinate Y value ${y} is out of bounds. Must be between ${MIN_PARCEL_COORDINATE} and ${MAX_PARCEL_COORDINATE}.`
+      )
+    }
+
     return { x, y }
   }
 

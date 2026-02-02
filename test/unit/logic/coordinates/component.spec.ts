@@ -18,6 +18,96 @@ describe('when using the coordinates component', () => {
     jest.resetAllMocks()
   })
 
+  describe('and parsing a coordinate', () => {
+    describe('and the coordinate has a valid format', () => {
+      it('should return the parsed coordinate', () => {
+        const result = component.parseCoordinate('10,20')
+
+        expect(result).toEqual({ x: 10, y: 20 })
+      })
+    })
+
+    describe('and the coordinate has negative values', () => {
+      it('should return the parsed coordinate with negative values', () => {
+        const result = component.parseCoordinate('-5,-10')
+
+        expect(result).toEqual({ x: -5, y: -10 })
+      })
+    })
+
+    describe('and the coordinate is at the minimum bounds', () => {
+      it('should return the parsed coordinate', () => {
+        const result = component.parseCoordinate('-150,-150')
+
+        expect(result).toEqual({ x: -150, y: -150 })
+      })
+    })
+
+    describe('and the coordinate is at the maximum bounds', () => {
+      it('should return the parsed coordinate', () => {
+        const result = component.parseCoordinate('150,150')
+
+        expect(result).toEqual({ x: 150, y: 150 })
+      })
+    })
+
+    describe('and the coordinate has an invalid format with only one part', () => {
+      it('should throw an error', () => {
+        expect(() => component.parseCoordinate('10')).toThrow('Invalid coordinate format: 10')
+      })
+    })
+
+    describe('and the coordinate has an invalid format with more than two parts', () => {
+      it('should throw an error', () => {
+        expect(() => component.parseCoordinate('10,20,30')).toThrow('Invalid coordinate format: 10,20,30')
+      })
+    })
+
+    describe('and the coordinate has a non-numeric x value', () => {
+      it('should throw an error', () => {
+        expect(() => component.parseCoordinate('abc,20')).toThrow('Invalid coordinate values: abc,20')
+      })
+    })
+
+    describe('and the coordinate has a non-numeric y value', () => {
+      it('should throw an error', () => {
+        expect(() => component.parseCoordinate('10,xyz')).toThrow('Invalid coordinate values: 10,xyz')
+      })
+    })
+
+    describe('and the x value is below the minimum bound', () => {
+      it('should throw an error', () => {
+        expect(() => component.parseCoordinate('-151,0')).toThrow(
+          'Coordinate X value -151 is out of bounds. Must be between -150 and 150.'
+        )
+      })
+    })
+
+    describe('and the x value is above the maximum bound', () => {
+      it('should throw an error', () => {
+        expect(() => component.parseCoordinate('151,0')).toThrow(
+          'Coordinate X value 151 is out of bounds. Must be between -150 and 150.'
+        )
+      })
+    })
+
+    describe('and the y value is below the minimum bound', () => {
+      it('should throw an error', () => {
+        expect(() => component.parseCoordinate('0,-151')).toThrow(
+          'Coordinate Y value -151 is out of bounds. Must be between -150 and 150.'
+        )
+      })
+    })
+
+    describe('and the y value is above the maximum bound', () => {
+      it('should throw an error', () => {
+        expect(() => component.parseCoordinate('0,151')).toThrow(
+          'Coordinate Y value 151 is out of bounds. Must be between -150 and 150.'
+        )
+      })
+    })
+  })
+
   describe('and recalculating spawn coordinate if needed', () => {
     let capturedCallback: ((params: SpawnRecalculationParams) => any) | null
     let eventTimestamp: number
