@@ -57,7 +57,7 @@ test('GET /worlds/:worldName/manifest', async ({ components }) => {
   }
 
   describe('when the world name is valid', () => {
-    describe('and the world has deployed scenes with a spawn coordinate', () => {
+    describe('and the world has deployed scenes with a spawn coordinate within bounds', () => {
       const worldName = 'test-world.dcl.eth'
 
       beforeEach(async () => {
@@ -65,12 +65,55 @@ test('GET /worlds/:worldName/manifest', async ({ components }) => {
         await components.extendedDb.insertSpawnCoordinate(worldName, 1, 0, true, 1000)
       })
 
-      it('should respond with a 200 status and the manifest containing occupied parcels and spawn coordinate', async () => {
+      it('should respond with a 200 status and the manifest containing occupied parcels and the stored spawn coordinate', async () => {
         const response = await fetchLocally('GET', `/worlds/${worldName}/manifest`, undefined, undefined)
 
         expect(response.status).toBe(200)
         const body = await response.json()
         expect(body.occupied).toEqual(expect.arrayContaining(['0,0', '1,0', '0,1']))
+        expect(body.spawn_coordinate).toEqual({ x: 1, y: 0 })
+        expect(body.total).toBe(3)
+      })
+    })
+
+    describe('and the world has deployed scenes with a spawn coordinate outside bounds', () => {
+      const worldName = 'test-world-out-of-bounds.dcl.eth'
+
+      beforeEach(async () => {
+        await createWorldRegistry(worldName, ['0,0', '1,0', '2,0'], {
+          id: 'world-manifest-entity-out-of-bounds',
+          timestamp: 1000
+        })
+        await components.extendedDb.insertSpawnCoordinate(worldName, 99, 99, true, 1000)
+      })
+
+      it('should respond with a 200 status and the manifest containing the calculated center spawn coordinate', async () => {
+        const response = await fetchLocally('GET', `/worlds/${worldName}/manifest`, undefined, undefined)
+
+        expect(response.status).toBe(200)
+        const body = await response.json()
+        expect(body.occupied).toEqual(expect.arrayContaining(['0,0', '1,0', '2,0']))
+        expect(body.spawn_coordinate).toEqual({ x: 1, y: 0 })
+        expect(body.total).toBe(3)
+      })
+    })
+
+    describe('and the world has deployed scenes but no spawn coordinate', () => {
+      const worldName = 'test-world-no-spawn.dcl.eth'
+
+      beforeEach(async () => {
+        await createWorldRegistry(worldName, ['0,0', '1,0', '2,0'], {
+          id: 'world-manifest-entity-no-spawn',
+          timestamp: 1000
+        })
+      })
+
+      it('should respond with a 200 status and the manifest containing the calculated center spawn coordinate', async () => {
+        const response = await fetchLocally('GET', `/worlds/${worldName}/manifest`, undefined, undefined)
+
+        expect(response.status).toBe(200)
+        const body = await response.json()
+        expect(body.occupied).toEqual(expect.arrayContaining(['0,0', '1,0', '2,0']))
         expect(body.spawn_coordinate).toEqual({ x: 1, y: 0 })
         expect(body.total).toBe(3)
       })

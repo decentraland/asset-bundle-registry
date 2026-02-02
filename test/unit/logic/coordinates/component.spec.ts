@@ -300,7 +300,7 @@ describe('when using the coordinates component', () => {
   })
 
   describe('and calling getWorldManifest', () => {
-    describe('and the world has processed scenes and a stored spawn coordinate', () => {
+    describe('and the world has processed scenes and a stored spawn coordinate within bounds', () => {
       beforeEach(() => {
         db.getWorldManifestData.mockResolvedValue({
           parcels: ['0,0', '1,0', '2,0'],
@@ -315,6 +315,31 @@ describe('when using the coordinates component', () => {
       })
 
       it('should return the manifest with the stored spawn coordinate', async () => {
+        const manifest = await component.getWorldManifest('test-world')
+
+        expect(manifest).toEqual({
+          occupied: ['0,0', '1,0', '2,0'],
+          spawn_coordinate: { x: 1, y: 0 },
+          total: 3
+        })
+      })
+    })
+
+    describe('and the world has processed scenes and a stored spawn coordinate outside bounds', () => {
+      beforeEach(() => {
+        db.getWorldManifestData.mockResolvedValue({
+          parcels: ['0,0', '1,0', '2,0'],
+          spawnCoordinate: {
+            worldName: 'test-world',
+            x: 99,
+            y: 99,
+            isUserSet: true,
+            timestamp: Date.now()
+          }
+        })
+      })
+
+      it('should return the manifest with the calculated center spawn coordinate', async () => {
         const manifest = await component.getWorldManifest('test-world')
 
         expect(manifest).toEqual({

@@ -113,6 +113,24 @@ export function createCoordinatesComponent({ db, logs }: Pick<AppComponents, 'db
   }
 
   /**
+   * Calculates the bounding rectangle from a set of parcels.
+   * Returns null if parcels is empty.
+   */
+  function calculateBoundsFromParcels(parcels: string[]): WorldBoundingRectangle {
+    if (parcels.length === 0) {
+      return null
+    }
+
+    const coords = parcels.map(parseCoordinate)
+    return {
+      minX: Math.min(...coords.map((c) => c.x)),
+      maxX: Math.max(...coords.map((c) => c.x)),
+      minY: Math.min(...coords.map((c) => c.y)),
+      maxY: Math.max(...coords.map((c) => c.y))
+    }
+  }
+
+  /**
    * Pure function that calculates the spawn action based on current world state.
    * Used by both recalculateSpawnIfNeeded (via DB atomic operation) and can be tested independently.
    */
@@ -254,14 +272,21 @@ export function createCoordinatesComponent({ db, logs }: Pick<AppComponents, 'db
 
     // Determine spawn coordinate
     let spawnCoordinate: Coordinate
-    if (storedSpawn) {
-      spawnCoordinate = { x: storedSpawn.x, y: storedSpawn.y }
-    } else if (parcels.length > 0) {
-      // Calculate center but don't persist
-      spawnCoordinate = calculateCenter(parcels)
-    } else {
+
+    if (parcels.length === 0) {
       // No parcels, default to 0,0
       spawnCoordinate = { x: 0, y: 0 }
+    } else {
+      const bounds = calculateBoundsFromParcels(parcels)
+      const storedCoord = storedSpawn ? { x: storedSpawn.x, y: storedSpawn.y } : null
+
+      if (storedCoord && isCoordinateInBounds(storedCoord, bounds)) {
+        // Stored spawn exists and is within bounds
+        spawnCoordinate = storedCoord
+      } else {
+        // No stored spawn or it's out of bounds, calculate center
+        spawnCoordinate = calculateCenter(parcels)
+      }
     }
 
     return {
