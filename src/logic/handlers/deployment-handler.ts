@@ -2,7 +2,6 @@ import { Entity } from '@dcl/schemas'
 import { AppComponents, IEventHandlerComponent, EventHandlerName, EventHandlerResult, Registry } from '../../types'
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
 import { Authenticator } from '@dcl/crypto'
-import { IRegistryComponent } from '../registry'
 
 export const createDeploymentEventHandler = ({
   registry,
@@ -10,9 +9,10 @@ export const createDeploymentEventHandler = ({
   worlds,
   db,
   logs
-}: Pick<AppComponents, 'catalyst' | 'worlds' | 'db' | 'logs'> & {
-  registry: IRegistryComponent
-}): IEventHandlerComponent<DeploymentToSqs> => {
+}: Pick<
+  AppComponents,
+  'catalyst' | 'worlds' | 'db' | 'logs' | 'registry'
+>): IEventHandlerComponent<DeploymentToSqs> => {
   const HANDLER_NAME = EventHandlerName.DEPLOYMENT
   const logger = logs.getLogger('deployment-handler')
 
