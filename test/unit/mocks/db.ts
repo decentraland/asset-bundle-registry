@@ -34,7 +34,6 @@ export function createDbMockComponent(): jest.Mocked<IDbComponent> {
     deleteSpawnCoordinate: jest.fn(),
     getProcessedWorldParcels: jest.fn(),
     getWorldBoundingRectangle: jest.fn(),
-    getRegistriesByIds: jest.fn(),
     // Atomic operations
     getWorldManifestData: jest.fn(),
     setSpawnCoordinate: jest.fn(),

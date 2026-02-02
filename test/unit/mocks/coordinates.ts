@@ -1,5 +1,4 @@
 import { ICoordinatesComponent } from '../../../src/logic/coordinates'
-import { MAX_PARCEL_COORDINATE, MIN_PARCEL_COORDINATE } from '../../../src/logic/coordinates/constants'
 import { Coordinate, WorldManifest } from '../../../src/logic/coordinates/types'
 import { WorldBoundingRectangle } from '../../../src/types'
 
@@ -51,9 +50,6 @@ export function createCoordinatesMockComponent(): jest.Mocked<ICoordinatesCompon
         return false
       }
       return coord.x >= bounds.minX && coord.x <= bounds.maxX && coord.y >= bounds.minY && coord.y <= bounds.maxY
-    }),
-    isBetweenParcelBounds: jest.fn().mockImplementation((value: number): boolean => {
-      return value >= MIN_PARCEL_COORDINATE && value <= MAX_PARCEL_COORDINATE
     })
   }
 }
