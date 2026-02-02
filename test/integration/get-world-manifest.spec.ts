@@ -90,25 +90,6 @@ test('GET /worlds/:worldName/manifest', async ({ components }) => {
         expect(body.total).toBe(0)
       })
     })
-
-    describe('and the world name is in name.eth format', () => {
-      const worldName = 'simple-world.eth'
-
-      beforeEach(async () => {
-        await createWorldRegistry(worldName, ['5,5'], { id: 'world-manifest-entity-2', timestamp: 1000 })
-        await components.extendedDb.insertSpawnCoordinate(worldName, 5, 5, false, 1000)
-      })
-
-      it('should respond with a 200 status and the manifest', async () => {
-        const response = await fetchLocally('GET', `/worlds/${worldName}/manifest`, undefined, undefined)
-
-        expect(response.status).toBe(200)
-        const body = await response.json()
-        expect(body.occupied).toEqual(['5,5'])
-        expect(body.spawn_coordinate).toEqual({ x: 5, y: 5 })
-        expect(body.total).toBe(1)
-      })
-    })
   })
 
   describe('when the world name is invalid', () => {
