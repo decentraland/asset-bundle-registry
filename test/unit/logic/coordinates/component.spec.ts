@@ -206,6 +206,38 @@ describe('when using the coordinates component', () => {
       eventTimestamp = Date.now()
     })
 
+    describe('and the x coordinate is below the minimum parcel bound', () => {
+      it('should throw an error', async () => {
+        await expect(component.setUserSpawnCoordinate('test-world', { x: -151, y: 0 }, eventTimestamp)).rejects.toThrow(
+          'Coordinate -151,0 is out of bounds'
+        )
+      })
+    })
+
+    describe('and the x coordinate is above the maximum parcel bound', () => {
+      it('should throw an error', async () => {
+        await expect(component.setUserSpawnCoordinate('test-world', { x: 151, y: 0 }, eventTimestamp)).rejects.toThrow(
+          'Coordinate 151,0 is out of bounds'
+        )
+      })
+    })
+
+    describe('and the y coordinate is below the minimum parcel bound', () => {
+      it('should throw an error', async () => {
+        await expect(component.setUserSpawnCoordinate('test-world', { x: 0, y: -151 }, eventTimestamp)).rejects.toThrow(
+          'Coordinate 0,-151 is out of bounds'
+        )
+      })
+    })
+
+    describe('and the y coordinate is above the maximum parcel bound', () => {
+      it('should throw an error', async () => {
+        await expect(component.setUserSpawnCoordinate('test-world', { x: 0, y: 151 }, eventTimestamp)).rejects.toThrow(
+          'Coordinate 0,151 is out of bounds'
+        )
+      })
+    })
+
     describe('and the coordinate is within the world bounds', () => {
       beforeEach(() => {
         db.setSpawnCoordinate.mockResolvedValue({

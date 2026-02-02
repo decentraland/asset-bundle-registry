@@ -8,6 +8,10 @@ import { Coordinate, ICoordinatesComponent, WorldManifest } from './types'
 export function createCoordinatesComponent({ db, logs }: Pick<AppComponents, 'db' | 'logs'>): ICoordinatesComponent {
   const logger = logs.getLogger('coordinates')
 
+  function isBetweenParcelBounds(value: number): boolean {
+    return value >= MIN_PARCEL_COORDINATE && value <= MAX_PARCEL_COORDINATE
+  }
+
   /**
    * Parses a coordinate string "x,y" into a Coordinate object.
    */
@@ -24,13 +28,13 @@ export function createCoordinatesComponent({ db, logs }: Pick<AppComponents, 'db
       throw new Error(`Invalid coordinate values: ${coord}`)
     }
 
-    if (x < MIN_PARCEL_COORDINATE || x > MAX_PARCEL_COORDINATE) {
+    if (!isBetweenParcelBounds(x)) {
       throw new Error(
         `Coordinate X value ${x} is out of bounds. Must be between ${MIN_PARCEL_COORDINATE} and ${MAX_PARCEL_COORDINATE}.`
       )
     }
 
-    if (y < MIN_PARCEL_COORDINATE || y > MAX_PARCEL_COORDINATE) {
+    if (!isBetweenParcelBounds(y)) {
       throw new Error(
         `Coordinate Y value ${y} is out of bounds. Must be between ${MIN_PARCEL_COORDINATE} and ${MAX_PARCEL_COORDINATE}.`
       )
@@ -199,6 +203,10 @@ export function createCoordinatesComponent({ db, logs }: Pick<AppComponents, 'db
     eventTimestamp: number
   ): Promise<void> {
     const normalizedWorldName = worldName.toLowerCase()
+
+    if (!isBetweenParcelBounds(coordinate.x) || !isBetweenParcelBounds(coordinate.y)) {
+      throw new Error(`Coordinate ${formatCoordinate(coordinate)} is out of bounds`)
+    }
 
     // Set the spawn coordinate atomically with timestamp-based conflict resolution
     const { boundingRectangle, updated } = await db.setSpawnCoordinate(
