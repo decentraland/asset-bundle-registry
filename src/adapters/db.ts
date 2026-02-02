@@ -1031,16 +1031,6 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
   }
 
   /**
-   * Gets registries by entity IDs.
-   * Used by undeployment handler to get world names from entities being undeployed.
-   * @param entityIds - Array of entity IDs
-   * @returns Array of registries with their metadata
-   */
-  async function getRegistriesByIds(entityIds: string[]): Promise<Registry.DbEntity[]> {
-    return _getRegistriesByIds(entityIds)
-  }
-
-  /**
    * Atomically gets the processed world parcels and spawn coordinate for a world.
    *
    * This method performs both queries within a database transaction to ensure
@@ -1140,7 +1130,6 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
     deleteSpawnCoordinate,
     getProcessedWorldParcels,
     getWorldBoundingRectangle,
-    getRegistriesByIds,
     getWorldManifestData,
     setSpawnCoordinate,
     recalculateSpawnCoordinate,
