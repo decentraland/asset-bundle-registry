@@ -4,7 +4,7 @@ export namespace Sync {
   export type ProfileDbEntity = Omit<Entity, 'version' | 'pointers' | 'content'> & {
     localTimestamp: number
     pointer: string // single pointer ensurance for simplicity over B-tree database index
-    content?: Entity['content'] | null // nullable for profiles fetched from lambdas-only
+    content: Entity['content'] | null // nullable for profiles fetched from lambdas-only
   }
 
   export type FailedProfileDbEntity = {

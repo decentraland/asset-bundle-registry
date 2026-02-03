@@ -1231,16 +1231,6 @@
     "@well-known-components/fetch-component" "^2.0.2"
     "@well-known-components/interfaces" "^1.4.2"
 
-"@dcl/schemas@^11.5.0":
-  version "11.12.0"
-  resolved "https://registry.npmjs.org/@dcl/schemas/-/schemas-11.12.0.tgz"
-  integrity sha512-L04KTucvxSnrHDAl3/rnkzhjfZ785dSSPeKarBVfzyuw41uyQ0Mh4HVFWjX9hC+f/nMpM5Adg5udlT5efmepcA==
-  dependencies:
-    ajv "^8.11.0"
-    ajv-errors "^3.0.0"
-    ajv-keywords "^5.1.0"
-    mitt "^3.0.1"
-
 "@dcl/schemas@^18.0.0":
   version "18.1.0"
   resolved "https://registry.npmjs.org/@dcl/schemas/-/schemas-18.1.0.tgz"
@@ -1269,6 +1259,15 @@
     ajv "^8.11.0"
     ajv-errors "^3.0.0"
     ajv-keywords "^5.1.0"
+
+"@dcl/schemas@https://sdk-team-cdn.decentraland.org/@dcl/schemas/branch/feat/make-content-mandatory-again/dcl-schemas-22.5.1-21637687696.commit-b54b12b.tgz":
+  version "22.5.1-21637687696.commit-b54b12b"
+  resolved "https://sdk-team-cdn.decentraland.org/@dcl/schemas/branch/feat/make-content-mandatory-again/dcl-schemas-22.5.1-21637687696.commit-b54b12b.tgz#de45404f9fdc09e114a94648b6a01ac740e75700"
+  dependencies:
+    ajv "^8.11.0"
+    ajv-errors "^3.0.0"
+    ajv-keywords "^5.1.0"
+    mitt "^3.0.1"
 
 "@dcl/snapshots-fetcher@^9.2.2":
   version "9.2.2"
@@ -3752,20 +3751,6 @@ cuint@^0.2.2:
   resolved "https://registry.npmjs.org/cuint/-/cuint-0.2.2.tgz"
   integrity sha512-d4ZVpCW31eWwCMe1YT3ur7mUDnTXbgwyzaL320DrcRT45rfjYxkt5QWLrmOJ+/UEAI2+fQgKe/fCjR8l4TpRgw==
 
-dcl-catalyst-client@^21.10.2:
-  version "21.10.2"
-  resolved "https://registry.npmjs.org/dcl-catalyst-client/-/dcl-catalyst-client-21.10.2.tgz"
-  integrity sha512-1WDb/63KAsvGLiyT2F9rimzWfbAXkNTgdIFrnlqqYhCdcNxmI3EeaMdgBbUkuY5sBAZamRajqxk2eFCgysIQnA==
-  dependencies:
-    "@dcl/catalyst-contracts" "^4.4.0"
-    "@dcl/crypto" "^3.4.0"
-    "@dcl/hashing" "^3.0.0"
-    "@dcl/schemas" "^11.5.0"
-    "@well-known-components/fetch-component" "^2.0.0"
-    cookie "^0.5.0"
-    cross-fetch "^3.1.5"
-    form-data "^4.0.0"
-
 "dcl-catalyst-client@https://sdk-team-cdn.decentraland.org/@dcl/catalyst-client/branch/chore/bump-catalyst-api-specs/dcl-catalyst-client-21.10.3-21598057260.commit-2b2de27.tgz":
   version "21.10.3-21598057260.commit-2b2de27"
   resolved "https://sdk-team-cdn.decentraland.org/@dcl/catalyst-client/branch/chore/bump-catalyst-api-specs/dcl-catalyst-client-21.10.3-21598057260.commit-2b2de27.tgz#9946decfd427f5a1b053ff7e4ba49a8bd19644ee"
@@ -3774,6 +3759,19 @@ dcl-catalyst-client@^21.10.2:
     "@dcl/crypto" "^3.4.0"
     "@dcl/hashing" "^3.0.0"
     "@dcl/schemas" "^22.5.0"
+    "@well-known-components/fetch-component" "^2.0.0"
+    cookie "^0.5.0"
+    cross-fetch "^3.1.5"
+    form-data "^4.0.0"
+
+"dcl-catalyst-client@https://sdk-team-cdn.decentraland.org/@dcl/catalyst-client/branch/chore/bump-catalyst-api-specs/dcl-catalyst-client-21.10.3-21642070214.commit-285d2e5.tgz":
+  version "21.10.3-21642070214.commit-285d2e5"
+  resolved "https://sdk-team-cdn.decentraland.org/@dcl/catalyst-client/branch/chore/bump-catalyst-api-specs/dcl-catalyst-client-21.10.3-21642070214.commit-285d2e5.tgz#40e1f4b370fae12e2416bedeacd85b0e34ede3cd"
+  dependencies:
+    "@dcl/catalyst-contracts" "^4.4.0"
+    "@dcl/crypto" "^3.4.0"
+    "@dcl/hashing" "^3.0.0"
+    "@dcl/schemas" "https://sdk-team-cdn.decentraland.org/@dcl/schemas/branch/feat/make-content-mandatory-again/dcl-schemas-22.5.1-21637687696.commit-b54b12b.tgz"
     "@well-known-components/fetch-component" "^2.0.0"
     cookie "^0.5.0"
     cross-fetch "^3.1.5"
