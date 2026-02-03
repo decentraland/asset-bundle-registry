@@ -1,17 +1,30 @@
-import { AppComponents, Registry, IRegistryOrchestratorComponent } from '../types'
+import { AppComponents, Registry, UndeploymentResult } from '../../types'
+import { RelatedEntities } from './types'
 
-type RelatedEntities = {
-  newerEntities: Registry.PartialDbEntity[]
-  olderEntities: Registry.PartialDbEntity[]
-  fallback: Registry.PartialDbEntity | null
+export interface IRegistryComponent {
+  /**
+   * Persists a registry and rotates the states of related registries.
+   * Determines the appropriate status based on related entities.
+   */
+  persistAndRotateStates(registry: Omit<Registry.DbEntity, 'status'>): Promise<Registry.DbEntity>
+
+  /**
+   * Undeploys world scenes and recalculates spawn coordinates.
+   * Operations are performed in separate transactions with timestamp-based conflict resolution.
+   *
+   * @param entityIds - Array of entity IDs to undeploy
+   * @param eventTimestamp - The timestamp of the event that triggered this undeployment
+   */
+  undeployWorldScenes(entityIds: string[], eventTimestamp: number): Promise<UndeploymentResult>
 }
 
-export function createRegistryOrchestratorComponent({
+export function createRegistryComponent({
   db,
   logs,
-  metrics
-}: Pick<AppComponents, 'db' | 'logs' | 'metrics'>): IRegistryOrchestratorComponent {
-  const logger = logs.getLogger('registry-orchestrator')
+  metrics,
+  coordinates
+}: Pick<AppComponents, 'db' | 'logs' | 'metrics' | 'coordinates'>): IRegistryComponent {
+  const logger = logs.getLogger('registry')
 
   function categorizeRelatedEntities(
     relatedEntities: Registry.PartialDbEntity[],
@@ -47,11 +60,7 @@ export function createRegistryOrchestratorComponent({
 
   function determineRegistryStatus(
     registry: Omit<Registry.DbEntity, 'status'>,
-    splitRelatedEntities: {
-      newerEntities: Registry.PartialDbEntity[]
-      olderEntities: Registry.PartialDbEntity[]
-      fallback: Registry.PartialDbEntity | null
-    }
+    splitRelatedEntities: RelatedEntities
   ): Registry.Status {
     const hasNewerCompleteOrFallback = splitRelatedEntities.newerEntities.some((entity) =>
       [Registry.Status.COMPLETE, Registry.Status.FALLBACK].includes(entity.status)
@@ -84,16 +93,8 @@ export function createRegistryOrchestratorComponent({
   }
 
   async function persistAndRotateStates(registry: Omit<Registry.DbEntity, 'status'>): Promise<Registry.DbEntity> {
-    // Extract world name from metadata to properly scope related registries
-    // This prevents collisions between world registries and Genesis City registries
-    // that may share the same coordinate pointers
-    const worldName = (registry.metadata as { worldConfiguration?: { name?: string } })?.worldConfiguration?.name
-    const relatedRegistries: Registry.PartialDbEntity[] = await db.getRelatedRegistries(registry, worldName)
-    const splitRelatedEntities: {
-      newerEntities: Registry.PartialDbEntity[]
-      olderEntities: Registry.PartialDbEntity[]
-      fallback: Registry.PartialDbEntity | null
-    } = categorizeRelatedEntities(relatedRegistries, registry)
+    const relatedRegistries: Registry.PartialDbEntity[] = await db.getRelatedRegistries(registry)
+    const splitRelatedEntities: RelatedEntities = categorizeRelatedEntities(relatedRegistries, registry)
     const registryStatus: Registry.Status = determineRegistryStatus(registry, splitRelatedEntities)
 
     logger.info('Persisting entity', {
@@ -138,5 +139,28 @@ export function createRegistryOrchestratorComponent({
     return insertedRegistry
   }
 
-  return { persistAndRotateStates }
+  async function undeployWorldScenes(entityIds: string[], eventTimestamp: number): Promise<UndeploymentResult> {
+    logger.info('Undeploying world scenes', { entityIds: entityIds.join(', '), eventTimestamp })
+
+    // 1. Undeploy registries and get the world name
+    const result = await db.undeployWorldScenes(entityIds)
+
+    logger.info('Registries marked as obsolete', {
+      undeployedCount: result.undeployedCount,
+      worldName: result.worldName || 'none',
+      eventTimestamp
+    })
+
+    // 2. Recalculate spawn coordinate for the affected world (if any)
+    if (result.worldName) {
+      await coordinates.recalculateSpawnIfNeeded(result.worldName, eventTimestamp)
+    }
+
+    return result
+  }
+
+  return {
+    persistAndRotateStates,
+    undeployWorldScenes
+  }
 }

@@ -3,11 +3,11 @@ import { HandlerContextWithPath, Registry } from '../../types'
 import { Entity } from '@dcl/schemas'
 
 export async function createRegistryHandler(
-  context: HandlerContextWithPath<'registryOrchestrator' | 'catalyst' | 'entityStatusFetcher' | 'logs', '/registry'> &
+  context: HandlerContextWithPath<'registry' | 'catalyst' | 'entityStatusFetcher' | 'logs', '/registry'> &
     DecentralandSignatureContext<any>
 ) {
   const {
-    components: { registryOrchestrator, catalyst, entityStatusFetcher, logs }
+    components: { registry, catalyst, entityStatusFetcher, logs }
   } = context
   const logger = logs.getLogger('post-registry-handler')
   const body = await context.request.json()
@@ -77,7 +77,7 @@ export async function createRegistryHandler(
         }
       }
 
-      await registryOrchestrator.persistAndRotateStates({
+      await registry.persistAndRotateStates({
         ...entityFromCatalyst,
         deployer: '', // filled manually so we cannot calculate owner address, won't be overwritten on db if already exists
         bundles,

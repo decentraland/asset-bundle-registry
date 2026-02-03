@@ -14,6 +14,63 @@ import {
 import { Entity, EthAddress } from '@dcl/schemas'
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
 import { Profile } from 'dcl-catalyst-client/dist/client/specs/lambdas-client'
+import { SpawnCoordinate } from '../logic/coordinates/types'
+
+/**
+ * Result of a world scenes undeployment operation.
+ */
+export type UndeploymentResult = {
+  undeployedCount: number
+  /** The world name if found (null if no world entities were found) */
+  worldName: string | null
+}
+
+/**
+ * Parameters passed to the spawn recalculation function during atomic undeployment.
+ */
+export type SpawnRecalculationParams = {
+  worldName: string
+  boundingRectangle: WorldBoundingRectangle
+  currentSpawn: SpawnCoordinate | null
+}
+
+/**
+ * Result from the spawn recalculation function indicating what action to take.
+ */
+export type SpawnRecalculationResult = {
+  action: 'delete' | 'upsert' | 'none'
+  x?: number
+  y?: number
+  isUserSet?: boolean
+}
+
+/**
+ * Result of getting world manifest data atomically.
+ */
+export type WorldManifestData = {
+  parcels: string[]
+  spawnCoordinate: SpawnCoordinate | null
+}
+
+/**
+ * Bounding rectangle that covers all parcels in a world.
+ * Returns null if the world has no processed scenes.
+ */
+export type WorldBoundingRectangle = {
+  minX: number
+  maxX: number
+  minY: number
+  maxY: number
+} | null
+
+/**
+ * Result of setting a spawn coordinate atomically.
+ */
+export type SetSpawnCoordinateResult = {
+  boundingRectangle: WorldBoundingRectangle
+  /** Whether the update was applied (false if skipped due to older timestamp) */
+  updated: boolean
+}
 
 export enum SortOrder {
   ASC = 'asc',
@@ -74,6 +131,33 @@ export interface IDbComponent {
   updateFailedProfileFetchRetry(entityId: string, retryCount: number, errorMessage?: string): Promise<void>
   getFailedProfileFetches(limit: number, maxRetryCount?: number): Promise<Sync.FailedProfileDbEntity[]>
   getFailedProfileFetchByEntityId(entityId: string): Promise<Sync.FailedProfileDbEntity | null>
+  // World spawn coordinate methods
+  getSpawnCoordinate(worldName: string): Promise<SpawnCoordinate | null>
+  upsertSpawnCoordinate(
+    worldName: string,
+    x: number,
+    y: number,
+    isUserSet: boolean,
+    eventTimestamp: number
+  ): Promise<boolean>
+  deleteSpawnCoordinate(worldName: string, eventTimestamp: number): Promise<boolean>
+  getProcessedWorldParcels(worldName: string): Promise<string[]>
+  getWorldBoundingRectangle(worldName: string): Promise<WorldBoundingRectangle>
+  // Atomic operations
+  getWorldManifestData(worldName: string): Promise<WorldManifestData>
+  setSpawnCoordinate(
+    worldName: string,
+    x: number,
+    y: number,
+    isUserSet: boolean,
+    eventTimestamp: number
+  ): Promise<SetSpawnCoordinateResult>
+  recalculateSpawnCoordinate(
+    worldName: string,
+    eventTimestamp: number,
+    calculateSpawn: (params: SpawnRecalculationParams) => SpawnRecalculationResult
+  ): Promise<void>
+  undeployWorldScenes(entityIds: string[]): Promise<UndeploymentResult>
 }
 
 export { IQueueComponent }
@@ -115,6 +199,8 @@ export interface IEntityStatusFetcherComponent {
 export interface IRegistryOrchestratorComponent {
   persistAndRotateStates(registry: Omit<Registry.DbEntity, 'status'>): Promise<Registry.DbEntity>
 }
+
+export { IRegistryComponent } from '../logic/registry/component'
 
 export interface ICacheStorage extends IBaseComponent {
   get<T>(key: string): Promise<T[]>

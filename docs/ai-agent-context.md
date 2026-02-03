@@ -13,7 +13,8 @@
 - Integrates with Catalyst to fetch entity metadata and validate deployments
 - Integrates with Catalyst to periodically fetch and validate profiles
 
-**Communication Pattern:** 
+**Communication Pattern:**
+
 - Event-driven via AWS SQS/SNS (deployment events, conversion completion events)
 - Synchronous HTTP REST API (status queries, admin registry operations)
 
@@ -22,7 +23,7 @@
 - Runtime: Node.js
 - Language: TypeScript 5.x
 - HTTP Framework: @dcl/http-server
-- Database: PostgreSQL (via @well-known-components/pg-component)
+- Database: PostgreSQL (via @dcl/pg-component)
 - Cache: Redis (queue status management) with in-memory fallback
 - Component Architecture: @well-known-components (logger, metrics, http-server, env-config-provider)
 
