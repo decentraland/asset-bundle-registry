@@ -190,7 +190,7 @@ export function createCoordinatesComponent({ db, logs }: Pick<AppComponents, 'db
           eventTimestamp
         })
       } else if (result.action === 'upsert') {
-        if (!result.x || !result.y) {
+        if (result.x === undefined || result.y === undefined) {
           throw new Error('Spawn coordinate is undefined')
         }
 
