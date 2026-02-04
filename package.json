@@ -8,6 +8,7 @@
     "build": "tsc -p tsconfig.json",
     "build:scripts": "tsc -p tsconfig.scripts.json",
     "start": "node --trace-warnings --abort-on-uncaught-exception --unhandled-rejections=strict dist/index.js",
+    "start:dev": "nodemon --watch src --ext ts --exec 'ts-node --transpile-only src/index.ts'",
     "test": "jest --forceExit --detectOpenHandles --coverage --verbose --passWithNoTests",
     "lint:check": "eslint '**/*.{js,ts}'",
     "lint:fix": "eslint '**/*.{js,ts}' --fix",
@@ -19,6 +20,7 @@
     "@dcl/eslint-config": "^2.2.1",
     "@types/node": "^22.9.0",
     "@well-known-components/test-helpers": "^1.5.8",
+    "nodemon": "^3.1.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.6.3"
   },

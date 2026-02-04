@@ -143,21 +143,38 @@ describe('when using the coordinates component', () => {
     })
 
     describe('and the callback is invoked with processed scenes but no spawn coordinate', () => {
-      it('should return upsert action with calculated center', async () => {
-        await component.recalculateSpawnIfNeeded('test-world', eventTimestamp)
+      describe('and entityBaseCoordinate is provided', () => {
+        it('should return upsert action with the base coordinate', async () => {
+          await component.recalculateSpawnIfNeeded('test-world', eventTimestamp, '5,10')
 
-        const result = capturedCallback!({
-          worldName: 'test-world',
-          boundingRectangle: { minX: 0, maxX: 2, minY: 0, maxY: 0 },
-          currentSpawn: null
+          const result = capturedCallback!({
+            worldName: 'test-world',
+            boundingRectangle: { minX: 0, maxX: 10, minY: 0, maxY: 10 },
+            currentSpawn: null,
+            entityBaseCoordinate: '5,10'
+          })
+
+          expect(result).toEqual({ action: 'upsert', x: 5, y: 10, isUserSet: false })
         })
+      })
 
-        expect(result).toEqual({ action: 'upsert', x: 1, y: 0, isUserSet: false })
+      describe('and entityBaseCoordinate is not provided', () => {
+        it('should return upsert action with calculated center', async () => {
+          await component.recalculateSpawnIfNeeded('test-world', eventTimestamp)
+
+          const result = capturedCallback!({
+            worldName: 'test-world',
+            boundingRectangle: { minX: 0, maxX: 2, minY: 0, maxY: 0 },
+            currentSpawn: null
+          })
+
+          expect(result).toEqual({ action: 'upsert', x: 1, y: 0, isUserSet: false })
+        })
       })
     })
 
-    describe('and the callback is invoked with a non-user-set spawn coordinate', () => {
-      it('should return upsert action with recalculated center', async () => {
+    describe('and the callback is invoked with a non-user-set spawn coordinate that is within bounds', () => {
+      it('should return none action to keep the existing spawn', async () => {
         await component.recalculateSpawnIfNeeded('test-world', eventTimestamp)
 
         const result = capturedCallback!({
@@ -166,7 +183,21 @@ describe('when using the coordinates component', () => {
           currentSpawn: { worldName: 'test-world', x: 0, y: 0, isUserSet: false, timestamp: Date.now() }
         })
 
-        expect(result).toEqual({ action: 'upsert', x: 2, y: 0, isUserSet: false })
+        expect(result).toEqual({ action: 'none' })
+      })
+    })
+
+    describe('and the callback is invoked with a non-user-set spawn coordinate that is outside bounds', () => {
+      it('should return upsert action with recalculated center', async () => {
+        await component.recalculateSpawnIfNeeded('test-world', eventTimestamp)
+
+        const result = capturedCallback!({
+          worldName: 'test-world',
+          boundingRectangle: { minX: 5, maxX: 9, minY: 5, maxY: 5 },
+          currentSpawn: { worldName: 'test-world', x: 0, y: 0, isUserSet: false, timestamp: Date.now() }
+        })
+
+        expect(result).toEqual({ action: 'upsert', x: 7, y: 5, isUserSet: false })
       })
     })
 

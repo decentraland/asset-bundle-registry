@@ -26,12 +26,14 @@ export type UndeploymentResult = {
 }
 
 /**
- * Parameters passed to the spawn recalculation function during atomic undeployment.
+ * Parameters passed to the spawn recalculation function during atomic operations.
  */
 export type SpawnRecalculationParams = {
   worldName: string
   boundingRectangle: WorldBoundingRectangle
   currentSpawn: SpawnCoordinate | null
+  /** Optional base coordinate from entity metadata (scene.base or first parcel) for first deployment */
+  entityBaseCoordinate?: string | null
 }
 
 /**
