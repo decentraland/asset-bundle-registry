@@ -47,6 +47,7 @@ export async function createProfileSanitizerComponent({
       pointer: profile.pointers[0],
       hasClaimedName: avatar.hasClaimedName,
       name: avatar.name,
+      nameColor: avatar.nameColor,
       thumbnailUrl: buildProfilesSnapshots(profile.id).face
     }
   }

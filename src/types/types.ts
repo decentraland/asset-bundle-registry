@@ -1,4 +1,4 @@
-import { Entity, EntityType, EthAddress, Profile } from '@dcl/schemas'
+import { Color3, Entity, EntityType, EthAddress, Profile } from '@dcl/schemas'
 
 export namespace Sync {
   export type ProfileDbEntity = Omit<Entity, 'version' | 'pointers' | 'content'> & {
@@ -37,6 +37,7 @@ export type ProfileMetadataDTO = {
   pointer: EthAddress
   hasClaimedName: boolean
   name: string
+  nameColor?: Color3
   thumbnailUrl: string
 }
 
