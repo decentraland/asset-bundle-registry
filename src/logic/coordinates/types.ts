@@ -32,14 +32,19 @@ export interface ICoordinatesComponent {
   /**
    * Recalculates the spawn coordinate for a world if needed.
    * Only updates if the event timestamp is newer than the existing spawn coordinate.
-   * - If no spawn exists: calculates center and sets it
-   * - If spawn exists and is NOT user-set: recalculates center
-   * - If spawn exists and IS user-set: keeps it if still valid, otherwise recalculates
+   * - If no spawn exists: uses entityBaseCoordinate if provided, otherwise calculates center
+   * - If spawn exists and is NOT user-set: keeps it if still within bounds, otherwise recalculates center
+   * - If spawn exists and IS user-set: keeps it if still within bounds, otherwise recalculates center
    *
    * @param worldName - The world name
    * @param eventTimestamp - The timestamp of the event that triggered this recalculation
+   * @param entityBaseCoordinate - Optional base coordinate from entity metadata (scene.base or first parcel)
    */
-  recalculateSpawnIfNeeded(worldName: string, eventTimestamp: number): Promise<void>
+  recalculateSpawnIfNeeded(
+    worldName: string,
+    eventTimestamp: number,
+    entityBaseCoordinate?: string | null
+  ): Promise<void>
 
   /**
    * Sets a user-specified spawn coordinate for a world.

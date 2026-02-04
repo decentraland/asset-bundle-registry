@@ -133,45 +133,55 @@ export function createCoordinatesComponent({ db, logs }: Pick<AppComponents, 'db
   /**
    * Pure function that calculates the spawn action based on current world state.
    * Used by both recalculateSpawnIfNeeded (via DB atomic operation) and can be tested independently.
+   *
+   * Logic:
+   * - If no processed scenes: delete spawn coordinate
+   * - If no spawn exists: use entityBaseCoordinate if provided, otherwise calculate center
+   * - If spawn exists (user-set or not): keep it if within bounds, otherwise recalculate center
    */
   function calculateSpawnAction(params: SpawnRecalculationParams): SpawnRecalculationResult {
-    const { boundingRectangle, currentSpawn } = params
+    const { boundingRectangle, currentSpawn, entityBaseCoordinate } = params
 
     // If the world has no processed scenes, delete the spawn coordinate
     if (!boundingRectangle) {
       return { action: 'delete' }
     }
 
-    // If no spawn exists, calculate center from bounds and set it
+    // If no spawn exists, set it using entityBaseCoordinate or center
     if (!currentSpawn) {
+      if (entityBaseCoordinate) {
+        // Use the entity's base coordinate (scene.base or first parcel)
+        const coord = parseCoordinate(entityBaseCoordinate)
+        return { action: 'upsert', x: coord.x, y: coord.y, isUserSet: false }
+      }
+      // Fallback to center if no base coordinate provided
       const center = calculateCenterFromBounds(boundingRectangle)
       return { action: 'upsert', x: center.x, y: center.y, isUserSet: false }
     }
 
     const currentCoord: Coordinate = { x: currentSpawn.x, y: currentSpawn.y }
 
-    // If spawn exists and is NOT user-set, recalculate center from bounds
-    if (!currentSpawn.isUserSet) {
-      const center = calculateCenterFromBounds(boundingRectangle)
-      return { action: 'upsert', x: center.x, y: center.y, isUserSet: false }
-    }
-
-    // If spawn exists and IS user-set, keep it if still within bounds
+    // If spawn exists (user-set or not), keep it if still within bounds
     if (isCoordinateInBounds(currentCoord, boundingRectangle)) {
       return { action: 'none' }
     }
 
-    // User-set spawn is no longer within bounds, recalculate center
+    // Spawn is no longer within bounds, recalculate center
     const center = calculateCenterFromBounds(boundingRectangle)
     return { action: 'upsert', x: center.x, y: center.y, isUserSet: false }
   }
 
-  async function recalculateSpawnIfNeeded(worldName: string, eventTimestamp: number): Promise<void> {
+  async function recalculateSpawnIfNeeded(
+    worldName: string,
+    eventTimestamp: number,
+    entityBaseCoordinate?: string | null
+  ): Promise<void> {
     const normalizedWorldName = worldName.toLowerCase()
 
     // Use atomic DB operation with timestamp-based conflict resolution
     await db.recalculateSpawnCoordinate(normalizedWorldName, eventTimestamp, (params) => {
-      const result = calculateSpawnAction(params)
+      // Pass entityBaseCoordinate to the calculation function
+      const result = calculateSpawnAction({ ...params, entityBaseCoordinate })
 
       // Log based on the action
       if (result.action === 'delete') {
@@ -180,33 +190,33 @@ export function createCoordinatesComponent({ db, logs }: Pick<AppComponents, 'db
           eventTimestamp
         })
       } else if (result.action === 'upsert') {
-        const newCenter = formatCoordinate({ x: result.x!, y: result.y! })
+        if (!result.x || !result.y) {
+          throw new Error('Spawn coordinate is undefined')
+        }
+
+        const newSpawn = formatCoordinate({ x: result.x, y: result.y })
         if (!params.currentSpawn) {
-          logger.info('No spawn coordinate exists, setting center', {
+          logger.info('No spawn coordinate exists, setting spawn', {
             worldName: normalizedWorldName,
-            center: newCenter,
-            eventTimestamp
-          })
-        } else if (!params.currentSpawn.isUserSet) {
-          logger.info('Recalculating center for non-user-set spawn', {
-            worldName: normalizedWorldName,
-            oldSpawn: `${params.currentSpawn.x},${params.currentSpawn.y}`,
-            newCenter,
+            spawn: newSpawn,
+            source: entityBaseCoordinate ? 'entityBase' : 'center',
             eventTimestamp
           })
         } else {
-          logger.info('User-set spawn coordinate is outside world bounds, recalculating center', {
+          logger.info('Spawn coordinate is outside world bounds, recalculating center', {
             worldName: normalizedWorldName,
             oldSpawn: `${params.currentSpawn.x},${params.currentSpawn.y}`,
-            newCenter,
+            newSpawn,
+            wasUserSet: String(params.currentSpawn.isUserSet),
             eventTimestamp
           })
         }
       } else {
         // action === 'none'
-        logger.debug('User-set spawn coordinate is still within bounds', {
+        logger.debug('Spawn coordinate is still within bounds, keeping it', {
           worldName: normalizedWorldName,
-          spawn: `${params.currentSpawn!.x},${params.currentSpawn!.y}`,
+          spawn: `${params.currentSpawn?.x},${params.currentSpawn?.y}`,
+          isUserSet: String(params.currentSpawn?.isUserSet),
           eventTimestamp
         })
       }

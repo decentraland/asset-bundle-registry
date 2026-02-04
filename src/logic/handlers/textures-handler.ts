@@ -168,14 +168,20 @@ export const createTexturesEventHandler = ({
           ) {
             const worldName = (updatedRegistry.metadata as any)?.worldConfiguration?.name
             if (worldName) {
+              // Extract base coordinate from entity metadata for first deployment
+              const base = (updatedRegistry.metadata as any)?.scene?.base
+              const firstPointer = updatedRegistry.pointers?.[0]
+              const entityBaseCoordinate = base || firstPointer || null
+
               logger.info('Triggering spawn coordinate recalculation for world', {
                 worldName,
                 entityId: updatedRegistry.id,
                 status: updatedRegistry.status,
+                entityBaseCoordinate: entityBaseCoordinate || 'none',
                 eventTimestamp: event.timestamp
               })
               try {
-                await coordinates.recalculateSpawnIfNeeded(worldName, event.timestamp)
+                await coordinates.recalculateSpawnIfNeeded(worldName, event.timestamp, entityBaseCoordinate)
               } catch (spawnError: any) {
                 // Log but don't fail the handler - spawn coordinate update is secondary
                 logger.error('Failed to recalculate spawn coordinate', {
