@@ -110,7 +110,7 @@ export interface IDbComponent {
     registry: Pick<Registry.DbEntity, 'pointers' | 'id'>,
     worldName?: string
   ): Promise<Registry.PartialDbEntity[]>
-  undeployRegistries(entityIds: string[]): Promise<number>
+  undeployRegistries(entityIds: string[], eventTimestamp?: number): Promise<number>
   deleteRegistries(entityIds: string[]): Promise<void>
   getBatchOfDeprecatedRegistriesOlderThan(
     dateInMilliseconds: number,
@@ -159,8 +159,8 @@ export interface IDbComponent {
     eventTimestamp: number,
     calculateSpawn: (params: SpawnRecalculationParams) => SpawnRecalculationResult
   ): Promise<void>
-  undeployWorldScenes(entityIds: string[]): Promise<UndeploymentResult>
-  undeployWorldByName(worldName: string): Promise<UndeploymentResult>
+  undeployWorldScenes(entityIds: string[], eventTimestamp: number): Promise<UndeploymentResult>
+  undeployWorldByName(worldName: string, eventTimestamp: number): Promise<UndeploymentResult>
 }
 
 export { IQueueComponent }

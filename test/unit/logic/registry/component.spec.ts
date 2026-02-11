@@ -338,10 +338,10 @@ describe('when using the registry component', () => {
         })
       })
 
-      it('should undeploy the world scenes for the given entity IDs', async () => {
+      it('should undeploy the world scenes for the given entity IDs with the event timestamp', async () => {
         await component.undeployWorldScenes(entityIds, eventTimestamp)
 
-        expect(db.undeployWorldScenes).toHaveBeenCalledWith(entityIds)
+        expect(db.undeployWorldScenes).toHaveBeenCalledWith(entityIds, eventTimestamp)
       })
 
       it('should recalculate the spawn coordinates for the affected world', async () => {
@@ -402,10 +402,10 @@ describe('when using the registry component', () => {
         })
       })
 
-      it('should undeploy all registries belonging to the world', async () => {
+      it('should undeploy all registries belonging to the world with the event timestamp', async () => {
         await component.undeployWorld(worldName, eventTimestamp)
 
-        expect(db.undeployWorldByName).toHaveBeenCalledWith(worldName)
+        expect(db.undeployWorldByName).toHaveBeenCalledWith(worldName, eventTimestamp)
       })
 
       it('should recalculate the spawn coordinates for the world', async () => {

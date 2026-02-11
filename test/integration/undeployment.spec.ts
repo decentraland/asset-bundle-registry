@@ -406,9 +406,16 @@ test('undeployRegistries', async ({ components }) => {
   })
 
   describe('when undeploying world scenes', () => {
+    // Use a future timestamp to ensure all test registries are marked as obsolete
+    let futureEventTimestamp: number
+
+    beforeEach(() => {
+      futureEventTimestamp = Date.now() + 1000000
+    })
+
     describe('and an empty array is provided', () => {
       it('should return 0 count and null world name', async () => {
-        const result = await components.db.undeployWorldScenes([])
+        const result = await components.db.undeployWorldScenes([], futureEventTimestamp)
 
         expect(result.undeployedCount).toBe(0)
         expect(result.worldName).toBeNull()
@@ -417,7 +424,10 @@ test('undeployRegistries', async ({ components }) => {
 
     describe('and the entity IDs do not exist in the database', () => {
       it('should return 0 count and null world name', async () => {
-        const result = await components.db.undeployWorldScenes(['non-existent-entity-1', 'non-existent-entity-2'])
+        const result = await components.db.undeployWorldScenes(
+          ['non-existent-entity-1', 'non-existent-entity-2'],
+          futureEventTimestamp
+        )
 
         expect(result.undeployedCount).toBe(0)
         expect(result.worldName).toBeNull()
@@ -447,13 +457,49 @@ test('undeployRegistries', async ({ components }) => {
       })
 
       it('should mark it as OBSOLETE and return the world name', async () => {
-        const result = await components.db.undeployWorldScenes([registry.id])
+        const result = await components.db.undeployWorldScenes([registry.id], futureEventTimestamp)
 
         expect(result.undeployedCount).toBe(1)
         expect(result.worldName).toBe('scenes-world1.dcl.eth')
 
         const updatedRegistry = await components.db.getRegistryById(registry.id)
-        expect(updatedRegistry.status).toBe(Registry.Status.OBSOLETE)
+        expect(updatedRegistry?.status).toBe(Registry.Status.OBSOLETE)
+      })
+    })
+
+    describe('and the registry was created after the event timestamp', () => {
+      let registry: Registry.DbEntity
+
+      beforeEach(async () => {
+        registry = createRegistryEntity(
+          identity.realAccount.address,
+          Registry.Status.COMPLETE,
+          Registry.SimplifiedStatus.COMPLETE,
+          {
+            id: 'world-scene-undeploy-timestamp-1',
+            type: 'world',
+            pointers: ['scenes-world-timestamp1.dcl.eth:0,0'],
+            metadata: {
+              worldConfiguration: {
+                name: 'scenes-world-timestamp1.dcl.eth'
+              }
+            },
+            timestamp: 5000
+          }
+        )
+        await createRegistryOnDatabase(registry)
+      })
+
+      it('should NOT mark it as OBSOLETE', async () => {
+        const pastEventTimestamp = 3000 // Before the registry timestamp of 5000
+
+        const result = await components.db.undeployWorldScenes([registry.id], pastEventTimestamp)
+
+        expect(result.undeployedCount).toBe(0)
+        expect(result.worldName).toBeNull()
+
+        const unchangedRegistry = await components.db.getRegistryById(registry.id)
+        expect(unchangedRegistry?.status).toBe(Registry.Status.COMPLETE)
       })
     })
 
@@ -499,7 +545,7 @@ test('undeployRegistries', async ({ components }) => {
       })
 
       it('should mark all as OBSOLETE and return the world name', async () => {
-        const result = await components.db.undeployWorldScenes([registry1.id, registry2.id])
+        const result = await components.db.undeployWorldScenes([registry1.id, registry2.id], futureEventTimestamp)
 
         expect(result.undeployedCount).toBe(2)
         expect(result.worldName).toBe('scenes-world2.dcl.eth')
@@ -507,8 +553,8 @@ test('undeployRegistries', async ({ components }) => {
         const updatedRegistry1 = await components.db.getRegistryById(registry1.id)
         const updatedRegistry2 = await components.db.getRegistryById(registry2.id)
 
-        expect(updatedRegistry1.status).toBe(Registry.Status.OBSOLETE)
-        expect(updatedRegistry2.status).toBe(Registry.Status.OBSOLETE)
+        expect(updatedRegistry1?.status).toBe(Registry.Status.OBSOLETE)
+        expect(updatedRegistry2?.status).toBe(Registry.Status.OBSOLETE)
       })
     })
 
@@ -529,13 +575,13 @@ test('undeployRegistries', async ({ components }) => {
       })
 
       it('should mark the entity as OBSOLETE and return null world name', async () => {
-        const result = await components.db.undeployWorldScenes([registry.id])
+        const result = await components.db.undeployWorldScenes([registry.id], futureEventTimestamp)
 
         expect(result.undeployedCount).toBe(1)
         expect(result.worldName).toBeNull()
 
         const updatedRegistry = await components.db.getRegistryById(registry.id)
-        expect(updatedRegistry.status).toBe(Registry.Status.OBSOLETE)
+        expect(updatedRegistry?.status).toBe(Registry.Status.OBSOLETE)
       })
     })
 
@@ -584,7 +630,7 @@ test('undeployRegistries', async ({ components }) => {
       })
 
       it('should mark both the target and the fallback as OBSOLETE', async () => {
-        const result = await components.db.undeployWorldScenes([targetRegistry.id])
+        const result = await components.db.undeployWorldScenes([targetRegistry.id], futureEventTimestamp)
 
         expect(result.undeployedCount).toBe(2)
         expect(result.worldName).toBe('scenes-world4.dcl.eth')
@@ -638,7 +684,7 @@ test('undeployRegistries', async ({ components }) => {
       })
 
       it('should only mark the target entity as OBSOLETE', async () => {
-        const result = await components.db.undeployWorldScenes([targetRegistry.id])
+        const result = await components.db.undeployWorldScenes([targetRegistry.id], futureEventTimestamp)
 
         expect(result.undeployedCount).toBe(1)
         expect(result.worldName).toBe('scenes-world5.dcl.eth')
@@ -646,16 +692,23 @@ test('undeployRegistries', async ({ components }) => {
         const updatedTarget = await components.db.getRegistryById(targetRegistry.id)
         const unchangedUnrelated = await components.db.getRegistryById(unrelatedRegistry.id)
 
-        expect(updatedTarget.status).toBe(Registry.Status.OBSOLETE)
+        expect(updatedTarget?.status).toBe(Registry.Status.OBSOLETE)
         expect(unchangedUnrelated.status).toBe(Registry.Status.COMPLETE)
       })
     })
   })
 
   describe('when undeploying a world by name', () => {
+    // Use a future timestamp to ensure all test registries are marked as obsolete
+    let futureEventTimestamp: number
+
+    beforeEach(() => {
+      futureEventTimestamp = Date.now() + 1000000
+    })
+
     describe('and the world has no registries', () => {
       it('should return 0 count and the normalized world name', async () => {
-        const result = await components.db.undeployWorldByName('non-existent-world.dcl.eth')
+        const result = await components.db.undeployWorldByName('non-existent-world.dcl.eth', futureEventTimestamp)
 
         expect(result.undeployedCount).toBe(0)
         expect(result.worldName).toBe('non-existent-world.dcl.eth')
@@ -685,13 +738,13 @@ test('undeployRegistries', async ({ components }) => {
       })
 
       it('should mark it as OBSOLETE and return the count and world name', async () => {
-        const result = await components.db.undeployWorldByName('byname-world1.dcl.eth')
+        const result = await components.db.undeployWorldByName('byname-world1.dcl.eth', futureEventTimestamp)
 
         expect(result.undeployedCount).toBe(1)
         expect(result.worldName).toBe('byname-world1.dcl.eth')
 
         const updatedRegistry = await components.db.getRegistryById(registry.id)
-        expect(updatedRegistry.status).toBe(Registry.Status.OBSOLETE)
+        expect(updatedRegistry?.status).toBe(Registry.Status.OBSOLETE)
       })
     })
 
@@ -755,7 +808,7 @@ test('undeployRegistries', async ({ components }) => {
       })
 
       it('should mark all registries as OBSOLETE', async () => {
-        const result = await components.db.undeployWorldByName('byname-world2.dcl.eth')
+        const result = await components.db.undeployWorldByName('byname-world2.dcl.eth', futureEventTimestamp)
 
         expect(result.undeployedCount).toBe(3)
         expect(result.worldName).toBe('byname-world2.dcl.eth')
@@ -764,9 +817,102 @@ test('undeployRegistries', async ({ components }) => {
         const updatedRegistry2 = await components.db.getRegistryById(registry2.id)
         const updatedRegistry3 = await components.db.getRegistryById(registry3.id)
 
-        expect(updatedRegistry1.status).toBe(Registry.Status.OBSOLETE)
-        expect(updatedRegistry2.status).toBe(Registry.Status.OBSOLETE)
-        expect(updatedRegistry3.status).toBe(Registry.Status.OBSOLETE)
+        expect(updatedRegistry1?.status).toBe(Registry.Status.OBSOLETE)
+        expect(updatedRegistry2?.status).toBe(Registry.Status.OBSOLETE)
+        expect(updatedRegistry3?.status).toBe(Registry.Status.OBSOLETE)
+      })
+    })
+
+    describe('and the registry was created after the event timestamp', () => {
+      let registry: Registry.DbEntity
+
+      beforeEach(async () => {
+        registry = createRegistryEntity(
+          identity.realAccount.address,
+          Registry.Status.COMPLETE,
+          Registry.SimplifiedStatus.COMPLETE,
+          {
+            id: 'world-byname-undeploy-timestamp-1',
+            type: 'world',
+            pointers: ['byname-world-timestamp1.dcl.eth:0,0'],
+            metadata: {
+              worldConfiguration: {
+                name: 'byname-world-timestamp1.dcl.eth'
+              }
+            },
+            timestamp: 5000
+          }
+        )
+        await createRegistryOnDatabase(registry)
+      })
+
+      it('should NOT mark it as OBSOLETE', async () => {
+        const pastEventTimestamp = 3000 // Before the registry timestamp of 5000
+
+        const result = await components.db.undeployWorldByName('byname-world-timestamp1.dcl.eth', pastEventTimestamp)
+
+        expect(result.undeployedCount).toBe(0)
+        expect(result.worldName).toBe('byname-world-timestamp1.dcl.eth')
+
+        const unchangedRegistry = await components.db.getRegistryById(registry.id)
+        expect(unchangedRegistry?.status).toBe(Registry.Status.COMPLETE)
+      })
+    })
+
+    describe('and some registries were created before and some after the event timestamp', () => {
+      let registryBefore: Registry.DbEntity
+      let registryAfter: Registry.DbEntity
+
+      beforeEach(async () => {
+        registryBefore = createRegistryEntity(
+          identity.realAccount.address,
+          Registry.Status.COMPLETE,
+          Registry.SimplifiedStatus.COMPLETE,
+          {
+            id: 'world-byname-undeploy-mixed-1a',
+            type: 'world',
+            pointers: ['byname-world-mixed.dcl.eth:0,0'],
+            metadata: {
+              worldConfiguration: {
+                name: 'byname-world-mixed.dcl.eth'
+              }
+            },
+            timestamp: 1000
+          }
+        )
+        registryAfter = createRegistryEntity(
+          identity.realAccount.address,
+          Registry.Status.COMPLETE,
+          Registry.SimplifiedStatus.COMPLETE,
+          {
+            id: 'world-byname-undeploy-mixed-1b',
+            type: 'world',
+            pointers: ['byname-world-mixed.dcl.eth:1,0'],
+            metadata: {
+              worldConfiguration: {
+                name: 'byname-world-mixed.dcl.eth'
+              }
+            },
+            timestamp: 5000
+          }
+        )
+        await createRegistryOnDatabase(registryBefore)
+        await createRegistryOnDatabase(registryAfter)
+      })
+
+      it('should only mark registries created before the event timestamp as OBSOLETE', async () => {
+        const eventTimestamp = 3000 // Between 1000 and 5000
+
+        const result = await components.db.undeployWorldByName('byname-world-mixed.dcl.eth', eventTimestamp)
+
+        expect(result.undeployedCount).toBe(1)
+        expect(result.worldName).toBe('byname-world-mixed.dcl.eth')
+
+        const updatedBefore = await components.db.getRegistryById(registryBefore.id)
+        const unchangedAfter = await components.db.getRegistryById(registryAfter.id)
+
+        expect(updatedBefore?.status).toBe(Registry.Status.OBSOLETE)
+        expect(unchangedAfter?.status).toBe(Registry.Status.COMPLETE)
       })
     })
 
@@ -812,7 +958,7 @@ test('undeployRegistries', async ({ components }) => {
       })
 
       it('should only undeploy the non-OBSOLETE registries', async () => {
-        const result = await components.db.undeployWorldByName('byname-world3.dcl.eth')
+        const result = await components.db.undeployWorldByName('byname-world3.dcl.eth', futureEventTimestamp)
 
         expect(result.undeployedCount).toBe(1)
         expect(result.worldName).toBe('byname-world3.dcl.eth')
@@ -820,8 +966,8 @@ test('undeployRegistries', async ({ components }) => {
         const updatedActive = await components.db.getRegistryById(activeRegistry.id)
         const unchangedObsolete = await components.db.getRegistryById(obsoleteRegistry.id)
 
-        expect(updatedActive.status).toBe(Registry.Status.OBSOLETE)
-        expect(unchangedObsolete.status).toBe(Registry.Status.OBSOLETE)
+        expect(updatedActive?.status).toBe(Registry.Status.OBSOLETE)
+        expect(unchangedObsolete?.status).toBe(Registry.Status.OBSOLETE)
       })
     })
 
@@ -870,7 +1016,7 @@ test('undeployRegistries', async ({ components }) => {
       })
 
       it('should mark both the target and the fallback as OBSOLETE', async () => {
-        const result = await components.db.undeployWorldByName('byname-world4.dcl.eth')
+        const result = await components.db.undeployWorldByName('byname-world4.dcl.eth', futureEventTimestamp)
 
         expect(result.undeployedCount).toBe(2)
         expect(result.worldName).toBe('byname-world4.dcl.eth')
@@ -878,8 +1024,8 @@ test('undeployRegistries', async ({ components }) => {
         const updatedTarget = await components.db.getRegistryById(targetRegistry.id)
         const updatedFallback = await components.db.getRegistryById(fallbackRegistry.id)
 
-        expect(updatedTarget.status).toBe(Registry.Status.OBSOLETE)
-        expect(updatedFallback.status).toBe(Registry.Status.OBSOLETE)
+        expect(updatedTarget?.status).toBe(Registry.Status.OBSOLETE)
+        expect(updatedFallback?.status).toBe(Registry.Status.OBSOLETE)
       })
     })
 
@@ -906,13 +1052,13 @@ test('undeployRegistries', async ({ components }) => {
       })
 
       it('should find and undeploy the registries regardless of casing', async () => {
-        const result = await components.db.undeployWorldByName('BYNAME-WORLD5.DCL.ETH')
+        const result = await components.db.undeployWorldByName('BYNAME-WORLD5.DCL.ETH', futureEventTimestamp)
 
         expect(result.undeployedCount).toBe(1)
         expect(result.worldName).toBe('byname-world5.dcl.eth')
 
         const updatedRegistry = await components.db.getRegistryById(registry.id)
-        expect(updatedRegistry.status).toBe(Registry.Status.OBSOLETE)
+        expect(updatedRegistry?.status).toBe(Registry.Status.OBSOLETE)
       })
     })
 
@@ -957,7 +1103,7 @@ test('undeployRegistries', async ({ components }) => {
       })
 
       it('should only undeploy registries belonging to the specified world', async () => {
-        const result = await components.db.undeployWorldByName('byname-world6.dcl.eth')
+        const result = await components.db.undeployWorldByName('byname-world6.dcl.eth', futureEventTimestamp)
 
         expect(result.undeployedCount).toBe(1)
         expect(result.worldName).toBe('byname-world6.dcl.eth')
@@ -965,8 +1111,8 @@ test('undeployRegistries', async ({ components }) => {
         const updatedTarget = await components.db.getRegistryById(targetRegistry.id)
         const unchangedUnrelated = await components.db.getRegistryById(unrelatedRegistry.id)
 
-        expect(updatedTarget.status).toBe(Registry.Status.OBSOLETE)
-        expect(unchangedUnrelated.status).toBe(Registry.Status.COMPLETE)
+        expect(updatedTarget?.status).toBe(Registry.Status.OBSOLETE)
+        expect(unchangedUnrelated?.status).toBe(Registry.Status.COMPLETE)
       })
     })
 
@@ -993,7 +1139,7 @@ test('undeployRegistries', async ({ components }) => {
       })
 
       it('should return 0 count since no non-OBSOLETE registries exist', async () => {
-        const result = await components.db.undeployWorldByName('byname-world7.dcl.eth')
+        const result = await components.db.undeployWorldByName('byname-world7.dcl.eth', futureEventTimestamp)
 
         expect(result.undeployedCount).toBe(0)
         expect(result.worldName).toBe('byname-world7.dcl.eth')

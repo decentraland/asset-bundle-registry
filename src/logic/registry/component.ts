@@ -150,8 +150,8 @@ export function createRegistryComponent({
   async function undeployWorldScenes(entityIds: string[], eventTimestamp: number): Promise<UndeploymentResult> {
     logger.info('Undeploying world scenes', { entityIds: entityIds.join(', '), eventTimestamp })
 
-    // 1. Undeploy registries and get the world name
-    const result = await db.undeployWorldScenes(entityIds)
+    // 1. Undeploy registries and get the world name (only those created before eventTimestamp)
+    const result = await db.undeployWorldScenes(entityIds, eventTimestamp)
 
     logger.info('Registries marked as obsolete', {
       undeployedCount: result.undeployedCount,
@@ -170,8 +170,8 @@ export function createRegistryComponent({
   async function undeployWorld(worldName: string, eventTimestamp: number): Promise<UndeploymentResult> {
     logger.info('Undeploying entire world', { worldName, eventTimestamp })
 
-    // 1. Undeploy all registries belonging to the world
-    const result = await db.undeployWorldByName(worldName)
+    // 1. Undeploy all registries belonging to the world (only those created before eventTimestamp)
+    const result = await db.undeployWorldByName(worldName, eventTimestamp)
 
     logger.info('World registries marked as obsolete', {
       undeployedCount: result.undeployedCount,
