@@ -227,7 +227,10 @@ test('undeployRegistries', async ({ components }) => {
       })
 
       it('should mark all target entities and the fallback as OBSOLETE', async () => {
-        const updatedCount = await components.db.undeployRegistries([targetRegistry1.id, targetRegistry2.id], futureEventTimestamp)
+        const updatedCount = await components.db.undeployRegistries(
+          [targetRegistry1.id, targetRegistry2.id],
+          futureEventTimestamp
+        )
 
         expect(updatedCount).toBe(3)
 

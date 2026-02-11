@@ -2,7 +2,7 @@ import { Entity, EntityType } from '@dcl/schemas'
 import { Sync } from '../../src/types'
 import { createRequestMaker } from '../utils'
 import { test } from '../components'
-import { createProfileDbEntity, createProfileEntity, createFullAvatar } from '../unit/mocks/data/profiles'
+import { createProfileDbEntity, createFullAvatar } from '../unit/mocks/data/profiles'
 import { Profile } from 'dcl-catalyst-client/dist/client/specs/lambdas-client'
 
 function createTestLambdasProfile(entityId: string, pointer: string, name: string): Profile {
