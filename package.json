@@ -34,7 +34,7 @@
     "@dcl/memory-queue-component": "^2.0.0",
     "@dcl/pg-component": "^0.1.0",
     "@dcl/platform-crypto-middleware": "^1.1.0",
-    "@dcl/schemas": "^23.0.0",
+    "@dcl/schemas": "^24.0.0",
     "@dcl/snapshots-fetcher": "^9.2.2",
     "@dcl/sqs-component": "^2.0.4",
     "@sentry/node": "9.12.0",

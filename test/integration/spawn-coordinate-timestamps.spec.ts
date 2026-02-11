@@ -1,4 +1,9 @@
-import { Events, WorldSpawnCoordinateSetEvent, WorldScenesUndeploymentEvent } from '@dcl/schemas'
+import {
+  Events,
+  WorldSpawnCoordinateSetEvent,
+  WorldScenesUndeploymentEvent,
+  WorldUndeploymentEvent
+} from '@dcl/schemas'
 import { Registry } from '../../src/types'
 import { createRegistryEntity, getIdentity, Identity } from '../utils'
 import { test } from '../components'
@@ -58,13 +63,31 @@ test('spawn coordinate race conditions via message processor', async ({ componen
   /**
    * Helper to create a WorldScenesUndeploymentEvent
    */
-  const createUndeploymentEvent = (entityIds: string[], timestamp: number): WorldScenesUndeploymentEvent => ({
+  const createScenesUndeploymentEvent = (
+    worldName: string,
+    scenes: Array<{ entityId: string; baseParcel: string }>,
+    timestamp: number
+  ): WorldScenesUndeploymentEvent => ({
     type: Events.Type.WORLD,
     subType: Events.SubType.Worlds.WORLD_SCENES_UNDEPLOYMENT,
     key: `undeploy-${timestamp}`,
     timestamp,
     metadata: {
-      entityIds
+      worldName,
+      scenes
+    }
+  })
+
+  /**
+   * Helper to create a WorldUndeploymentEvent
+   */
+  const createWorldUndeploymentEvent = (worldName: string, timestamp: number): WorldUndeploymentEvent => ({
+    type: Events.Type.WORLD,
+    subType: Events.SubType.Worlds.WORLD_UNDEPLOYMENT,
+    key: `world-undeploy-${timestamp}`,
+    timestamp,
+    metadata: {
+      worldName
     }
   })
 
@@ -256,10 +279,10 @@ test('spawn coordinate race conditions via message processor', async ({ componen
         await components.extendedDb.insertSpawnCoordinate(worldName, 5, 5, true, 2000)
       })
 
-      describe('and an undeployment event is received', () => {
+      describe('and a scenes undeployment event is received', () => {
         describe('and the undeployment has an older timestamp', () => {
           beforeEach(async () => {
-            const undeployEvent = createUndeploymentEvent([entityId], 1500)
+            const undeployEvent = createScenesUndeploymentEvent(worldName, [{ entityId, baseParcel: '0,0' }], 1500)
             await components.messageProcessor.process(undeployEvent)
           })
 
@@ -275,12 +298,48 @@ test('spawn coordinate race conditions via message processor', async ({ componen
 
         describe('and the undeployment has a newer timestamp', () => {
           beforeEach(async () => {
-            const undeployEvent = createUndeploymentEvent([entityId], 3000)
+            const undeployEvent = createScenesUndeploymentEvent(worldName, [{ entityId, baseParcel: '0,0' }], 3000)
             await components.messageProcessor.process(undeployEvent)
           })
 
           it('should allow the spawn coordinate to be recalculated', async () => {
             // After undeployment with newer timestamp, spawn may be deleted or recalculated
+            // The key assertion is that the timestamp was updated
+            const spawn = await components.extendedDb.getSpawnCoordinateByWorldName(worldName)
+
+            // Spawn may be null (deleted) or have updated timestamp
+            if (spawn) {
+              expect(Number(spawn.timestamp)).toBeGreaterThanOrEqual(3000)
+            }
+          })
+        })
+      })
+
+      describe('and a world undeployment event is received', () => {
+        describe('and the undeployment has an older timestamp', () => {
+          beforeEach(async () => {
+            const worldUndeployEvent = createWorldUndeploymentEvent(worldName, 1500)
+            await components.messageProcessor.process(worldUndeployEvent)
+          })
+
+          it('should preserve the user spawn coordinate', async () => {
+            const spawn = await components.extendedDb.getSpawnCoordinateByWorldName(worldName)
+
+            expect(spawn!.x).toBe(5)
+            expect(spawn!.y).toBe(5)
+            expect(spawn!.isUserSet).toBe(true)
+            expect(Number(spawn!.timestamp)).toBe(2000)
+          })
+        })
+
+        describe('and the undeployment has a newer timestamp', () => {
+          beforeEach(async () => {
+            const worldUndeployEvent = createWorldUndeploymentEvent(worldName, 3000)
+            await components.messageProcessor.process(worldUndeployEvent)
+          })
+
+          it('should allow the spawn coordinate to be recalculated', async () => {
+            // After world undeployment with newer timestamp, spawn may be deleted or recalculated
             // The key assertion is that the timestamp was updated
             const spawn = await components.extendedDb.getSpawnCoordinateByWorldName(worldName)
 
@@ -453,14 +512,36 @@ test('spawn coordinate race conditions via message processor', async ({ componen
         expect(Number(spawn!.timestamp)).toBe(1000)
       })
 
-      describe('and an undeployment event arrives', () => {
+      describe('and a scenes undeployment event arrives', () => {
         let entityId: string
 
         beforeEach(async () => {
           const registry = await components.db.getRegistryById('entity-real-world')
           entityId = registry!.id
-          const undeployEvent = createUndeploymentEvent([entityId], 2000)
+          const undeployEvent = createScenesUndeploymentEvent(worldName, [{ entityId, baseParcel: '0,0' }], 2000)
           await components.messageProcessor.process(undeployEvent)
+        })
+
+        describe('and a new deployment recalculates spawn', () => {
+          beforeEach(async () => {
+            const newRecalc = createSpawnCoordinateSetEvent(worldName, { x: 1, y: 0 }, 3000)
+            await components.messageProcessor.process(newRecalc)
+          })
+
+          it('should update to the latest spawn coordinate', async () => {
+            const spawn = await components.extendedDb.getSpawnCoordinateByWorldName(worldName)
+
+            expect(spawn!.x).toBe(1)
+            expect(spawn!.y).toBe(0)
+            expect(Number(spawn!.timestamp)).toBe(3000)
+          })
+        })
+      })
+
+      describe('and a world undeployment event arrives', () => {
+        beforeEach(async () => {
+          const worldUndeployEvent = createWorldUndeploymentEvent(worldName, 2000)
+          await components.messageProcessor.process(worldUndeployEvent)
         })
 
         describe('and a new deployment recalculates spawn', () => {

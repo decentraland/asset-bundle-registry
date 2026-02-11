@@ -35,6 +35,10 @@ export function createRegistryMockComponent(): jest.Mocked<IRegistryComponent> {
     undeployWorldScenes: jest.fn().mockResolvedValue({
       undeployedCount: 0,
       worldName: null
+    } as UndeploymentResult),
+    undeployWorld: jest.fn().mockResolvedValue({
+      undeployedCount: 0,
+      worldName: null
     } as UndeploymentResult)
   }
 }

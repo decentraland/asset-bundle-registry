@@ -2,6 +2,7 @@ import {
   AssetBundleConversionFinishedEvent,
   AssetBundleConversionManuallyQueuedEvent,
   WorldScenesUndeploymentEvent,
+  WorldUndeploymentEvent,
   WorldSpawnCoordinateSetEvent
 } from '@dcl/schemas'
 import {
@@ -17,6 +18,7 @@ import { createDeploymentEventHandler } from './handlers/deployment-handler'
 import { createStatusEventHandler } from './handlers/status-handler'
 import { createTexturesEventHandler } from './handlers/textures-handler'
 import { createUndeploymentEventHandler } from './handlers/undeployment-handler'
+import { createWorldUndeploymentEventHandler } from './handlers/world-undeployment-handler'
 import { createSpawnCoordinateEventHandler } from './handlers/spawn-coordinate-handler'
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
 
@@ -40,6 +42,7 @@ export async function createMessageProcessorComponent({
     | AssetBundleConversionManuallyQueuedEvent
     | AssetBundleConversionFinishedEvent
     | WorldScenesUndeploymentEvent
+    | WorldUndeploymentEvent
     | WorldSpawnCoordinateSetEvent
   >[] = [
     createDeploymentEventHandler({ catalyst, worlds, registry, db, logs }),
@@ -54,6 +57,7 @@ export async function createMessageProcessorComponent({
     }),
     createStatusEventHandler({ logs, queuesStatusManager }),
     createUndeploymentEventHandler({ registry, logs }),
+    createWorldUndeploymentEventHandler({ registry, logs }),
     createSpawnCoordinateEventHandler({ coordinates, logs })
   ]
 
@@ -79,6 +83,7 @@ export async function createMessageProcessorComponent({
           | AssetBundleConversionManuallyQueuedEvent
           | AssetBundleConversionFinishedEvent
           | WorldScenesUndeploymentEvent
+          | WorldUndeploymentEvent
           | WorldSpawnCoordinateSetEvent
         >[]
       | undefined = processors.filter(

@@ -38,6 +38,7 @@ export function createDbMockComponent(): jest.Mocked<IDbComponent> {
     getWorldManifestData: jest.fn(),
     setSpawnCoordinate: jest.fn(),
     recalculateSpawnCoordinate: jest.fn(),
-    undeployWorldScenes: jest.fn()
+    undeployWorldScenes: jest.fn(),
+    undeployWorldByName: jest.fn()
   }
 }

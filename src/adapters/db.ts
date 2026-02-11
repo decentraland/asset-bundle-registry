@@ -296,11 +296,17 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
 
   /**
    * Internal function to mark registries as OBSOLETE.
+   * Only marks registries that were created before the event timestamp to handle out-of-order events.
    * @param entityIds - Array of entity IDs to undeploy
+   * @param eventTimestamp - The timestamp of the undeployment event
    * @param executor - Query executor (pg or PoolClient)
    * @returns The total number of registries marked as OBSOLETE (including fallbacks)
    */
-  async function _undeployRegistries(entityIds: string[], executor: QueryExecutor = pg): Promise<number> {
+  async function _undeployRegistries(
+    entityIds: string[],
+    eventTimestamp: number,
+    executor: QueryExecutor = pg
+  ): Promise<number> {
     if (entityIds.length === 0) {
       return 0
     }
@@ -310,20 +316,25 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
     // Single atomic query that:
     // 1. Collects all pointers from target entities in a CTE
     // 2. Updates target entities and any FALLBACK registries sharing pointers
+    // 3. Only updates registries created before the event timestamp (to handle out-of-order events)
     // Uses array overlap (&&) operator for efficient index usage
     const query: SQLStatement = SQL`
       WITH target_pointers AS (
         SELECT array_agg(DISTINCT p) AS pointers
         FROM registries, unnest(pointers) AS p
         WHERE LOWER(id) = ANY(${parsedIds}::varchar(255)[])
+          AND timestamp < ${eventTimestamp}
       )
       UPDATE registries
       SET status = ${Registry.Status.OBSOLETE}
       WHERE
-        LOWER(id) = ANY(${parsedIds}::varchar(255)[])
-        OR (
-          status = ${Registry.Status.FALLBACK}
-          AND pointers && (SELECT pointers FROM target_pointers)
+        timestamp < ${eventTimestamp}
+        AND (
+          LOWER(id) = ANY(${parsedIds}::varchar(255)[])
+          OR (
+            status = ${Registry.Status.FALLBACK}
+            AND pointers && (SELECT pointers FROM target_pointers)
+          )
         )
     `
 
@@ -333,16 +344,18 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
 
   /**
    * Marks registries and all their related fallbacks as OBSOLETE in a single atomic operation.
+   * Only marks registries that were created before the event timestamp to handle out-of-order events.
    *
    * This is used for world scene undeployments where:
    * 1. The target entities are marked as OBSOLETE
    * 2. Any registries sharing pointers with target entities that have FALLBACK status are also marked as OBSOLETE
    *
    * @param entityIds - Array of entity IDs to undeploy
+   * @param eventTimestamp - The timestamp of the undeployment event (defaults to current time)
    * @returns The total number of registries marked as OBSOLETE (including fallbacks)
    */
-  async function undeployRegistries(entityIds: string[]): Promise<number> {
-    return _undeployRegistries(entityIds)
+  async function undeployRegistries(entityIds: string[], eventTimestamp: number): Promise<number> {
+    return _undeployRegistries(entityIds, eventTimestamp)
   }
 
   async function deleteRegistries(entityIds: string[]): Promise<void> {
@@ -1055,18 +1068,19 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
 
   /**
    * Undeploys world scenes by marking them as OBSOLETE.
+   * Only marks registries that were created before the event timestamp to handle out-of-order events.
    *
    * Note: The undeploy event is per-world based, so all entity IDs belong to a single world.
    *
    * The operation:
    * 1. Gets registries by IDs to extract the world name
-   * 2. Marks target registries and fallbacks as OBSOLETE
-   * 3. Recalculates the spawn coordinate for the world
+   * 2. Marks target registries and fallbacks as OBSOLETE (only if created before eventTimestamp)
    *
    * @param entityIds - Array of entity IDs to undeploy (all belong to the same world)
+   * @param eventTimestamp - The timestamp of the undeployment event
    * @returns Result containing count and the affected world name
    */
-  async function undeployWorldScenes(entityIds: string[]): Promise<UndeploymentResult> {
+  async function undeployWorldScenes(entityIds: string[], eventTimestamp: number): Promise<UndeploymentResult> {
     if (entityIds.length === 0) {
       return {
         undeployedCount: 0,
@@ -1088,12 +1102,53 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
         }
       }
 
-      // 2. Undeploy registries (mark as OBSOLETE)
-      const undeployedCount = await _undeployRegistries(entityIds, client)
+      // 2. Undeploy registries (mark as OBSOLETE) - only those created before eventTimestamp
+      const undeployedCount = await _undeployRegistries(entityIds, eventTimestamp, client)
 
       return {
         undeployedCount,
         worldName
+      }
+    })
+  }
+
+  /**
+   * Undeploys all registries belonging to a world by looking up the world name
+   * in the entity metadata (worldConfiguration.name).
+   * Only marks registries that were created before the event timestamp to handle out-of-order events.
+   *
+   * @param worldName - The world name to undeploy all registries for
+   * @param eventTimestamp - The timestamp of the undeployment event
+   * @returns Result containing count of undeployed registries and the world name
+   */
+  async function undeployWorldByName(worldName: string, eventTimestamp: number): Promise<UndeploymentResult> {
+    const normalizedWorldName = worldName.toLowerCase()
+
+    return pg.withTransaction(async (client) => {
+      // 1. Find all registry IDs belonging to this world (only those created before eventTimestamp)
+      const query = SQL`
+        SELECT id
+        FROM registries
+        WHERE LOWER(metadata->'worldConfiguration'->>'name') = ${normalizedWorldName}
+          AND status != ${Registry.Status.OBSOLETE}
+          AND timestamp < ${eventTimestamp}
+      `
+      const result = await client.query<{ id: string }>(query)
+      const entityIds = result.rows.map((row) => row.id)
+
+      if (entityIds.length === 0) {
+        return {
+          undeployedCount: 0,
+          worldName: normalizedWorldName
+        }
+      }
+
+      // 2. Undeploy registries (mark as OBSOLETE) - only those created before eventTimestamp
+      const undeployedCount = await _undeployRegistries(entityIds, eventTimestamp, client)
+
+      return {
+        undeployedCount,
+        worldName: normalizedWorldName
       }
     })
   }
@@ -1133,6 +1188,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
     getWorldManifestData,
     setSpawnCoordinate,
     recalculateSpawnCoordinate,
-    undeployWorldScenes
+    undeployWorldScenes,
+    undeployWorldByName
   }
 }

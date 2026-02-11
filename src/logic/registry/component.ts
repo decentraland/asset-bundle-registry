@@ -16,6 +16,14 @@ export interface IRegistryComponent {
    * @param eventTimestamp - The timestamp of the event that triggered this undeployment
    */
   undeployWorldScenes(entityIds: string[], eventTimestamp: number): Promise<UndeploymentResult>
+
+  /**
+   * Undeploys all registries belonging to a world and recalculates spawn coordinates.
+   *
+   * @param worldName - The world name to undeploy all registries for
+   * @param eventTimestamp - The timestamp of the event that triggered this undeployment
+   */
+  undeployWorld(worldName: string, eventTimestamp: number): Promise<UndeploymentResult>
 }
 
 export function createRegistryComponent({
@@ -142,8 +150,8 @@ export function createRegistryComponent({
   async function undeployWorldScenes(entityIds: string[], eventTimestamp: number): Promise<UndeploymentResult> {
     logger.info('Undeploying world scenes', { entityIds: entityIds.join(', '), eventTimestamp })
 
-    // 1. Undeploy registries and get the world name
-    const result = await db.undeployWorldScenes(entityIds)
+    // 1. Undeploy registries and get the world name (only those created before eventTimestamp)
+    const result = await db.undeployWorldScenes(entityIds, eventTimestamp)
 
     logger.info('Registries marked as obsolete', {
       undeployedCount: result.undeployedCount,
@@ -159,8 +167,29 @@ export function createRegistryComponent({
     return result
   }
 
+  async function undeployWorld(worldName: string, eventTimestamp: number): Promise<UndeploymentResult> {
+    logger.info('Undeploying entire world', { worldName, eventTimestamp })
+
+    // 1. Undeploy all registries belonging to the world (only those created before eventTimestamp)
+    const result = await db.undeployWorldByName(worldName, eventTimestamp)
+
+    logger.info('World registries marked as obsolete', {
+      undeployedCount: result.undeployedCount,
+      worldName: result.worldName || 'none',
+      eventTimestamp
+    })
+
+    // 2. Recalculate spawn coordinate for the world (only if registries were actually undeployed)
+    if (result.worldName && result.undeployedCount > 0) {
+      await coordinates.recalculateSpawnIfNeeded(result.worldName, eventTimestamp)
+    }
+
+    return result
+  }
+
   return {
     persistAndRotateStates,
-    undeployWorldScenes
+    undeployWorldScenes,
+    undeployWorld
   }
 }
