@@ -160,6 +160,7 @@ export interface IDbComponent {
     calculateSpawn: (params: SpawnRecalculationParams) => SpawnRecalculationResult
   ): Promise<void>
   undeployWorldScenes(entityIds: string[]): Promise<UndeploymentResult>
+  undeployWorldByName(worldName: string): Promise<UndeploymentResult>
 }
 
 export { IQueueComponent }

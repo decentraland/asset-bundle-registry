@@ -1098,6 +1098,44 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
     })
   }
 
+  /**
+   * Undeploys all registries belonging to a world by looking up the world name
+   * in the entity metadata (worldConfiguration.name).
+   *
+   * @param worldName - The world name to undeploy all registries for
+   * @returns Result containing count of undeployed registries and the world name
+   */
+  async function undeployWorldByName(worldName: string): Promise<UndeploymentResult> {
+    const normalizedWorldName = worldName.toLowerCase()
+
+    return pg.withTransaction(async (client) => {
+      // 1. Find all registry IDs belonging to this world
+      const query = SQL`
+        SELECT id
+        FROM registries
+        WHERE LOWER(metadata->'worldConfiguration'->>'name') = ${normalizedWorldName}
+          AND status != ${Registry.Status.OBSOLETE}
+      `
+      const result = await client.query<{ id: string }>(query)
+      const entityIds = result.rows.map((row) => row.id)
+
+      if (entityIds.length === 0) {
+        return {
+          undeployedCount: 0,
+          worldName: normalizedWorldName
+        }
+      }
+
+      // 2. Undeploy registries (mark as OBSOLETE)
+      const undeployedCount = await _undeployRegistries(entityIds, client)
+
+      return {
+        undeployedCount,
+        worldName: normalizedWorldName
+      }
+    })
+  }
+
   return {
     insertRegistry,
     updateRegistriesStatus,
@@ -1133,6 +1171,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
     getWorldManifestData,
     setSpawnCoordinate,
     recalculateSpawnCoordinate,
-    undeployWorldScenes
+    undeployWorldScenes,
+    undeployWorldByName
   }
 }

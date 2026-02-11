@@ -136,6 +136,7 @@ export enum EventHandlerName {
   TEXTURES = 'Textures Handler',
   STATUS = 'Status Handler',
   UNDEPLOYMENT = 'Undeployment Handler',
+  WORLD_UNDEPLOYMENT = 'World Undeployment Handler',
   SPAWN_COORDINATE = 'Spawn Coordinate Handler'
 }
 

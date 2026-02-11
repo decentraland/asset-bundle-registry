@@ -5,13 +5,16 @@ import { createLogMockComponent } from '../../mocks/logs'
 import { createRegistryMockComponent } from '../../mocks/registry'
 
 describe('when handling undeployment events', () => {
-  const createUndeploymentEvent = (entityIds: string[]): WorldScenesUndeploymentEvent => ({
+  const createUndeploymentEvent = (
+    scenes: Array<{ entityId: string; baseParcel: string }>
+  ): WorldScenesUndeploymentEvent => ({
     type: Events.Type.WORLD,
     subType: Events.SubType.Worlds.WORLD_SCENES_UNDEPLOYMENT,
     key: 'test-key',
     timestamp: Date.now(),
     metadata: {
-      entityIds
+      worldName: 'test-world',
+      scenes
     }
   })
 
@@ -34,7 +37,10 @@ describe('when handling undeployment events', () => {
       let event: WorldScenesUndeploymentEvent
 
       beforeEach(() => {
-        event = createUndeploymentEvent(['entity-1', 'entity-2'])
+        event = createUndeploymentEvent([
+          { entityId: 'entity-1', baseParcel: '0,0' },
+          { entityId: 'entity-2', baseParcel: '1,0' }
+        ])
       })
 
       it('should return true', () => {
@@ -51,7 +57,7 @@ describe('when handling undeployment events', () => {
           subType: Events.SubType.Worlds.WORLD_SCENES_UNDEPLOYMENT,
           key: 'test-key',
           timestamp: Date.now(),
-          metadata: { entityIds: ['entity-1'] }
+          metadata: { worldName: 'test-world', scenes: [{ entityId: 'entity-1', baseParcel: '0,0' }] }
         }
       })
 
@@ -69,7 +75,7 @@ describe('when handling undeployment events', () => {
           subType: Events.SubType.AssetBundle.CONVERTED,
           key: 'test-key',
           timestamp: Date.now(),
-          metadata: { entityIds: ['entity-1'] }
+          metadata: { worldName: 'test-world', scenes: [{ entityId: 'entity-1', baseParcel: '0,0' }] }
         }
       })
 
@@ -110,7 +116,10 @@ describe('when handling undeployment events', () => {
       let event: WorldScenesUndeploymentEvent
 
       beforeEach(() => {
-        event = createUndeploymentEvent(['entity-1', 'entity-2'])
+        event = createUndeploymentEvent([
+          { entityId: 'entity-1', baseParcel: '0,0' },
+          { entityId: 'entity-2', baseParcel: '1,0' }
+        ])
         registry.undeployWorldScenes.mockResolvedValue({
           undeployedCount: 2,
           worldName: null
@@ -135,7 +144,7 @@ describe('when handling undeployment events', () => {
       let event: WorldScenesUndeploymentEvent
 
       beforeEach(() => {
-        event = createUndeploymentEvent(['entity-1'])
+        event = createUndeploymentEvent([{ entityId: 'entity-1', baseParcel: '0,0' }])
         registry.undeployWorldScenes.mockResolvedValue({
           undeployedCount: 1,
           worldName: 'test-world'
@@ -154,7 +163,7 @@ describe('when handling undeployment events', () => {
       let event: WorldScenesUndeploymentEvent
 
       beforeEach(() => {
-        event = createUndeploymentEvent(['entity-1'])
+        event = createUndeploymentEvent([{ entityId: 'entity-1', baseParcel: '0,0' }])
         registry.undeployWorldScenes.mockResolvedValue({
           undeployedCount: 3,
           worldName: 'test-world'
@@ -173,7 +182,7 @@ describe('when handling undeployment events', () => {
       let event: WorldScenesUndeploymentEvent
 
       beforeEach(() => {
-        event = createUndeploymentEvent(['non-existent-entity'])
+        event = createUndeploymentEvent([{ entityId: 'non-existent-entity', baseParcel: '0,0' }])
         registry.undeployWorldScenes.mockResolvedValue({
           undeployedCount: 0,
           worldName: null
@@ -192,7 +201,7 @@ describe('when handling undeployment events', () => {
       let event: WorldScenesUndeploymentEvent
 
       beforeEach(() => {
-        event = createUndeploymentEvent(['entity-1'])
+        event = createUndeploymentEvent([{ entityId: 'entity-1', baseParcel: '0,0' }])
         registry.undeployWorldScenes.mockRejectedValue(new Error('Database connection failed'))
       })
 
@@ -209,7 +218,7 @@ describe('when handling undeployment events', () => {
       let event: WorldScenesUndeploymentEvent
 
       beforeEach(() => {
-        event = createUndeploymentEvent(['entity-1'])
+        event = createUndeploymentEvent([{ entityId: 'entity-1', baseParcel: '0,0' }])
         registry.undeployWorldScenes.mockRejectedValue({})
       })
 

@@ -46,7 +46,7 @@ export const createUndeploymentEventHandler = ({
      * @returns EventHandlerResult indicating success or failure
      */
     handle: async (event: WorldScenesUndeploymentEvent): Promise<EventHandlerResult> => {
-      const entityIds = event.metadata.entityIds
+      const entityIds = event.metadata.scenes.map((scene) => scene.entityId)
       const eventTimestamp = event.timestamp
 
       try {
