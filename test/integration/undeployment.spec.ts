@@ -35,6 +35,12 @@ test('undeployRegistries', async ({ components }) => {
   }
 
   describe('when undeploying entities', () => {
+    let futureEventTimestamp: number
+
+    beforeEach(() => {
+      futureEventTimestamp = Date.now() + 1000000
+    })
+
     describe('and the entity exists with COMPLETE status', () => {
       let registry: Registry.DbEntity
 
@@ -49,7 +55,7 @@ test('undeployRegistries', async ({ components }) => {
       })
 
       it('should mark the entity as OBSOLETE', async () => {
-        const updatedCount = await components.db.undeployRegistries([registry.id])
+        const updatedCount = await components.db.undeployRegistries([registry.id], futureEventTimestamp)
 
         expect(updatedCount).toBe(1)
 
@@ -72,7 +78,7 @@ test('undeployRegistries', async ({ components }) => {
       })
 
       it('should mark the entity as OBSOLETE', async () => {
-        const updatedCount = await components.db.undeployRegistries([registry.id])
+        const updatedCount = await components.db.undeployRegistries([registry.id], futureEventTimestamp)
 
         expect(updatedCount).toBe(1)
 
@@ -83,7 +89,7 @@ test('undeployRegistries', async ({ components }) => {
 
     describe('and the entity does not exist', () => {
       it('should return 0 updated count', async () => {
-        const updatedCount = await components.db.undeployRegistries(['non-existent-entity-id'])
+        const updatedCount = await components.db.undeployRegistries(['non-existent-entity-id'], futureEventTimestamp)
 
         expect(updatedCount).toBe(0)
       })
@@ -91,7 +97,7 @@ test('undeployRegistries', async ({ components }) => {
 
     describe('and an empty array is provided', () => {
       it('should return 0 updated count', async () => {
-        const updatedCount = await components.db.undeployRegistries([])
+        const updatedCount = await components.db.undeployRegistries([], futureEventTimestamp)
 
         expect(updatedCount).toBe(0)
       })
@@ -119,7 +125,7 @@ test('undeployRegistries', async ({ components }) => {
       })
 
       it('should mark all entities as OBSOLETE', async () => {
-        const updatedCount = await components.db.undeployRegistries([registry1.id, registry2.id])
+        const updatedCount = await components.db.undeployRegistries([registry1.id, registry2.id], futureEventTimestamp)
 
         expect(updatedCount).toBe(2)
 
@@ -164,7 +170,7 @@ test('undeployRegistries', async ({ components }) => {
       })
 
       it('should mark both the target entity and the fallback as OBSOLETE', async () => {
-        const updatedCount = await components.db.undeployRegistries([targetRegistry.id])
+        const updatedCount = await components.db.undeployRegistries([targetRegistry.id], futureEventTimestamp)
 
         expect(updatedCount).toBe(2)
 
@@ -221,7 +227,7 @@ test('undeployRegistries', async ({ components }) => {
       })
 
       it('should mark all target entities and the fallback as OBSOLETE', async () => {
-        const updatedCount = await components.db.undeployRegistries([targetRegistry1.id, targetRegistry2.id])
+        const updatedCount = await components.db.undeployRegistries([targetRegistry1.id, targetRegistry2.id], futureEventTimestamp)
 
         expect(updatedCount).toBe(3)
 
@@ -281,7 +287,7 @@ test('undeployRegistries', async ({ components }) => {
       })
 
       it('should mark the target entity and all fallbacks as OBSOLETE', async () => {
-        const updatedCount = await components.db.undeployRegistries([targetRegistry.id])
+        const updatedCount = await components.db.undeployRegistries([targetRegistry.id], futureEventTimestamp)
 
         expect(updatedCount).toBe(3)
 
@@ -324,7 +330,7 @@ test('undeployRegistries', async ({ components }) => {
       })
 
       it('should only mark the target entity as OBSOLETE', async () => {
-        const updatedCount = await components.db.undeployRegistries([targetRegistry.id])
+        const updatedCount = await components.db.undeployRegistries([targetRegistry.id], futureEventTimestamp)
 
         expect(updatedCount).toBe(1)
 
@@ -369,7 +375,7 @@ test('undeployRegistries', async ({ components }) => {
       })
 
       it('should only mark the target entity as OBSOLETE (not COMPLETE registries)', async () => {
-        const updatedCount = await components.db.undeployRegistries([targetRegistry.id])
+        const updatedCount = await components.db.undeployRegistries([targetRegistry.id], futureEventTimestamp)
 
         expect(updatedCount).toBe(1)
 
@@ -395,7 +401,7 @@ test('undeployRegistries', async ({ components }) => {
       })
 
       it('should mark the entity as OBSOLETE regardless of casing', async () => {
-        const updatedCount = await components.db.undeployRegistries(['ENTITY-TO-UNDEPLOY-10'])
+        const updatedCount = await components.db.undeployRegistries(['ENTITY-TO-UNDEPLOY-10'], futureEventTimestamp)
 
         expect(updatedCount).toBe(1)
 

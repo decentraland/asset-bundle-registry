@@ -354,7 +354,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
    * @param eventTimestamp - The timestamp of the undeployment event (defaults to current time)
    * @returns The total number of registries marked as OBSOLETE (including fallbacks)
    */
-  async function undeployRegistries(entityIds: string[], eventTimestamp: number = Date.now()): Promise<number> {
+  async function undeployRegistries(entityIds: string[], eventTimestamp: number): Promise<number> {
     return _undeployRegistries(entityIds, eventTimestamp)
   }
 

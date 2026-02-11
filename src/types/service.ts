@@ -110,7 +110,7 @@ export interface IDbComponent {
     registry: Pick<Registry.DbEntity, 'pointers' | 'id'>,
     worldName?: string
   ): Promise<Registry.PartialDbEntity[]>
-  undeployRegistries(entityIds: string[], eventTimestamp?: number): Promise<number>
+  undeployRegistries(entityIds: string[], eventTimestamp: number): Promise<number>
   deleteRegistries(entityIds: string[]): Promise<void>
   getBatchOfDeprecatedRegistriesOlderThan(
     dateInMilliseconds: number,
