@@ -499,13 +499,13 @@ test('undeployRegistries', async ({ components }) => {
         await createRegistryOnDatabase(registry)
       })
 
-      it('should NOT mark it as OBSOLETE', async () => {
+      it('should NOT mark it as OBSOLETE when event timestamp is before registry timestamp', async () => {
         const pastEventTimestamp = 3000 // Before the registry timestamp of 5000
 
         const result = await components.db.undeployWorldScenes([registry.id], pastEventTimestamp)
 
         expect(result.undeployedCount).toBe(0)
-        expect(result.worldName).toBeNull()
+        expect(result.worldName).toBe('scenes-world-timestamp1.dcl.eth')
 
         const unchangedRegistry = await components.db.getRegistryById(registry.id)
         expect(unchangedRegistry?.status).toBe(Registry.Status.COMPLETE)
