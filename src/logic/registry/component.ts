@@ -101,7 +101,8 @@ export function createRegistryComponent({
   }
 
   async function persistAndRotateStates(registry: Omit<Registry.DbEntity, 'status'>): Promise<Registry.DbEntity> {
-    const relatedRegistries: Registry.PartialDbEntity[] = await db.getRelatedRegistries(registry)
+    const worldName = (registry.metadata as any)?.worldConfiguration?.name as string | undefined
+    const relatedRegistries: Registry.PartialDbEntity[] = await db.getRelatedRegistries(registry, worldName)
     const splitRelatedEntities: RelatedEntities = categorizeRelatedEntities(relatedRegistries, registry)
     const registryStatus: Registry.Status = determineRegistryStatus(registry, splitRelatedEntities)
 

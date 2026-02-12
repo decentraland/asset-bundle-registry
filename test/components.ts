@@ -84,6 +84,8 @@ async function initComponents(): Promise<TestComponents> {
     ...components,
     config,
     db,
+    catalyst,
+    worlds,
     coordinates,
     registry,
     metrics,

@@ -79,6 +79,7 @@ export type TestComponents = BaseComponents & {
   localFetch: IFetchComponent
   messageConsumer: IMessageConsumerComponent
   messageProcessor: IMessageProcessorComponent
+  worlds: IWorldsComponent
   extendedDb: IDbComponent & {
     deleteHistoricalRegistries: (ids: string[]) => Promise<void>
     deleteProfiles: (pointers: string[]) => Promise<void>
