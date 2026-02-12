@@ -12,7 +12,7 @@ import { test } from '../components'
  * the deployment handler fetches the entity (from mocked catalyst/worlds), and the registry
  * component persists it with the correct status while rotating related registries.
  */
-test('deployment message handling', async ({ components }) => {
+test('deployment message handling', async ({ components, spyComponents }) => {
   let identity: Identity
   const registriesToCleanUp: string[] = []
 
@@ -25,8 +25,6 @@ test('deployment message handling', async ({ components }) => {
       await components.db.deleteRegistries(registriesToCleanUp)
       registriesToCleanUp.length = 0
     }
-
-    jest.resetAllMocks()
   })
 
   afterAll(async () => {
@@ -65,32 +63,29 @@ test('deployment message handling', async ({ components }) => {
   })
 
   /**
-   * Helper to set up the catalyst mock to return an entity for a Genesis City deployment
+   * Helper to set up spies for a Genesis City deployment.
+   * Uses spyComponents to spy on the real catalyst and worlds (shared with the message processor).
    */
   const mockGenesisCityDeployment = (entity: Entity): void => {
-    const worlds = components.worlds as jest.Mocked<typeof components.worlds>
-    const catalyst = components.catalyst as jest.Mocked<typeof components.catalyst>
-    worlds.isWorldDeployment.mockReturnValue(false)
-    catalyst.getEntityById.mockResolvedValue(entity)
+    spyComponents.worlds.isWorldDeployment.mockReturnValue(false)
+    spyComponents.catalyst.getEntityById.mockResolvedValue(entity)
   }
 
   /**
-   * Helper to set up the worlds mock to return an entity for a world deployment
+   * Helper to set up spies for a world deployment
    */
   const mockWorldDeployment = (entity: Entity): void => {
-    const worlds = components.worlds as jest.Mocked<typeof components.worlds>
-    worlds.isWorldDeployment.mockReturnValue(true)
-    worlds.getWorld.mockResolvedValue(entity)
+    spyComponents.worlds.isWorldDeployment.mockReturnValue(true)
+    spyComponents.worlds.getWorld.mockResolvedValue(entity)
   }
 
   describe('when a Genesis City scene deployment message is processed', () => {
     describe('and the pointers are not occupied by any other scene', () => {
       let entityId: string
-      let entity: Entity
 
       beforeEach(async () => {
         entityId = `genesis-empty-${Date.now()}`
-        entity = createEntity({ id: entityId, pointers: ['500,500'], timestamp: 1000 })
+        const entity = createEntity({ id: entityId, pointers: ['500,500'], timestamp: 1000 })
         mockGenesisCityDeployment(entity)
 
         const message = createDeploymentMessage(entityId)
@@ -110,7 +105,6 @@ test('deployment message handling', async ({ components }) => {
     describe('and there is an older scene at the same pointers', () => {
       let olderEntityId: string
       let newerEntityId: string
-      let newerEntity: Entity
 
       beforeEach(async () => {
         olderEntityId = `genesis-older-${Date.now()}`
@@ -119,16 +113,14 @@ test('deployment message handling', async ({ components }) => {
         // First, deploy the older scene
         const olderEntity = createEntity({ id: olderEntityId, pointers: ['600,600'], timestamp: 1000 })
         mockGenesisCityDeployment(olderEntity)
-        const olderMessage = createDeploymentMessage(olderEntityId)
         registriesToCleanUp.push(olderEntityId)
-        await components.messageProcessor.process(olderMessage)
+        await components.messageProcessor.process(createDeploymentMessage(olderEntityId))
 
         // Then, deploy the newer scene at the same pointers
-        newerEntity = createEntity({ id: newerEntityId, pointers: ['600,600'], timestamp: 2000 })
+        const newerEntity = createEntity({ id: newerEntityId, pointers: ['600,600'], timestamp: 2000 })
         mockGenesisCityDeployment(newerEntity)
-        const newerMessage = createDeploymentMessage(newerEntityId)
         registriesToCleanUp.push(newerEntityId)
-        await components.messageProcessor.process(newerMessage)
+        await components.messageProcessor.process(createDeploymentMessage(newerEntityId))
       })
 
       it('should mark the older registry as obsolete', async () => {
@@ -157,16 +149,14 @@ test('deployment message handling', async ({ components }) => {
         // First, the newer scene arrives and gets deployed
         const newerEntity = createEntity({ id: newerEntityId, pointers: ['700,700'], timestamp: 2000 })
         mockGenesisCityDeployment(newerEntity)
-        const newerMessage = createDeploymentMessage(newerEntityId)
         registriesToCleanUp.push(newerEntityId)
-        await components.messageProcessor.process(newerMessage)
+        await components.messageProcessor.process(createDeploymentMessage(newerEntityId))
 
         // Then, the older scene arrives late
         const olderEntity = createEntity({ id: olderEntityId, pointers: ['700,700'], timestamp: 1000 })
         mockGenesisCityDeployment(olderEntity)
-        const olderMessage = createDeploymentMessage(olderEntityId)
         registriesToCleanUp.push(olderEntityId)
-        await components.messageProcessor.process(olderMessage)
+        await components.messageProcessor.process(createDeploymentMessage(olderEntityId))
       })
 
       it('should persist the older registry with pending status since the newer one is also pending', async () => {
@@ -196,8 +186,7 @@ test('deployment message handling', async ({ components }) => {
         registriesToCleanUp.push(entityId)
         await components.messageProcessor.process(message)
 
-        // Reset mocks and process the same message again
-        jest.resetAllMocks()
+        // Re-spy and process the same message again
         mockGenesisCityDeployment(entity)
         await components.messageProcessor.process(message)
       })
@@ -210,8 +199,7 @@ test('deployment message handling', async ({ components }) => {
       })
 
       it('should not call the catalyst to fetch the entity again', () => {
-        const catalyst = components.catalyst as jest.Mocked<typeof components.catalyst>
-        expect(catalyst.getEntityById).not.toHaveBeenCalled()
+        expect(spyComponents.catalyst.getEntityById).toHaveBeenCalledTimes(1)
       })
     })
   })
@@ -520,10 +508,8 @@ test('deployment message handling', async ({ components }) => {
 
     beforeEach(() => {
       entityId = `not-found-entity-${Date.now()}`
-      const worlds = components.worlds as jest.Mocked<typeof components.worlds>
-      const catalyst = components.catalyst as jest.Mocked<typeof components.catalyst>
-      worlds.isWorldDeployment.mockReturnValue(false)
-      catalyst.getEntityById.mockResolvedValue(null)
+      spyComponents.worlds.isWorldDeployment.mockReturnValue(false)
+      spyComponents.catalyst.getEntityById.mockResolvedValue(null)
     })
 
     it('should not persist any registry', async () => {

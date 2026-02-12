@@ -19,7 +19,6 @@ import { createCoordinatesComponent } from '../src/logic/coordinates'
 import { createQueuesStatusManagerComponent } from '../src/logic/queues-status-manager'
 import { createInMemoryCacheComponent } from '../src/adapters/memory-cache'
 import { createWorldsMockComponent } from './unit/mocks/worlds'
-import { createCatalystMockComponent } from './unit/mocks/catalyst'
 
 /**
  * Behaves like Jest "describe" function, used to describe a test for a
@@ -61,14 +60,15 @@ async function initComponents(): Promise<TestComponents> {
   const registry = createRegistryComponent({ logs, db, metrics, coordinates })
 
   // Create mocks for components not needed in integration tests
-  const catalyst = createCatalystMockComponent()
   const worlds = createWorldsMockComponent()
   const memoryStorage = createInMemoryCacheComponent()
   const queuesStatusManager = createQueuesStatusManagerComponent({ memoryStorage })
 
   // Create message processor for integration tests
+  // Uses the real catalyst from originalInitComponents() so that jest.spyOn works
+  // consistently for both HTTP handler tests and message processor tests.
   const messageProcessor = await createMessageProcessorComponent({
-    catalyst,
+    catalyst: components.catalyst,
     worlds,
     registry,
     queuesStatusManager,
@@ -84,7 +84,6 @@ async function initComponents(): Promise<TestComponents> {
     ...components,
     config,
     db,
-    catalyst,
     worlds,
     coordinates,
     registry,
