@@ -107,8 +107,7 @@ export interface IDbComponent {
     buildDate: string
   ): Promise<Registry.DbEntity | null>
   getRelatedRegistries(
-    registry: Pick<Registry.DbEntity, 'pointers' | 'id'>,
-    worldName?: string
+    registry: Pick<Registry.DbEntity, 'pointers' | 'id' | 'metadata'>
   ): Promise<Registry.PartialDbEntity[]>
   undeployRegistries(entityIds: string[], eventTimestamp: number): Promise<number>
   deleteRegistries(entityIds: string[]): Promise<void>

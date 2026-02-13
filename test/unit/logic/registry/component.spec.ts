@@ -94,6 +94,18 @@ describe('when using the registry component', () => {
         db.getRelatedRegistries.mockResolvedValue([])
       })
 
+      it('should call getRelatedRegistries with the registry', async () => {
+        const registry = withAssetStatus(
+          createRegistry(),
+          Registry.SimplifiedStatus.COMPLETE,
+          Registry.SimplifiedStatus.COMPLETE
+        )
+
+        await component.persistAndRotateStates(registry)
+
+        expect(db.getRelatedRegistries).toHaveBeenCalledWith(registry)
+      })
+
       describe('and all assets are complete', () => {
         let registry: Registry.DbEntity
 

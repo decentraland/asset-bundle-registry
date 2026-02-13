@@ -29,7 +29,7 @@ function createTestLambdasProfile(
   }
 }
 
-test('POST /profiles/metadata endpoint', async function ({ components }) {
+test('POST /profiles/metadata endpoint', async function ({ components, spyComponents }) {
   let fetchLocally: any
   const profilesToCleanUp: string[] = []
 
@@ -43,7 +43,6 @@ test('POST /profiles/metadata endpoint', async function ({ components }) {
       await components.extendedDb.deleteProfiles(profilesToCleanUp)
       profilesToCleanUp.length = 0
     }
-    jest.restoreAllMocks()
   })
 
   afterAll(async function () {
@@ -123,8 +122,8 @@ test('POST /profiles/metadata endpoint', async function ({ components }) {
     beforeEach(async function () {
       pointer = '0xcatalystmeta111111111111111111111111'
       lambdasProfile = createTestLambdasProfile('bafkreicatalystmeta', pointer, 'CatalystUser', true)
-      jest.spyOn(components.catalyst, 'getProfiles').mockResolvedValueOnce([lambdasProfile])
-      jest.spyOn(components.catalyst, 'convertLambdasProfileToEntity').mockReturnValueOnce(
+      spyComponents.catalyst.getProfiles.mockResolvedValueOnce([lambdasProfile])
+      spyComponents.catalyst.convertLambdasProfileToEntity.mockReturnValueOnce(
         profileDbEntityToEntity(
           createProfileDbEntity({
             id: 'bafkreicatalystmeta',
@@ -155,7 +154,7 @@ test('POST /profiles/metadata endpoint', async function ({ components }) {
       expect(response.status).toBe(200)
       expect(parsedResponse).toHaveLength(1)
       expect(parsedResponse[0].name).toBe('CatalystUser')
-      expect(components.catalyst.getProfiles).toHaveBeenCalledWith([pointer])
+      expect(spyComponents.catalyst.getProfiles).toHaveBeenCalledWith([pointer])
     })
   })
 
@@ -164,7 +163,7 @@ test('POST /profiles/metadata endpoint', async function ({ components }) {
 
     beforeEach(function () {
       pointer = '0xnonexistent1111111111111111111111111'
-      jest.spyOn(components.catalyst, 'getProfiles').mockResolvedValueOnce([])
+      spyComponents.catalyst.getProfiles.mockResolvedValueOnce([])
     })
 
     it('should return an empty array', async function () {
