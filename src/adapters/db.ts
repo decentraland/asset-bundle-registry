@@ -245,20 +245,21 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
   /**
    * Gets registries related to a given registry by overlapping pointers.
    *
-   * When worldName is not provided, coordinates are treated as Genesis City coordinates
-   * and world entities are excluded from results.
+   * Automatically extracts the world name from registry.metadata.worldConfiguration.name
+   * to determine the correct filtering strategy:
    *
-   * When worldName is provided, only entities matching that world name (via metadata.worldConfiguration.name)
-   * are returned, avoiding collisions between world and Genesis City registries.
+   * - When the registry has a world name, only entities matching that world name are returned,
+   *   avoiding collisions between different worlds and Genesis City registries.
+   * - When the registry has no world name, coordinates are treated as Genesis City coordinates
+   *   and world entities are excluded from results.
    *
-   * @param registry - Registry with pointers and id to find related registries for
-   * @param worldName - Optional world name to filter by (for world registries)
-   * @returns Related registries that share pointers
+   * @param registry - Registry with pointers, id, and metadata to find related registries for
+   * @returns Related registries that share pointers within the same context (world or Genesis City)
    */
   async function getRelatedRegistries(
-    registry: Pick<Registry.DbEntity, 'pointers' | 'id'>,
-    worldName?: string
+    registry: Pick<Registry.DbEntity, 'pointers' | 'id' | 'metadata'>
   ): Promise<Registry.PartialDbEntity[]> {
+    const worldName = (registry.metadata as any)?.worldConfiguration?.name as string | undefined
     const lowerCasePointers = registry.pointers.map((p) => p.toLowerCase())
 
     const query: SQLStatement = SQL`
@@ -272,15 +273,15 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
         AND status != ${Registry.Status.OBSOLETE}
     `
 
-    // Filter by world name if provided
+    // Filter by world name to ensure correct conflict detection
     if (worldName) {
       const normalizedWorldName = worldName.toLowerCase()
-      // When worldName is provided, only return entities matching that world name
+      // When worldName is present, only return entities matching that world name
       query.append(SQL`
         AND LOWER(metadata->'worldConfiguration'->>'name') = ${normalizedWorldName}
       `)
     } else {
-      // When worldName is not provided, exclude worlds (treat coordinates as Genesis City)
+      // When worldName is not present, exclude worlds (treat coordinates as Genesis City)
       query.append(SQL`
         AND metadata->'worldConfiguration'->>'name' IS NULL
       `)

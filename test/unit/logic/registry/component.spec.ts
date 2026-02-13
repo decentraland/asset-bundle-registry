@@ -89,50 +89,21 @@ describe('when using the registry component', () => {
   }
 
   describe('when rotating the state of a registry', () => {
-    describe('and the registry is a Genesis City scene', () => {
-      let registry: Registry.DbEntity
-
+    describe('and there are no related registries', () => {
       beforeEach(() => {
-        registry = withAssetStatus(
+        db.getRelatedRegistries.mockResolvedValue([])
+      })
+
+      it('should call getRelatedRegistries with the registry', async () => {
+        const registry = withAssetStatus(
           createRegistry(),
           Registry.SimplifiedStatus.COMPLETE,
           Registry.SimplifiedStatus.COMPLETE
         )
-        db.getRelatedRegistries.mockResolvedValue([])
-      })
 
-      it('should call getRelatedRegistries without a world name', async () => {
         await component.persistAndRotateStates(registry)
 
-        expect(db.getRelatedRegistries).toHaveBeenCalledWith(registry, undefined)
-      })
-    })
-
-    describe('and the registry is a world scene', () => {
-      let registry: Registry.DbEntity
-
-      beforeEach(() => {
-        registry = withAssetStatus(
-          createRegistry({
-            type: 'world',
-            metadata: { worldConfiguration: { name: 'my-world.dcl.eth' }, scene: { parcels: ['0,0'], base: '0,0' } }
-          }),
-          Registry.SimplifiedStatus.COMPLETE,
-          Registry.SimplifiedStatus.COMPLETE
-        )
-        db.getRelatedRegistries.mockResolvedValue([])
-      })
-
-      it('should call getRelatedRegistries with the world name', async () => {
-        await component.persistAndRotateStates(registry)
-
-        expect(db.getRelatedRegistries).toHaveBeenCalledWith(registry, 'my-world.dcl.eth')
-      })
-    })
-
-    describe('and there are no related registries', () => {
-      beforeEach(() => {
-        db.getRelatedRegistries.mockResolvedValue([])
+        expect(db.getRelatedRegistries).toHaveBeenCalledWith(registry)
       })
 
       describe('and all assets are complete', () => {
