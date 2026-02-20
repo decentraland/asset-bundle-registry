@@ -30,10 +30,11 @@ export async function createMessageProcessorComponent({
   coordinates,
   db,
   logs,
-  config
+  config,
+  nats
 }: Pick<
   AppComponents,
-  'catalyst' | 'worlds' | 'registry' | 'queuesStatusManager' | 'db' | 'logs' | 'config' | 'coordinates'
+  'catalyst' | 'worlds' | 'registry' | 'queuesStatusManager' | 'db' | 'logs' | 'config' | 'coordinates' | 'nats'
 >): Promise<IMessageProcessorComponent> {
   const MAX_RETRIES: number = (await config.getNumber('MAX_RETRIES')) || 3
   const log = logs.getLogger('message-processor')
@@ -45,7 +46,7 @@ export async function createMessageProcessorComponent({
     | WorldUndeploymentEvent
     | WorldSpawnCoordinateSetEvent
   >[] = [
-    createDeploymentEventHandler({ catalyst, worlds, registry, db, logs }),
+    createDeploymentEventHandler({ catalyst, worlds, registry, db, logs, nats }),
     createTexturesEventHandler({
       db,
       logs,

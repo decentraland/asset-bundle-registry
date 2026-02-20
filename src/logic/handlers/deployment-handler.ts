@@ -2,16 +2,18 @@ import { Entity } from '@dcl/schemas'
 import { AppComponents, IEventHandlerComponent, EventHandlerName, EventHandlerResult, Registry } from '../../types'
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
 import { Authenticator } from '@dcl/crypto'
+import { SceneUpdateNotification } from '@dcl/protocol/out-js/decentraland/kernel/comms/v3/archipelago.gen'
 
 export const createDeploymentEventHandler = ({
   registry,
   catalyst,
   worlds,
   db,
-  logs
+  logs,
+  nats
 }: Pick<
   AppComponents,
-  'catalyst' | 'worlds' | 'db' | 'logs' | 'registry'
+  'catalyst' | 'worlds' | 'db' | 'logs' | 'registry' | 'nats'
 >): IEventHandlerComponent<DeploymentToSqs> => {
   const HANDLER_NAME = EventHandlerName.DEPLOYMENT
   const logger = logs.getLogger('deployment-handler')
@@ -76,6 +78,25 @@ export const createDeploymentEventHandler = ({
           bundles: defaultBundles,
           versions: defaultVersions
         })
+
+        // Publish scene update notification for non-world deployments
+        if (!worlds.isWorldDeployment(event) && entity.pointers?.length > 0) {
+          try {
+            nats.publish(
+              'service.scene_update',
+              SceneUpdateNotification.encode({
+                sceneId: entity.id,
+                parcels: entity.pointers,
+                timestamp: entity.timestamp
+              }).finish()
+            )
+          } catch (err: any) {
+            logger.warn('Failed to publish scene update notification', {
+              sceneId: entity.id,
+              error: err.message
+            })
+          }
+        }
 
         return { ok: true, handlerName: HANDLER_NAME }
       } catch (error: any) {

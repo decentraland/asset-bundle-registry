@@ -2,6 +2,7 @@ import PQueue from 'p-queue'
 import { AppComponents, IEntityPersisterComponent } from '../../types'
 import { Sync } from '../../types'
 import { Entity } from '@dcl/schemas'
+import { ProfileUpdateNotification } from '@dcl/protocol/out-js/decentraland/kernel/comms/v3/archipelago.gen'
 
 const DB_PERSISTENCE_CONCURRENCY = 30
 
@@ -20,8 +21,9 @@ export function createEntityPersisterComponent({
   logs,
   db,
   profilesCache,
-  entityDeploymentTracker
-}: Pick<AppComponents, 'logs' | 'db' | 'profilesCache' | 'entityDeploymentTracker'>): IEntityPersisterComponent {
+  entityDeploymentTracker,
+  nats
+}: Pick<AppComponents, 'logs' | 'db' | 'profilesCache' | 'entityDeploymentTracker' | 'nats'>): IEntityPersisterComponent {
   const logger = logs.getLogger('entity-persistent')
 
   let bootstrapComplete = false
@@ -42,6 +44,23 @@ export function createEntityPersisterComponent({
 
     // mark as processed in bloom filter (permanent tracking)
     entityDeploymentTracker.markAsProcessed(entity.id)
+
+    // publish profile update notification to NATS
+    try {
+      nats.publish(
+        'service.profile_update',
+        ProfileUpdateNotification.encode({
+          address: entity.pointers[0],
+          profileJson: JSON.stringify(entity),
+          timestamp: entity.timestamp
+        }).finish()
+      )
+    } catch (err: any) {
+      logger.warn('Failed to publish profile update notification', {
+        address: entity.pointers[0],
+        error: err.message
+      })
+    }
 
     const dbEntity: Sync.ProfileDbEntity = {
       ...entity,
