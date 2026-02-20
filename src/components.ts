@@ -37,6 +37,8 @@ import { createPointerChangesHandlerComponent } from './logic/sync/pointer-chang
 import { createSynchronizerComponent } from './logic/sync/synchronizer'
 import { createOwnershipValidatorJob } from './logic/sync/ownership-validator-job'
 import { createCoordinatesComponent } from './logic/coordinates'
+import { createConfigComponent } from '@well-known-components/env-config-provider'
+import { createNatsComponent } from '@well-known-components/nats-component'
 
 // Initialize all the components of the app
 export async function initComponents(): Promise<AppComponents> {
@@ -116,11 +118,14 @@ export async function initComponents(): Promise<AppComponents> {
     config
   })
   const catalyst = await createCatalystAdapter({ logs, fetch, config })
+  const natsLogs = await createLogComponent({ config: createConfigComponent({ LOG_LEVEL: 'WARN' }) })
+  const nats = await createNatsComponent({ config, logs: natsLogs })
   const entityPersister = createEntityPersisterComponent({
     logs,
     db,
     profilesCache,
-    entityDeploymentTracker
+    entityDeploymentTracker,
+    nats
   })
   const profileRetriever = createProfileRetrieverComponent({
     logs,
@@ -204,7 +209,8 @@ export async function initComponents(): Promise<AppComponents> {
     coordinates,
     db,
     logs,
-    config
+    config,
+    nats
   })
   const messageConsumer = createMessagesConsumerComponent({
     logs,
@@ -243,6 +249,7 @@ export async function initComponents(): Promise<AppComponents> {
     snapshotsHandler,
     pointerChangesHandler,
     synchronizer,
-    ownershipValidatorJob
+    ownershipValidatorJob,
+    nats
   }
 }
