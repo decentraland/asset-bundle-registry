@@ -129,7 +129,11 @@ describe('when handling undeployment events', () => {
       it('should undeploy the world scenes for the given entity IDs and lowercased world name', async () => {
         await handler.handle(event)
 
-        expect(registry.undeployWorldScenes).toHaveBeenCalledWith(['entity-1', 'entity-2'], 'test-world', event.timestamp)
+        expect(registry.undeployWorldScenes).toHaveBeenCalledWith(
+          ['entity-1', 'entity-2'],
+          'test-world',
+          event.timestamp
+        )
       })
 
       it('should return ok', async () => {

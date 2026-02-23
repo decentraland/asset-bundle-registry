@@ -518,7 +518,11 @@ test('undeployRegistries', async ({ components }) => {
       })
 
       it('should mark it as OBSOLETE and return the world name', async () => {
-        const result = await components.db.undeployWorldScenes([registry.id], 'scenes-world1.dcl.eth', futureEventTimestamp)
+        const result = await components.db.undeployWorldScenes(
+          [registry.id],
+          'scenes-world1.dcl.eth',
+          futureEventTimestamp
+        )
 
         expect(result.undeployedCount).toBe(1)
         expect(result.worldName).toBe('scenes-world1.dcl.eth')
@@ -554,7 +558,11 @@ test('undeployRegistries', async ({ components }) => {
       it('should NOT mark it as OBSOLETE when event timestamp is before registry timestamp', async () => {
         const pastEventTimestamp = 3000 // Before the registry timestamp of 5000
 
-        const result = await components.db.undeployWorldScenes([registry.id], 'scenes-world-timestamp1.dcl.eth', pastEventTimestamp)
+        const result = await components.db.undeployWorldScenes(
+          [registry.id],
+          'scenes-world-timestamp1.dcl.eth',
+          pastEventTimestamp
+        )
 
         expect(result.undeployedCount).toBe(0)
         expect(result.worldName).toBe('scenes-world-timestamp1.dcl.eth')
@@ -606,7 +614,11 @@ test('undeployRegistries', async ({ components }) => {
       })
 
       it('should mark all as OBSOLETE and return the world name', async () => {
-        const result = await components.db.undeployWorldScenes([registry1.id, registry2.id], 'scenes-world2.dcl.eth', futureEventTimestamp)
+        const result = await components.db.undeployWorldScenes(
+          [registry1.id, registry2.id],
+          'scenes-world2.dcl.eth',
+          futureEventTimestamp
+        )
 
         expect(result.undeployedCount).toBe(2)
         expect(result.worldName).toBe('scenes-world2.dcl.eth')
@@ -636,7 +648,11 @@ test('undeployRegistries', async ({ components }) => {
       })
 
       it('should mark the entity as OBSOLETE and return the provided world name', async () => {
-        const result = await components.db.undeployWorldScenes([registry.id], 'scenes-world3.dcl.eth', futureEventTimestamp)
+        const result = await components.db.undeployWorldScenes(
+          [registry.id],
+          'scenes-world3.dcl.eth',
+          futureEventTimestamp
+        )
 
         expect(result.undeployedCount).toBe(1)
         expect(result.worldName).toBe('scenes-world3.dcl.eth')
@@ -691,7 +707,11 @@ test('undeployRegistries', async ({ components }) => {
       })
 
       it('should mark both the target and the fallback as OBSOLETE', async () => {
-        const result = await components.db.undeployWorldScenes([targetRegistry.id], 'scenes-world4.dcl.eth', futureEventTimestamp)
+        const result = await components.db.undeployWorldScenes(
+          [targetRegistry.id],
+          'scenes-world4.dcl.eth',
+          futureEventTimestamp
+        )
 
         expect(result.undeployedCount).toBe(2)
         expect(result.worldName).toBe('scenes-world4.dcl.eth')
@@ -745,7 +765,11 @@ test('undeployRegistries', async ({ components }) => {
       })
 
       it('should only mark the target entity as OBSOLETE', async () => {
-        const result = await components.db.undeployWorldScenes([targetRegistry.id], 'scenes-world5.dcl.eth', futureEventTimestamp)
+        const result = await components.db.undeployWorldScenes(
+          [targetRegistry.id],
+          'scenes-world5.dcl.eth',
+          futureEventTimestamp
+        )
 
         expect(result.undeployedCount).toBe(1)
         expect(result.worldName).toBe('scenes-world5.dcl.eth')
@@ -797,7 +821,11 @@ test('undeployRegistries', async ({ components }) => {
       })
 
       it('should NOT mark the genesis city FALLBACK scene as OBSOLETE', async () => {
-        const result = await components.db.undeployWorldScenes([worldTargetRegistry.id], 'coord-overlap-world.dcl.eth', futureEventTimestamp)
+        const result = await components.db.undeployWorldScenes(
+          [worldTargetRegistry.id],
+          'coord-overlap-world.dcl.eth',
+          futureEventTimestamp
+        )
 
         expect(result.undeployedCount).toBe(1)
         expect(result.worldName).toBe('coord-overlap-world.dcl.eth')
