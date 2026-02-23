@@ -125,6 +125,7 @@ describe('textures-handler', () => {
         const dbEntity = createDbEntity(entity)
 
         db.getRegistryById = jest.fn().mockResolvedValue(null)
+        db.getHistoricalRegistryById = jest.fn().mockResolvedValue(null)
         catalyst.getEntityById = jest.fn().mockResolvedValue(entity)
         // persistAndRotateStates must return the created entity so we can access bundles later
         registry.persistAndRotateStates = jest.fn().mockResolvedValue(dbEntity)
@@ -171,6 +172,7 @@ describe('textures-handler', () => {
         const entity = createEntity()
         const dbEntity = createDbEntity(entity)
         db.getRegistryById = jest.fn().mockResolvedValue(null)
+        db.getHistoricalRegistryById = jest.fn().mockResolvedValue(null)
         worlds.getWorld = jest.fn().mockResolvedValue(entity)
         // persistAndRotateStates must return the created entity so we can access bundles later
         registry.persistAndRotateStates = jest.fn().mockResolvedValue(dbEntity)
@@ -215,12 +217,44 @@ describe('textures-handler', () => {
       it('should return error when entity not found in catalyst or worlds', async () => {
         const event = createEvent()
         db.getRegistryById = jest.fn().mockResolvedValue(null)
+        db.getHistoricalRegistryById = jest.fn().mockResolvedValue(null)
         catalyst.getEntityById = jest.fn().mockResolvedValue(null)
 
         const result = await handler.handle(event)
 
         expect(result.ok).toBe(false)
         expect(result.errors).toEqual([`Entity with id ${event.metadata.entityId} was not found`])
+      })
+
+      describe('and the entity was previously purged', () => {
+        let event: AssetBundleConversionFinishedEvent
+        let result: { ok: boolean; errors?: string[] }
+
+        beforeEach(async () => {
+          event = createEvent()
+          const entity = createEntity()
+          const dbEntity = createDbEntity(entity)
+          const historicalEntity = { ...dbEntity, status: Registry.Status.OBSOLETE }
+
+          db.getRegistryById = jest.fn().mockResolvedValue(null)
+          db.getHistoricalRegistryById = jest.fn().mockResolvedValue(historicalEntity)
+
+          result = await handler.handle(event)
+        })
+
+        afterEach(() => {
+          jest.resetAllMocks()
+        })
+
+        it('should return ok', () => {
+          expect(result.ok).toBe(true)
+        })
+
+        it('should skip processing entirely', () => {
+          expect(catalyst.getEntityById).not.toHaveBeenCalled()
+          expect(registry.persistAndRotateStates).not.toHaveBeenCalled()
+          expect(db.upsertRegistryBundle).not.toHaveBeenCalled()
+        })
       })
     })
 

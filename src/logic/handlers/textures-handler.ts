@@ -27,6 +27,14 @@ export const createTexturesEventHandler = ({
         const wasOriginallyObsolete = entity?.status === Registry.Status.OBSOLETE
 
         if (!entity) {
+          const historicalEntity = await db.getHistoricalRegistryById(eventMetadata.entityId)
+          if (historicalEntity) {
+            logger.info('Entity was previously purged, skipping stale texture event', {
+              entityId: eventMetadata.entityId
+            })
+            return { ok: true, handlerName: HANDLER_NAME }
+          }
+
           logger.info('Entity not found in the database, will create it', { entityId: eventMetadata.entityId })
           let fetchedEntity: Entity | null
 
