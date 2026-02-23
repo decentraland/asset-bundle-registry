@@ -228,32 +228,16 @@ describe('textures-handler', () => {
 
       describe('and the entity was previously purged', () => {
         let event: AssetBundleConversionFinishedEvent
-        let entity: Entity
-        let dbEntity: Registry.DbEntity
         let result: { ok: boolean; errors?: string[] }
 
         beforeEach(async () => {
           event = createEvent()
-          entity = createEntity()
-          dbEntity = createDbEntity(entity)
+          const entity = createEntity()
+          const dbEntity = createDbEntity(entity)
           const historicalEntity = { ...dbEntity, status: Registry.Status.OBSOLETE }
 
           db.getRegistryById = jest.fn().mockResolvedValue(null)
-          catalyst.getEntityById = jest.fn().mockResolvedValue(entity)
           db.getHistoricalRegistryById = jest.fn().mockResolvedValue(historicalEntity)
-          db.insertRegistry = jest.fn().mockResolvedValue({ ...dbEntity, status: Registry.Status.OBSOLETE })
-          db.upsertRegistryBundle = jest.fn().mockResolvedValue({ ...dbEntity, status: Registry.Status.OBSOLETE })
-          db.updateRegistryVersionWithBuildDate = jest.fn().mockResolvedValue({
-            ...dbEntity,
-            status: Registry.Status.OBSOLETE,
-            versions: {
-              assets: {
-                windows: { version: 'v1', buildDate: '2024-01-01' },
-                mac: { version: '', buildDate: '' },
-                webgl: { version: '', buildDate: '' }
-              }
-            }
-          })
 
           result = await handler.handle(event)
         })
@@ -266,14 +250,10 @@ describe('textures-handler', () => {
           expect(result.ok).toBe(true)
         })
 
-        it('should insert the entity as obsolete instead of calling persistAndRotateStates', () => {
-          expect(db.insertRegistry).toHaveBeenCalledWith(
-            expect.objectContaining({
-              id: entity.id,
-              status: Registry.Status.OBSOLETE
-            })
-          )
+        it('should skip processing entirely', () => {
+          expect(catalyst.getEntityById).not.toHaveBeenCalled()
           expect(registry.persistAndRotateStates).not.toHaveBeenCalled()
+          expect(db.upsertRegistryBundle).not.toHaveBeenCalled()
         })
       })
     })

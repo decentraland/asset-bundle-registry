@@ -24,9 +24,17 @@ export const createTexturesEventHandler = ({
         let entity: Registry.DbEntity | null = await db.getRegistryById(eventMetadata.entityId)
 
         // Track if the entity was originally OBSOLETE to preserve its status later
-        let wasOriginallyObsolete = entity?.status === Registry.Status.OBSOLETE
+        const wasOriginallyObsolete = entity?.status === Registry.Status.OBSOLETE
 
         if (!entity) {
+          const historicalEntity = await db.getHistoricalRegistryById(eventMetadata.entityId)
+          if (historicalEntity) {
+            logger.info('Entity was previously purged, skipping stale texture event', {
+              entityId: eventMetadata.entityId
+            })
+            return { ok: true, handlerName: HANDLER_NAME }
+          }
+
           logger.info('Entity not found in the database, will create it', { entityId: eventMetadata.entityId })
           let fetchedEntity: Entity | null
 
@@ -66,25 +74,12 @@ export const createTexturesEventHandler = ({
             }
           }
 
-          const historicalEntity = await db.getHistoricalRegistryById(eventMetadata.entityId)
-          if (historicalEntity) {
-            logger.info('Entity was previously purged, re-creating as obsolete', { entityId: eventMetadata.entityId })
-            entity = await db.insertRegistry({
-              ...fetchedEntity,
-              deployer: '',
-              bundles: defaultBundles,
-              versions: defaultVersions,
-              status: Registry.Status.OBSOLETE
-            })
-            wasOriginallyObsolete = true
-          } else {
-            entity = await registry.persistAndRotateStates({
-              ...fetchedEntity,
-              deployer: '', // cannot infer from textures event
-              bundles: defaultBundles,
-              versions: defaultVersions
-            })
-          }
+          entity = await registry.persistAndRotateStates({
+            ...fetchedEntity,
+            deployer: '', // cannot infer from textures event
+            bundles: defaultBundles,
+            versions: defaultVersions
+          })
         }
 
         if (!eventMetadata.isLods) {
