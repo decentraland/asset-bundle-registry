@@ -345,6 +345,57 @@ test('undeployRegistries', async ({ components }) => {
       })
     })
 
+    describe('and a world FALLBACK scene exists at the same coordinate pointers', () => {
+      let targetRegistry: Registry.DbEntity
+      let worldFallbackRegistry: Registry.DbEntity
+
+      beforeEach(async () => {
+        const sharedCoordinate = '70,70'
+
+        worldFallbackRegistry = createRegistryEntity(
+          identity.realAccount.address,
+          Registry.Status.FALLBACK,
+          Registry.SimplifiedStatus.COMPLETE,
+          {
+            id: 'world-fallback-gc-1',
+            type: 'world',
+            pointers: [sharedCoordinate],
+            metadata: {
+              worldConfiguration: {
+                name: 'gc-overlap-world.dcl.eth'
+              }
+            },
+            timestamp: 500
+          }
+        )
+        targetRegistry = createRegistryEntity(
+          identity.realAccount.address,
+          Registry.Status.COMPLETE,
+          Registry.SimplifiedStatus.COMPLETE,
+          {
+            id: 'genesis-city-undeploy-gc-1',
+            pointers: [sharedCoordinate],
+            timestamp: 1000
+          }
+        )
+
+        await createRegistryOnDatabase(worldFallbackRegistry)
+        await createRegistryOnDatabase(targetRegistry)
+      })
+
+      it('should NOT mark the world FALLBACK scene as OBSOLETE', async () => {
+        const updatedCount = await components.db.undeployRegistries([targetRegistry.id], futureEventTimestamp)
+
+        expect(updatedCount).toBe(1)
+
+        const updatedTarget = await components.db.getRegistryById(targetRegistry.id)
+        const unchangedWorldFallback = await components.db.getRegistryById(worldFallbackRegistry.id)
+
+        expect(updatedTarget.status).toBe(Registry.Status.OBSOLETE)
+        expect(unchangedWorldFallback.status).toBe(Registry.Status.FALLBACK)
+      })
+    })
+
     describe('and there is a COMPLETE registry sharing pointers (not FALLBACK)', () => {
       let targetRegistry: Registry.DbEntity
       let completeRegistry: Registry.DbEntity
@@ -703,6 +754,58 @@ test('undeployRegistries', async ({ components }) => {
 
         expect(updatedTarget?.status).toBe(Registry.Status.OBSOLETE)
         expect(unchangedUnrelated.status).toBe(Registry.Status.COMPLETE)
+      })
+    })
+
+    describe('and a genesis city FALLBACK scene exists at the same coordinate pointers', () => {
+      let worldTargetRegistry: Registry.DbEntity
+      let genesisCityFallbackRegistry: Registry.DbEntity
+
+      beforeEach(async () => {
+        const sharedCoordinate = '50,50'
+
+        genesisCityFallbackRegistry = createRegistryEntity(
+          identity.realAccount.address,
+          Registry.Status.FALLBACK,
+          Registry.SimplifiedStatus.COMPLETE,
+          {
+            id: 'genesis-city-fallback-ws-1',
+            pointers: [sharedCoordinate],
+            timestamp: 500
+          }
+        )
+        worldTargetRegistry = createRegistryEntity(
+          identity.realAccount.address,
+          Registry.Status.COMPLETE,
+          Registry.SimplifiedStatus.COMPLETE,
+          {
+            id: 'world-scene-coord-overlap-1',
+            type: 'world',
+            pointers: [sharedCoordinate],
+            metadata: {
+              worldConfiguration: {
+                name: 'coord-overlap-world.dcl.eth'
+              }
+            },
+            timestamp: 1000
+          }
+        )
+
+        await createRegistryOnDatabase(genesisCityFallbackRegistry)
+        await createRegistryOnDatabase(worldTargetRegistry)
+      })
+
+      it('should NOT mark the genesis city FALLBACK scene as OBSOLETE', async () => {
+        const result = await components.db.undeployWorldScenes([worldTargetRegistry.id], futureEventTimestamp)
+
+        expect(result.undeployedCount).toBe(1)
+        expect(result.worldName).toBe('coord-overlap-world.dcl.eth')
+
+        const updatedWorldTarget = await components.db.getRegistryById(worldTargetRegistry.id)
+        const unchangedGenesisCityFallback = await components.db.getRegistryById(genesisCityFallbackRegistry.id)
+
+        expect(updatedWorldTarget.status).toBe(Registry.Status.OBSOLETE)
+        expect(unchangedGenesisCityFallback.status).toBe(Registry.Status.FALLBACK)
       })
     })
   })
@@ -1122,6 +1225,61 @@ test('undeployRegistries', async ({ components }) => {
 
         expect(updatedTarget?.status).toBe(Registry.Status.OBSOLETE)
         expect(unchangedUnrelated?.status).toBe(Registry.Status.COMPLETE)
+      })
+    })
+
+    describe('and a genesis city FALLBACK scene exists at the same coordinate pointers', () => {
+      let worldTargetRegistry: Registry.DbEntity
+      let genesisCityFallbackRegistry: Registry.DbEntity
+
+      beforeEach(async () => {
+        const sharedCoordinate = '60,60'
+
+        genesisCityFallbackRegistry = createRegistryEntity(
+          identity.realAccount.address,
+          Registry.Status.FALLBACK,
+          Registry.SimplifiedStatus.COMPLETE,
+          {
+            id: 'genesis-city-fallback-wbn-1',
+            pointers: [sharedCoordinate],
+            timestamp: 500
+          }
+        )
+        worldTargetRegistry = createRegistryEntity(
+          identity.realAccount.address,
+          Registry.Status.COMPLETE,
+          Registry.SimplifiedStatus.COMPLETE,
+          {
+            id: 'world-byname-coord-overlap-1',
+            type: 'world',
+            pointers: [sharedCoordinate],
+            metadata: {
+              worldConfiguration: {
+                name: 'byname-coord-overlap-world.dcl.eth'
+              }
+            },
+            timestamp: 1000
+          }
+        )
+
+        await createRegistryOnDatabase(genesisCityFallbackRegistry)
+        await createRegistryOnDatabase(worldTargetRegistry)
+      })
+
+      it('should NOT mark the genesis city FALLBACK scene as OBSOLETE', async () => {
+        const result = await components.db.undeployWorldByName(
+          'byname-coord-overlap-world.dcl.eth',
+          futureEventTimestamp
+        )
+
+        expect(result.undeployedCount).toBe(1)
+        expect(result.worldName).toBe('byname-coord-overlap-world.dcl.eth')
+
+        const updatedWorldTarget = await components.db.getRegistryById(worldTargetRegistry.id)
+        const unchangedGenesisCityFallback = await components.db.getRegistryById(genesisCityFallbackRegistry.id)
+
+        expect(updatedWorldTarget.status).toBe(Registry.Status.OBSOLETE)
+        expect(unchangedGenesisCityFallback.status).toBe(Registry.Status.FALLBACK)
       })
     })
 
