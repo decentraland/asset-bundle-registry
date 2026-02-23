@@ -158,7 +158,7 @@ export interface IDbComponent {
     eventTimestamp: number,
     calculateSpawn: (params: SpawnRecalculationParams) => SpawnRecalculationResult
   ): Promise<void>
-  undeployWorldScenes(entityIds: string[], eventTimestamp: number): Promise<UndeploymentResult>
+  undeployWorldScenes(entityIds: string[], worldName: string, eventTimestamp: number): Promise<UndeploymentResult>
   undeployWorldByName(worldName: string, eventTimestamp: number): Promise<UndeploymentResult>
 }
 

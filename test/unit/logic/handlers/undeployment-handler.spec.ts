@@ -13,7 +13,7 @@ describe('when handling undeployment events', () => {
     key: 'test-key',
     timestamp: Date.now(),
     metadata: {
-      worldName: 'test-world',
+      worldName: 'Test-World',
       scenes
     }
   })
@@ -57,7 +57,7 @@ describe('when handling undeployment events', () => {
           subType: Events.SubType.Worlds.WORLD_SCENES_UNDEPLOYMENT,
           key: 'test-key',
           timestamp: Date.now(),
-          metadata: { worldName: 'test-world', scenes: [{ entityId: 'entity-1', baseParcel: '0,0' }] }
+          metadata: { worldName: 'Test-World', scenes: [{ entityId: 'entity-1', baseParcel: '0,0' }] }
         }
       })
 
@@ -75,7 +75,7 @@ describe('when handling undeployment events', () => {
           subType: Events.SubType.AssetBundle.CONVERTED,
           key: 'test-key',
           timestamp: Date.now(),
-          metadata: { worldName: 'test-world', scenes: [{ entityId: 'entity-1', baseParcel: '0,0' }] }
+          metadata: { worldName: 'Test-World', scenes: [{ entityId: 'entity-1', baseParcel: '0,0' }] }
         }
       })
 
@@ -126,10 +126,10 @@ describe('when handling undeployment events', () => {
         })
       })
 
-      it('should undeploy the world scenes for the given entity IDs', async () => {
+      it('should undeploy the world scenes for the given entity IDs and lowercased world name', async () => {
         await handler.handle(event)
 
-        expect(registry.undeployWorldScenes).toHaveBeenCalledWith(['entity-1', 'entity-2'], event.timestamp)
+        expect(registry.undeployWorldScenes).toHaveBeenCalledWith(['entity-1', 'entity-2'], 'test-world', event.timestamp)
       })
 
       it('should return ok', async () => {
