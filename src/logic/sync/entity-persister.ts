@@ -23,7 +23,10 @@ export function createEntityPersisterComponent({
   profilesCache,
   entityDeploymentTracker,
   nats
-}: Pick<AppComponents, 'logs' | 'db' | 'profilesCache' | 'entityDeploymentTracker' | 'nats'>): IEntityPersisterComponent {
+}: Pick<
+  AppComponents,
+  'logs' | 'db' | 'profilesCache' | 'entityDeploymentTracker' | 'nats'
+>): IEntityPersisterComponent {
   const logger = logs.getLogger('entity-persistent')
 
   let bootstrapComplete = false
