@@ -19,6 +19,7 @@ import { createCoordinatesComponent } from '../src/logic/coordinates'
 import { createQueuesStatusManagerComponent } from '../src/logic/queues-status-manager'
 import { createInMemoryCacheComponent } from '../src/adapters/memory-cache'
 import { createWorldsMockComponent } from './unit/mocks/worlds'
+import { INatsComponent } from '@well-known-components/nats-component/dist/types'
 
 /**
  * Behaves like Jest "describe" function, used to describe a test for a
@@ -64,6 +65,14 @@ async function initComponents(): Promise<TestComponents> {
   const memoryStorage = createInMemoryCacheComponent()
   const queuesStatusManager = createQueuesStatusManagerComponent({ memoryStorage })
 
+  // Create a mock NATS component for tests
+  const nats: INatsComponent = {
+    publish: () => {},
+    subscribe: () => ({ unsubscribe: () => {} }),
+    start: async () => {},
+    stop: async () => {}
+  } as unknown as INatsComponent
+
   // Create message processor for integration tests
   // Uses the real catalyst from originalInitComponents() so that jest.spyOn works
   // consistently for both HTTP handler tests and message processor tests.
@@ -75,7 +84,8 @@ async function initComponents(): Promise<TestComponents> {
     coordinates,
     db,
     logs,
-    config
+    config,
+    nats
   })
 
   const messageConsumer = createMessageConsumerMockComponent()
@@ -88,6 +98,7 @@ async function initComponents(): Promise<TestComponents> {
     coordinates,
     registry,
     metrics,
+    nats,
     localFetch: await createLocalFetchCompoment(config),
     messageConsumer,
     messageProcessor,

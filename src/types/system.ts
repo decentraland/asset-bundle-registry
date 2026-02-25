@@ -30,6 +30,7 @@ import {
 import { metricDeclarations } from '../metrics'
 import { IContentStorageComponent } from '@dcl/catalyst-storage'
 import { ICoordinatesComponent, SpawnCoordinate } from '../logic/coordinates'
+import { INatsComponent } from '@well-known-components/nats-component/dist/types'
 
 export type GlobalContext = {
   components: BaseComponents
@@ -71,6 +72,7 @@ export type AppComponents = BaseComponents & {
   pointerChangesHandler: IProfilesSynchronizerComponent
   failedProfilesRetrier: IFailedProfilesRetrierComponent
   ownershipValidatorJob: IBaseComponent
+  nats: INatsComponent
 }
 
 // components used in tests
