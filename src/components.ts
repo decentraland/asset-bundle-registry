@@ -7,6 +7,8 @@ import {
 import { createLogComponent } from '@well-known-components/logger'
 import { createFetchComponent } from '@well-known-components/fetch-component'
 import { createMetricsComponent } from '@well-known-components/metrics'
+import { createFeaturesComponent } from '@well-known-components/features-component'
+import { createRefreshableFeaturesComponent } from './logic/refreshable-features'
 import { metricDeclarations } from './metrics'
 import { AppComponents, GlobalContext, Sync } from './types'
 import { createPgComponent } from '@dcl/pg-component'
@@ -144,6 +146,8 @@ export async function initComponents(): Promise<AppComponents> {
     entityPersister,
     snapshotContentStorage
   })
+  const features = await createFeaturesComponent({ config, logs, fetch }, await config.requireString('SERVICE_URL'))
+  const refreshableFeatures = await createRefreshableFeaturesComponent({ features, logs })
   const pointerChangesHandler = await createPointerChangesHandlerComponent({
     config,
     logs,
@@ -151,7 +155,8 @@ export async function initComponents(): Promise<AppComponents> {
     db,
     profileSanitizer,
     entityPersister,
-    entityDeploymentTracker
+    entityDeploymentTracker,
+    refreshableFeatures
   })
   const failedProfilesRetrier = createFailedProfilesRetrierComponent({
     logs,
@@ -243,6 +248,8 @@ export async function initComponents(): Promise<AppComponents> {
     snapshotsHandler,
     pointerChangesHandler,
     synchronizer,
-    ownershipValidatorJob
+    ownershipValidatorJob,
+    features,
+    refreshableFeatures
   }
 }

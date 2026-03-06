@@ -2,13 +2,6 @@ import { EntityType } from '@dcl/schemas'
 import { getDeployedEntitiesStreamFromPointerChanges } from '@dcl/snapshots-fetcher'
 import { AppComponents, IProfilesSynchronizerComponent } from '../../types'
 
-const BLOCKED_MALICIOUS_ADDRESSES = [
-  '0x77d04e16ad353d79e29edaa2e8bbc6c9fd3a269f',
-  '0xfc3433714673c1c510f15376752a8fc840c9fede',
-  '0x7093013c79036e021d30f2840ba528c30a7dcd9d',
-  '0x5baf0d8ff9635c2d4a95b5daf4694ee35b41b391'
-]
-
 export async function createPointerChangesHandlerComponent({
   config,
   logs,
@@ -16,10 +9,18 @@ export async function createPointerChangesHandlerComponent({
   db,
   profileSanitizer,
   entityPersister,
-  entityDeploymentTracker
+  entityDeploymentTracker,
+  refreshableFeatures
 }: Pick<
   AppComponents,
-  'config' | 'logs' | 'fetch' | 'db' | 'profileSanitizer' | 'entityPersister' | 'entityDeploymentTracker'
+  | 'config'
+  | 'logs'
+  | 'fetch'
+  | 'db'
+  | 'profileSanitizer'
+  | 'entityPersister'
+  | 'entityDeploymentTracker'
+  | 'refreshableFeatures'
 >): Promise<IProfilesSynchronizerComponent> {
   const logger = logs.getLogger('pointer-changes-handler')
   const CATALYST_LOAD_BALANCER = await config.requireString('CATALYST_LOADBALANCER_HOST')
@@ -62,7 +63,8 @@ export async function createPointerChangesHandlerComponent({
           pointer: entity.pointers[0]
         })
 
-        if (!BLOCKED_MALICIOUS_ADDRESSES.includes(entity.pointers[0])) {
+        const maliciousAddresses = await refreshableFeatures.getMaliciousAddresses()
+        if (!maliciousAddresses || !maliciousAddresses.includes(entity.pointers[0].toLowerCase())) {
           const sanitizedProfile = await profileSanitizer.sanitizeProfiles(
             [
               {
@@ -90,6 +92,11 @@ export async function createPointerChangesHandlerComponent({
           }
 
           await entityPersister.persistEntity(sanitizedProfile[0])
+        } else {
+          logger.info('Skipping profile update because it is marked as malicious', {
+            entityId: entity.entityId,
+            pointer: entity.pointers[0]
+          })
         }
 
         lastProfileTimestampProcessed = entity.entityTimestamp
