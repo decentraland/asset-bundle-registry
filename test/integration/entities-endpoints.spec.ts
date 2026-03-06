@@ -212,9 +212,7 @@ test('POST /entities endpoints', async function ({ components }) {
               const parsedResponse = await response.json()
 
               expect(parsedResponse).toHaveLength(2)
-              expect(parsedResponse).toEqual(
-                expect.arrayContaining(parseResponse([registryA, registryB]))
-              )
+              expect(parsedResponse).toEqual(expect.arrayContaining(parseResponse([registryA, registryB])))
             })
           })
 
