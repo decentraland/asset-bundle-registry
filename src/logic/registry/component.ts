@@ -9,6 +9,20 @@ export interface IRegistryComponent {
   persistAndRotateStates(registry: Omit<Registry.DbEntity, 'status'>): Promise<Registry.DbEntity>
 
   /**
+   * Atomically updates a bundle, determines status from the current DB state, and rotates related registries.
+   * All operations happen within a single database transaction to prevent race conditions from
+   * concurrent texture events overwriting correct statuses with stale data.
+   *
+   * @param params.bundleUpdate - The bundle status update to apply
+   * @param params.versionUpdate - Optional version info update
+   * @returns The updated registry entity, or null if the entity was not found
+   */
+  updateBundleAndRotateStates(params: {
+    bundleUpdate: { entityId: string; platform: string; isLods: boolean; status: Registry.SimplifiedStatus }
+    versionUpdate?: { entityId: string; platform: string; version: string; buildDate: string }
+  }): Promise<Registry.DbEntity | null>
+
+  /**
    * Undeploys world scenes and recalculates spawn coordinates.
    * Operations are performed in separate transactions with timestamp-based conflict resolution.
    *
@@ -187,8 +201,63 @@ export function createRegistryComponent({
     return result
   }
 
+  /**
+   * Atomically updates a bundle, determines the registry status from the current DB state,
+   * and rotates related registries — all within a single database transaction.
+   *
+   * This method prevents race conditions from concurrent texture events. Without atomicity,
+   * two concurrent SQS consumers processing different platform conversions for the same entity
+   * could interleave their reads and writes, causing a stale thread to overwrite a correct
+   * COMPLETE status back to PENDING. By reading the entity's current bundle state inside the
+   * transaction (after the bundle update), the status determination always reflects the latest data.
+   *
+   * @param params.bundleUpdate - The bundle status update to apply (entityId, platform, isLods, status)
+   * @param params.versionUpdate - Optional version and build date update (omitted when preserving previous status)
+   * @returns The updated registry entity with its final status, or null if the entity was not found
+   */
+  async function updateBundleAndRotateStates(params: {
+    bundleUpdate: { entityId: string; platform: string; isLods: boolean; status: Registry.SimplifiedStatus }
+    versionUpdate?: { entityId: string; platform: string; version: string; buildDate: string }
+  }): Promise<Registry.DbEntity | null> {
+    const result = await db.persistRegistryInTransaction({
+      ...params,
+      determineStatusAndRotate: (currentEntity, relatedRegistries) => {
+        const splitRelatedEntities = categorizeRelatedEntities(relatedRegistries, currentEntity)
+        const status = determineRegistryStatus(currentEntity, splitRelatedEntities)
+
+        logger.info('Persisting entity (atomic)', {
+          entityId: currentEntity.id,
+          status,
+          newerEntities: splitRelatedEntities.newerEntities?.map((e) => e.id).join(', ') || '',
+          olderEntities: splitRelatedEntities.olderEntities?.map((e) => e.id).join(', ') || '',
+          fallback: splitRelatedEntities.fallback?.id || ''
+        })
+
+        const olderEntityIds = splitRelatedEntities.olderEntities.map((e) => e.id)
+
+        let fallbackUpdate: { id: string; status: Registry.Status } | null = null
+        if (splitRelatedEntities.fallback) {
+          fallbackUpdate = {
+            id: splitRelatedEntities.fallback.id,
+            status:
+              status === Registry.Status.OBSOLETE || status === Registry.Status.COMPLETE
+                ? Registry.Status.OBSOLETE
+                : Registry.Status.FALLBACK
+          }
+        }
+
+        status === Registry.Status.COMPLETE && metrics.increment('registries_ready_count', {}, 1)
+
+        return { status, olderEntityIds, fallbackUpdate }
+      }
+    })
+
+    return result
+  }
+
   return {
     persistAndRotateStates,
+    updateBundleAndRotateStates,
     undeployWorldScenes,
     undeployWorld
   }

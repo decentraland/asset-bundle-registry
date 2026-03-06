@@ -129,33 +129,27 @@ describe('textures-handler', () => {
         catalyst.getEntityById = jest.fn().mockResolvedValue(entity)
         // persistAndRotateStates must return the created entity so we can access bundles later
         registry.persistAndRotateStates = jest.fn().mockResolvedValue(dbEntity)
-        db.upsertRegistryBundle = jest.fn().mockResolvedValue({
-          ...dbEntity,
-          bundles: {
-            assets: {
-              windows: Registry.SimplifiedStatus.PENDING,
-              mac: Registry.SimplifiedStatus.PENDING,
-              webgl: Registry.SimplifiedStatus.PENDING
-            },
-            lods: {
-              windows: Registry.SimplifiedStatus.PENDING,
-              mac: Registry.SimplifiedStatus.PENDING,
-              webgl: Registry.SimplifiedStatus.PENDING
-            }
-          }
-        })
-        db.updateRegistryVersionWithBuildDate = jest.fn().mockResolvedValue(dbEntity)
+        registry.updateBundleAndRotateStates = jest.fn().mockResolvedValue(dbEntity)
 
         const result = await handler.handle(event)
 
         expect(result.ok).toBe(true)
-        expect(registry.persistAndRotateStates).toHaveBeenCalledWith(dbEntity)
-        expect(db.updateRegistryVersionWithBuildDate).toHaveBeenCalledWith(
-          '123',
-          'windows',
-          'v1',
-          new Date(event.timestamp).toISOString()
-        )
+        const { status: _status, ...dbEntityWithoutStatus } = dbEntity
+        expect(registry.persistAndRotateStates).toHaveBeenCalledWith(dbEntityWithoutStatus)
+        expect(registry.updateBundleAndRotateStates).toHaveBeenCalledWith({
+          bundleUpdate: {
+            entityId: '123',
+            platform: 'windows',
+            isLods: false,
+            status: Registry.SimplifiedStatus.COMPLETE
+          },
+          versionUpdate: {
+            entityId: '123',
+            platform: 'windows',
+            version: 'v1',
+            buildDate: new Date(event.timestamp).toISOString()
+          }
+        })
       })
 
       it('should create entity with default bundle status when fetched from worlds', async () => {
@@ -176,42 +170,26 @@ describe('textures-handler', () => {
         worlds.getWorld = jest.fn().mockResolvedValue(entity)
         // persistAndRotateStates must return the created entity so we can access bundles later
         registry.persistAndRotateStates = jest.fn().mockResolvedValue(dbEntity)
-        db.upsertRegistryBundle = jest.fn().mockResolvedValue({
-          ...dbEntity,
-          bundles: {
-            assets: {
-              windows: Registry.SimplifiedStatus.COMPLETE,
-              mac: Registry.SimplifiedStatus.PENDING,
-              webgl: Registry.SimplifiedStatus.PENDING
-            },
-            lods: {
-              windows: Registry.SimplifiedStatus.PENDING,
-              mac: Registry.SimplifiedStatus.PENDING,
-              webgl: Registry.SimplifiedStatus.PENDING
-            }
-          }
-        })
-        db.updateRegistryVersionWithBuildDate = jest.fn().mockResolvedValue({
-          ...dbEntity,
-          versions: {
-            assets: {
-              windows: { version: 'v1', buildDate: '2024-01-01' },
-              mac: { version: '', buildDate: '' },
-              webgl: { version: '', buildDate: '' }
-            }
-          }
-        })
+        registry.updateBundleAndRotateStates = jest.fn().mockResolvedValue(dbEntity)
 
         const result = await handler.handle(event)
 
         expect(result.ok).toBe(true)
         expect(worlds.getWorld).toHaveBeenCalledWith(event.metadata.entityId)
-        expect(db.updateRegistryVersionWithBuildDate).toHaveBeenCalledWith(
-          '123',
-          'windows',
-          'v1',
-          new Date(event.timestamp).toISOString()
-        )
+        expect(registry.updateBundleAndRotateStates).toHaveBeenCalledWith({
+          bundleUpdate: {
+            entityId: '123',
+            platform: 'windows',
+            isLods: false,
+            status: Registry.SimplifiedStatus.COMPLETE
+          },
+          versionUpdate: {
+            entityId: '123',
+            platform: 'windows',
+            version: 'v1',
+            buildDate: new Date(event.timestamp).toISOString()
+          }
+        })
       })
 
       it('should return error when entity not found in catalyst or worlds', async () => {
@@ -273,41 +251,25 @@ describe('textures-handler', () => {
         const entity = createEntity()
         const dbEntity = createDbEntity(entity)
         db.getRegistryById = jest.fn().mockResolvedValue(dbEntity)
-        db.upsertRegistryBundle = jest.fn().mockResolvedValue({
-          ...dbEntity,
-          bundles: {
-            assets: {
-              windows: Registry.SimplifiedStatus.COMPLETE,
-              mac: Registry.SimplifiedStatus.PENDING,
-              webgl: Registry.SimplifiedStatus.PENDING
-            },
-            lods: {
-              windows: Registry.SimplifiedStatus.PENDING,
-              mac: Registry.SimplifiedStatus.PENDING,
-              webgl: Registry.SimplifiedStatus.PENDING
-            }
-          }
-        })
-        db.updateRegistryVersionWithBuildDate = jest.fn().mockResolvedValue({
-          ...dbEntity,
-          versions: {
-            assets: {
-              windows: { version: 'v1', buildDate: '2024-01-01' },
-              mac: { version: '', buildDate: '' },
-              webgl: { version: '', buildDate: '' }
-            }
-          }
-        })
+        registry.updateBundleAndRotateStates = jest.fn().mockResolvedValue(dbEntity)
 
         const result = await handler.handle(event)
 
         expect(result.ok).toBe(true)
-        expect(db.updateRegistryVersionWithBuildDate).toHaveBeenCalledWith(
-          '123',
-          'windows',
-          'v1',
-          new Date(event.timestamp).toISOString()
-        )
+        expect(registry.updateBundleAndRotateStates).toHaveBeenCalledWith({
+          bundleUpdate: {
+            entityId: '123',
+            platform: 'windows',
+            isLods: false,
+            status: Registry.SimplifiedStatus.COMPLETE
+          },
+          versionUpdate: {
+            entityId: '123',
+            platform: 'windows',
+            version: 'v1',
+            buildDate: new Date(event.timestamp).toISOString()
+          }
+        })
       })
 
       it('should update bundle status for mac platform with tolerated errors', async () => {
@@ -324,41 +286,25 @@ describe('textures-handler', () => {
         const entity = createEntity()
         const dbEntity = createDbEntity(entity)
         db.getRegistryById = jest.fn().mockResolvedValue(dbEntity)
-        db.upsertRegistryBundle = jest.fn().mockResolvedValue({
-          ...dbEntity,
-          bundles: {
-            assets: {
-              windows: Registry.SimplifiedStatus.PENDING,
-              mac: Registry.SimplifiedStatus.COMPLETE,
-              webgl: Registry.SimplifiedStatus.PENDING
-            },
-            lods: {
-              windows: Registry.SimplifiedStatus.PENDING,
-              mac: Registry.SimplifiedStatus.PENDING,
-              webgl: Registry.SimplifiedStatus.PENDING
-            }
-          }
-        })
-        db.updateRegistryVersionWithBuildDate = jest.fn().mockResolvedValue({
-          ...dbEntity,
-          versions: {
-            assets: {
-              windows: { version: '', buildDate: '' },
-              mac: { version: 'v1', buildDate: '2024-01-01' },
-              webgl: { version: '', buildDate: '' }
-            }
-          }
-        })
+        registry.updateBundleAndRotateStates = jest.fn().mockResolvedValue(dbEntity)
 
         const result = await handler.handle(event)
 
         expect(result.ok).toBe(true)
-        expect(db.updateRegistryVersionWithBuildDate).toHaveBeenCalledWith(
-          '123',
-          'mac',
-          'v1',
-          new Date(event.timestamp).toISOString()
-        )
+        expect(registry.updateBundleAndRotateStates).toHaveBeenCalledWith({
+          bundleUpdate: {
+            entityId: '123',
+            platform: 'mac',
+            isLods: false,
+            status: Registry.SimplifiedStatus.COMPLETE
+          },
+          versionUpdate: {
+            entityId: '123',
+            platform: 'mac',
+            version: 'v1',
+            buildDate: new Date(event.timestamp).toISOString()
+          }
+        })
       })
 
       it('should update bundle status for webgl platform with already converted status', async () => {
@@ -375,41 +321,25 @@ describe('textures-handler', () => {
         const entity = createEntity()
         const dbEntity = createDbEntity(entity)
         db.getRegistryById = jest.fn().mockResolvedValue(dbEntity)
-        db.upsertRegistryBundle = jest.fn().mockResolvedValue({
-          ...dbEntity,
-          bundles: {
-            assets: {
-              windows: Registry.SimplifiedStatus.PENDING,
-              mac: Registry.SimplifiedStatus.PENDING,
-              webgl: Registry.SimplifiedStatus.COMPLETE
-            },
-            lods: {
-              windows: Registry.SimplifiedStatus.PENDING,
-              mac: Registry.SimplifiedStatus.PENDING,
-              webgl: Registry.SimplifiedStatus.PENDING
-            }
-          }
-        })
-        db.updateRegistryVersionWithBuildDate = jest.fn().mockResolvedValue({
-          ...dbEntity,
-          versions: {
-            assets: {
-              windows: { version: '', buildDate: '' },
-              mac: { version: '', buildDate: '' },
-              webgl: { version: 'v1', buildDate: '2024-01-01' }
-            }
-          }
-        })
+        registry.updateBundleAndRotateStates = jest.fn().mockResolvedValue(dbEntity)
 
         const result = await handler.handle(event)
 
         expect(result.ok).toBe(true)
-        expect(db.updateRegistryVersionWithBuildDate).toHaveBeenCalledWith(
-          '123',
-          'webgl',
-          'v1',
-          new Date(event.timestamp).toISOString()
-        )
+        expect(registry.updateBundleAndRotateStates).toHaveBeenCalledWith({
+          bundleUpdate: {
+            entityId: '123',
+            platform: 'webgl',
+            isLods: false,
+            status: Registry.SimplifiedStatus.COMPLETE
+          },
+          versionUpdate: {
+            entityId: '123',
+            platform: 'webgl',
+            version: 'v1',
+            buildDate: new Date(event.timestamp).toISOString()
+          }
+        })
       })
 
       it('should mark bundle as failed when conversion fails and entity had PENDING status', async () => {
@@ -426,42 +356,25 @@ describe('textures-handler', () => {
         const entity = createEntity()
         const dbEntity = createDbEntity(entity)
         db.getRegistryById = jest.fn().mockResolvedValue(dbEntity)
-        db.upsertRegistryBundle = jest.fn().mockResolvedValue({
-          ...dbEntity,
-          bundles: {
-            assets: {
-              windows: Registry.SimplifiedStatus.FAILED,
-              mac: Registry.SimplifiedStatus.PENDING,
-              webgl: Registry.SimplifiedStatus.PENDING
-            },
-            lods: {
-              windows: Registry.SimplifiedStatus.PENDING,
-              mac: Registry.SimplifiedStatus.PENDING,
-              webgl: Registry.SimplifiedStatus.PENDING
-            }
-          }
-        })
-        db.updateRegistryVersionWithBuildDate = jest.fn().mockResolvedValue({
-          ...dbEntity,
-          versions: {
-            assets: {
-              windows: { version: 'v1', buildDate: '2024-01-01' },
-              mac: { version: '', buildDate: '' },
-              webgl: { version: '', buildDate: '' }
-            }
-          }
-        })
+        registry.updateBundleAndRotateStates = jest.fn().mockResolvedValue(dbEntity)
 
         const result = await handler.handle(event)
 
         expect(result.ok).toBe(true)
-        expect(db.upsertRegistryBundle).toHaveBeenCalledWith('123', 'windows', false, Registry.SimplifiedStatus.FAILED)
-        expect(db.updateRegistryVersionWithBuildDate).toHaveBeenCalledWith(
-          '123',
-          'windows',
-          'v1',
-          new Date(event.timestamp).toISOString()
-        )
+        expect(registry.updateBundleAndRotateStates).toHaveBeenCalledWith({
+          bundleUpdate: {
+            entityId: '123',
+            platform: 'windows',
+            isLods: false,
+            status: Registry.SimplifiedStatus.FAILED
+          },
+          versionUpdate: {
+            entityId: '123',
+            platform: 'windows',
+            version: 'v1',
+            buildDate: new Date(event.timestamp).toISOString()
+          }
+        })
       })
 
       describe('and reconversion fails', () => {
@@ -505,7 +418,7 @@ describe('textures-handler', () => {
               }
             }
             db.getRegistryById = jest.fn().mockResolvedValue(dbEntityWithCompleteBundles)
-            db.upsertRegistryBundle = jest.fn().mockResolvedValue(dbEntityWithCompleteBundles)
+            registry.updateBundleAndRotateStates = jest.fn().mockResolvedValue(dbEntityWithCompleteBundles)
 
             result = await handler.handle(event)
           })
@@ -515,12 +428,15 @@ describe('textures-handler', () => {
           })
 
           it('should preserve COMPLETE status instead of marking as FAILED', () => {
-            expect(db.upsertRegistryBundle).toHaveBeenCalledWith(
-              '123',
-              'windows',
-              false,
-              Registry.SimplifiedStatus.COMPLETE
-            )
+            expect(registry.updateBundleAndRotateStates).toHaveBeenCalledWith({
+              bundleUpdate: {
+                entityId: '123',
+                platform: 'windows',
+                isLods: false,
+                status: Registry.SimplifiedStatus.COMPLETE
+              },
+              versionUpdate: undefined
+            })
           })
 
           it('should not update the version to avoid pointing to non-existent bundles', () => {
@@ -528,7 +444,7 @@ describe('textures-handler', () => {
           })
 
           it('should still rotate the registry states', () => {
-            expect(registry.persistAndRotateStates).toHaveBeenCalledWith(dbEntityWithCompleteBundles)
+            expect(registry.updateBundleAndRotateStates).toHaveBeenCalled()
           })
         })
 
@@ -565,7 +481,7 @@ describe('textures-handler', () => {
               }
             }
             db.getRegistryById = jest.fn().mockResolvedValue(dbEntityWithCompleteLods)
-            db.upsertRegistryBundle = jest.fn().mockResolvedValue(dbEntityWithCompleteLods)
+            registry.updateBundleAndRotateStates = jest.fn().mockResolvedValue(dbEntityWithCompleteLods)
 
             result = await handler.handle(event)
           })
@@ -575,7 +491,15 @@ describe('textures-handler', () => {
           })
 
           it('should preserve COMPLETE status for LODs', () => {
-            expect(db.upsertRegistryBundle).toHaveBeenCalledWith('123', 'mac', true, Registry.SimplifiedStatus.COMPLETE)
+            expect(registry.updateBundleAndRotateStates).toHaveBeenCalledWith({
+              bundleUpdate: {
+                entityId: '123',
+                platform: 'mac',
+                isLods: true,
+                status: Registry.SimplifiedStatus.COMPLETE
+              },
+              versionUpdate: undefined
+            })
           })
 
           it('should not update the version', () => {
@@ -636,8 +560,7 @@ describe('textures-handler', () => {
               }
             }
             db.getRegistryById = jest.fn().mockResolvedValue(dbEntityWithCompleteBundles)
-            db.upsertRegistryBundle = jest.fn().mockResolvedValue(dbEntityWithCompleteBundles)
-            db.updateRegistryVersionWithBuildDate = jest.fn().mockResolvedValue(updatedDbEntity)
+            registry.updateBundleAndRotateStates = jest.fn().mockResolvedValue(updatedDbEntity)
 
             result = await handler.handle(event)
           })
@@ -647,25 +570,37 @@ describe('textures-handler', () => {
           })
 
           it('should update bundle status to COMPLETE', () => {
-            expect(db.upsertRegistryBundle).toHaveBeenCalledWith(
-              '123',
-              'windows',
-              false,
-              Registry.SimplifiedStatus.COMPLETE
-            )
+            expect(registry.updateBundleAndRotateStates).toHaveBeenCalledWith({
+              bundleUpdate: {
+                entityId: '123',
+                platform: 'windows',
+                isLods: false,
+                status: Registry.SimplifiedStatus.COMPLETE
+              },
+              versionUpdate: {
+                entityId: '123',
+                platform: 'windows',
+                version: 'v2',
+                buildDate: new Date(event.timestamp).toISOString()
+              }
+            })
           })
 
           it('should update version to the new version', () => {
-            expect(db.updateRegistryVersionWithBuildDate).toHaveBeenCalledWith(
-              '123',
-              'windows',
-              'v2',
-              new Date(event.timestamp).toISOString()
+            expect(registry.updateBundleAndRotateStates).toHaveBeenCalledWith(
+              expect.objectContaining({
+                versionUpdate: {
+                  entityId: '123',
+                  platform: 'windows',
+                  version: 'v2',
+                  buildDate: new Date(event.timestamp).toISOString()
+                }
+              })
             )
           })
 
           it('should rotate the registry states with the updated entity', () => {
-            expect(registry.persistAndRotateStates).toHaveBeenCalledWith(updatedDbEntity)
+            expect(registry.updateBundleAndRotateStates).toHaveBeenCalled()
           })
         })
       })
@@ -684,41 +619,25 @@ describe('textures-handler', () => {
         const entity = createEntity()
         const dbEntity = createDbEntity(entity)
         db.getRegistryById = jest.fn().mockResolvedValue(dbEntity)
-        db.upsertRegistryBundle = jest.fn().mockResolvedValue({
-          ...dbEntity,
-          bundles: {
-            assets: {
-              windows: Registry.SimplifiedStatus.COMPLETE,
-              mac: Registry.SimplifiedStatus.PENDING,
-              webgl: Registry.SimplifiedStatus.PENDING
-            },
-            lods: {
-              windows: Registry.SimplifiedStatus.COMPLETE,
-              mac: Registry.SimplifiedStatus.PENDING,
-              webgl: Registry.SimplifiedStatus.PENDING
-            }
-          }
-        })
-        db.updateRegistryVersionWithBuildDate = jest.fn().mockResolvedValue({
-          ...dbEntity,
-          versions: {
-            assets: {
-              windows: { version: 'v1', buildDate: '2024-01-01' },
-              mac: { version: '', buildDate: '' },
-              webgl: { version: '', buildDate: '' }
-            }
-          }
-        })
+        registry.updateBundleAndRotateStates = jest.fn().mockResolvedValue(dbEntity)
 
         const result = await handler.handle(event)
 
         expect(result.ok).toBe(true)
-        expect(db.updateRegistryVersionWithBuildDate).toHaveBeenCalledWith(
-          '123',
-          'windows',
-          'v1',
-          new Date(event.timestamp).toISOString()
-        )
+        expect(registry.updateBundleAndRotateStates).toHaveBeenCalledWith({
+          bundleUpdate: {
+            entityId: '123',
+            platform: 'windows',
+            isLods: true,
+            status: Registry.SimplifiedStatus.COMPLETE
+          },
+          versionUpdate: {
+            entityId: '123',
+            platform: 'windows',
+            version: 'v1',
+            buildDate: new Date(event.timestamp).toISOString()
+          }
+        })
       })
 
       it('should return error when upsert fails', async () => {
@@ -726,7 +645,7 @@ describe('textures-handler', () => {
         const entity = createEntity()
         const dbEntity = createDbEntity(entity)
         db.getRegistryById = jest.fn().mockResolvedValue(dbEntity)
-        db.upsertRegistryBundle = jest.fn().mockResolvedValue(null)
+        registry.updateBundleAndRotateStates = jest.fn().mockResolvedValue(null)
 
         const result = await handler.handle(event)
 
@@ -739,27 +658,12 @@ describe('textures-handler', () => {
         const entity = createEntity()
         const dbEntity = createDbEntity(entity)
         db.getRegistryById = jest.fn().mockResolvedValue(dbEntity)
-        db.upsertRegistryBundle = jest.fn().mockResolvedValue({
-          ...dbEntity,
-          bundles: {
-            assets: {
-              windows: Registry.SimplifiedStatus.COMPLETE,
-              mac: Registry.SimplifiedStatus.PENDING,
-              webgl: Registry.SimplifiedStatus.PENDING
-            },
-            lods: {
-              windows: Registry.SimplifiedStatus.PENDING,
-              mac: Registry.SimplifiedStatus.PENDING,
-              webgl: Registry.SimplifiedStatus.PENDING
-            }
-          }
-        })
-        db.updateRegistryVersionWithBuildDate = jest.fn().mockResolvedValue(null)
+        registry.updateBundleAndRotateStates = jest.fn().mockResolvedValue(null)
 
         const result = await handler.handle(event)
 
         expect(result.ok).toBe(false)
-        expect(result.errors).toEqual(['Error storing version'])
+        expect(result.errors).toEqual(['Error storing bundle'])
       })
 
       describe('and the entity is OBSOLETE', () => {
@@ -845,41 +749,25 @@ describe('textures-handler', () => {
         const entity = createEntity()
         const dbEntity = createDbEntity(entity)
         ;(db.getRegistryById as jest.Mock).mockResolvedValue(dbEntity)
-        ;(db.upsertRegistryBundle as jest.Mock).mockResolvedValue({
-          ...dbEntity,
-          bundles: {
-            assets: {
-              windows: Registry.SimplifiedStatus.COMPLETE,
-              mac: Registry.SimplifiedStatus.PENDING,
-              webgl: Registry.SimplifiedStatus.PENDING
-            },
-            lods: {
-              windows: Registry.SimplifiedStatus.PENDING,
-              mac: Registry.SimplifiedStatus.PENDING,
-              webgl: Registry.SimplifiedStatus.PENDING
-            }
-          }
-        })
-        ;(db.updateRegistryVersionWithBuildDate as jest.Mock).mockResolvedValue({
-          ...dbEntity,
-          versions: {
-            assets: {
-              windows: { version: 'v1', buildDate: '2024-01-01' },
-              mac: { version: '', buildDate: '' },
-              webgl: { version: '', buildDate: '' }
-            }
-          }
-        })
+        ;(registry.updateBundleAndRotateStates as jest.Mock).mockResolvedValue(dbEntity)
 
         const result = await handler.handle(event)
 
         expect(result.ok).toBe(true)
-        expect(db.updateRegistryVersionWithBuildDate).toHaveBeenCalledWith(
-          '123',
-          'windows',
-          'v1',
-          new Date(event.timestamp).toISOString()
-        )
+        expect(registry.updateBundleAndRotateStates).toHaveBeenCalledWith({
+          bundleUpdate: {
+            entityId: '123',
+            platform: 'windows',
+            isLods: false,
+            status: Registry.SimplifiedStatus.COMPLETE
+          },
+          versionUpdate: {
+            entityId: '123',
+            platform: 'windows',
+            version: 'v1',
+            buildDate: new Date(event.timestamp).toISOString()
+          }
+        })
       })
 
       it('should update bundle status for lods', async () => {
@@ -896,41 +784,25 @@ describe('textures-handler', () => {
         const entity = createEntity()
         const dbEntity = createDbEntity(entity)
         ;(db.getRegistryById as jest.Mock).mockResolvedValue(dbEntity)
-        ;(db.upsertRegistryBundle as jest.Mock).mockResolvedValue({
-          ...dbEntity,
-          bundles: {
-            assets: {
-              windows: Registry.SimplifiedStatus.COMPLETE,
-              mac: Registry.SimplifiedStatus.PENDING,
-              webgl: Registry.SimplifiedStatus.PENDING
-            },
-            lods: {
-              windows: Registry.SimplifiedStatus.COMPLETE,
-              mac: Registry.SimplifiedStatus.PENDING,
-              webgl: Registry.SimplifiedStatus.PENDING
-            }
-          }
-        })
-        ;(db.updateRegistryVersionWithBuildDate as jest.Mock).mockResolvedValue({
-          ...dbEntity,
-          versions: {
-            assets: {
-              windows: { version: 'v1', buildDate: '' },
-              mac: { version: '', buildDate: '' },
-              webgl: { version: '', buildDate: '' }
-            }
-          }
-        })
+        ;(registry.updateBundleAndRotateStates as jest.Mock).mockResolvedValue(dbEntity)
 
         const result = await handler.handle(event)
 
         expect(result.ok).toBe(true)
-        expect(db.updateRegistryVersionWithBuildDate).toHaveBeenCalledWith(
-          '123',
-          'windows',
-          'v1',
-          new Date(event.timestamp).toISOString()
-        )
+        expect(registry.updateBundleAndRotateStates).toHaveBeenCalledWith({
+          bundleUpdate: {
+            entityId: '123',
+            platform: 'windows',
+            isLods: true,
+            status: Registry.SimplifiedStatus.COMPLETE
+          },
+          versionUpdate: {
+            entityId: '123',
+            platform: 'windows',
+            version: 'v1',
+            buildDate: new Date(event.timestamp).toISOString()
+          }
+        })
       })
     })
   })

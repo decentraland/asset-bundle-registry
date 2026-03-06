@@ -117,57 +117,89 @@ export const createTexturesEventHandler = ({
           preservingPreviousStatus: String(shouldPreservePreviousStatus)
         })
 
-        let registryEntity: Registry.DbEntity | null = await db.upsertRegistryBundle(
-          eventMetadata.entityId,
-          eventMetadata.platform,
-          !!eventMetadata.isLods,
-          status
-        )
-
-        if (!registryEntity) {
-          logger.error('Error storing bundle', {
-            entityId: event.metadata.entityId,
-            platform: event.metadata.platform
-          })
-          return {
-            ok: false,
-            errors: ['Error storing bundle'],
-            handlerName: HANDLER_NAME
-          }
-        }
-
-        // Update version separately - but only if we're not preserving previous status
-        // If we're preserving the previous COMPLETE status, we should also keep the old version
-        // to avoid pointing clients to bundles that don't exist
-        if (!shouldPreservePreviousStatus) {
-          registryEntity = await db.updateRegistryVersionWithBuildDate(
-            event.metadata.entityId,
-            event.metadata.platform,
-            event.metadata.version,
-            new Date(event.timestamp).toISOString()
+        if (wasOriginallyObsolete) {
+          // For OBSOLETE entities, update bundles/versions without status rotation
+          let registryEntity: Registry.DbEntity | null = await db.upsertRegistryBundle(
+            eventMetadata.entityId,
+            eventMetadata.platform,
+            !!eventMetadata.isLods,
+            status
           )
 
           if (!registryEntity) {
-            logger.error('Error updating version', {
+            logger.error('Error storing bundle', {
               entityId: event.metadata.entityId,
               platform: event.metadata.platform
             })
             return {
               ok: false,
-              errors: ['Error storing version'],
+              errors: ['Error storing bundle'],
               handlerName: HANDLER_NAME
             }
           }
-        }
 
-        logger.info(`Bundle stored`, {
-          entityId: event.metadata.entityId,
-          bundles: JSON.stringify(registryEntity.bundles)
-        })
+          if (!shouldPreservePreviousStatus) {
+            registryEntity = await db.updateRegistryVersionWithBuildDate(
+              event.metadata.entityId,
+              event.metadata.platform,
+              event.metadata.version,
+              new Date(event.timestamp).toISOString()
+            )
 
-        // Skip status rotation for OBSOLETE entities - their status should be preserved
-        if (!wasOriginallyObsolete) {
-          const updatedRegistry = await registry.persistAndRotateStates(registryEntity)
+            if (!registryEntity) {
+              logger.error('Error updating version', {
+                entityId: event.metadata.entityId,
+                platform: event.metadata.platform
+              })
+              return {
+                ok: false,
+                errors: ['Error storing version'],
+                handlerName: HANDLER_NAME
+              }
+            }
+          }
+
+          logger.info('Entity was OBSOLETE, skipping status rotation', { entityId: eventMetadata.entityId })
+          logger.info('Bundle stored', {
+            entityId: event.metadata.entityId,
+            bundles: JSON.stringify(registryEntity.bundles)
+          })
+        } else {
+          // Atomically update bundle, determine status from current DB state, and rotate
+          const updatedRegistry = await registry.updateBundleAndRotateStates({
+            bundleUpdate: {
+              entityId: eventMetadata.entityId,
+              platform: eventMetadata.platform,
+              isLods: !!eventMetadata.isLods,
+              status
+            },
+            versionUpdate: !shouldPreservePreviousStatus
+              ? {
+                  entityId: eventMetadata.entityId,
+                  platform: eventMetadata.platform,
+                  version: event.metadata.version,
+                  buildDate: new Date(event.timestamp).toISOString()
+                }
+              : undefined
+          })
+
+          if (!updatedRegistry) {
+            logger.error('Error storing bundle', {
+              entityId: event.metadata.entityId,
+              platform: event.metadata.platform
+            })
+            return {
+              ok: false,
+              errors: ['Error storing bundle'],
+              handlerName: HANDLER_NAME
+            }
+          }
+
+          logger.info('Bundle stored', {
+            entityId: event.metadata.entityId,
+            bundles: JSON.stringify(updatedRegistry.bundles)
+          })
+
           // If this is a world entity and it's now processed (COMPLETE or FALLBACK),
           // trigger spawn coordinate recalculation using event timestamp for conflict resolution
           if (
@@ -176,7 +208,6 @@ export const createTexturesEventHandler = ({
           ) {
             const worldName = (updatedRegistry.metadata as any)?.worldConfiguration?.name
             if (worldName) {
-              // Extract base coordinate from entity metadata for first deployment
               const base = (updatedRegistry.metadata as any)?.scene?.base
               const firstPointer = updatedRegistry.pointers?.[0]
               const entityBaseCoordinate = base || firstPointer || null
@@ -191,7 +222,6 @@ export const createTexturesEventHandler = ({
               try {
                 await coordinates.recalculateSpawnIfNeeded(worldName, event.timestamp, entityBaseCoordinate)
               } catch (spawnError: any) {
-                // Log but don't fail the handler - spawn coordinate update is secondary
                 logger.error('Failed to recalculate spawn coordinate', {
                   worldName,
                   eventTimestamp: event.timestamp,
@@ -200,8 +230,6 @@ export const createTexturesEventHandler = ({
               }
             }
           }
-        } else {
-          logger.info('Entity was OBSOLETE, skipping status rotation', { entityId: eventMetadata.entityId })
         }
         return { ok: true, handlerName: HANDLER_NAME }
       } catch (errors: any) {
