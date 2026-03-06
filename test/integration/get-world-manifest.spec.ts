@@ -119,6 +119,81 @@ test('GET /worlds/:worldName/manifest', async ({ components }) => {
       })
     })
 
+    describe('and the world has a FAILED scene with an older FALLBACK scene', () => {
+      const worldName = 'test-world-failed.dcl.eth'
+
+      beforeEach(async () => {
+        await createWorldRegistry(worldName, ['0,0', '1,0'], {
+          id: 'world-manifest-fallback-entity',
+          timestamp: 1000,
+          status: Registry.Status.FALLBACK
+        })
+        await createWorldRegistry(worldName, ['0,0', '1,0', '2,0'], {
+          id: 'world-manifest-failed-entity',
+          timestamp: 2000,
+          status: Registry.Status.FAILED,
+          bundles: {
+            assets: {
+              windows: Registry.SimplifiedStatus.FAILED,
+              mac: Registry.SimplifiedStatus.COMPLETE,
+              webgl: Registry.SimplifiedStatus.COMPLETE
+            },
+            lods: {
+              windows: Registry.SimplifiedStatus.PENDING,
+              mac: Registry.SimplifiedStatus.PENDING,
+              webgl: Registry.SimplifiedStatus.PENDING
+            }
+          }
+        })
+        await components.extendedDb.insertSpawnCoordinate(worldName, 0, 0, true, 1000)
+      })
+
+      it('should respond with only the fallback scene parcels and not include the failed scene parcels', async () => {
+        const response = await fetchLocally('GET', `/worlds/${worldName}/manifest`, undefined, undefined)
+
+        expect(response.status).toBe(200)
+        const body = await response.json()
+        expect(body.occupied).toEqual(expect.arrayContaining(['0,0', '1,0']))
+        expect(body.occupied).not.toContain('2,0')
+        expect(body.spawn_coordinate).toEqual({ x: 0, y: 0 })
+        expect(body.total).toBe(2)
+      })
+    })
+
+    describe('and the world has only FAILED scenes', () => {
+      const worldName = 'test-world-all-failed.dcl.eth'
+
+      beforeEach(async () => {
+        await createWorldRegistry(worldName, ['0,0', '1,0'], {
+          id: 'world-manifest-all-failed-entity',
+          timestamp: 1000,
+          status: Registry.Status.FAILED,
+          bundles: {
+            assets: {
+              windows: Registry.SimplifiedStatus.FAILED,
+              mac: Registry.SimplifiedStatus.COMPLETE,
+              webgl: Registry.SimplifiedStatus.COMPLETE
+            },
+            lods: {
+              windows: Registry.SimplifiedStatus.PENDING,
+              mac: Registry.SimplifiedStatus.PENDING,
+              webgl: Registry.SimplifiedStatus.PENDING
+            }
+          }
+        })
+      })
+
+      it('should respond with an empty manifest with default spawn coordinate', async () => {
+        const response = await fetchLocally('GET', `/worlds/${worldName}/manifest`, undefined, undefined)
+
+        expect(response.status).toBe(200)
+        const body = await response.json()
+        expect(body.occupied).toEqual([])
+        expect(body.spawn_coordinate).toEqual({ x: 0, y: 0 })
+        expect(body.total).toBe(0)
+      })
+    })
+
     describe('and the world has no deployed scenes', () => {
       const worldName = 'empty-world.dcl.eth'
 
