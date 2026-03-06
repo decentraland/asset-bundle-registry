@@ -160,6 +160,25 @@ export interface IDbComponent {
   ): Promise<void>
   undeployWorldScenes(entityIds: string[], eventTimestamp: number): Promise<UndeploymentResult>
   undeployWorldByName(worldName: string, eventTimestamp: number): Promise<UndeploymentResult>
+  /**
+   * Atomically updates a bundle, optionally updates the version, reads the current entity state,
+   * reads related registries, and persists the registry with rotated statuses — all within a single transaction.
+   *
+   * This prevents race conditions where concurrent texture events could overwrite a COMPLETE status
+   * with stale PENDING data.
+   */
+  persistRegistryInTransaction(params: {
+    bundleUpdate: { entityId: string; platform: string; isLods: boolean; status: Registry.SimplifiedStatus }
+    versionUpdate?: { entityId: string; platform: string; version: string; buildDate: string }
+    determineStatusAndRotate: (
+      currentEntity: Registry.DbEntity,
+      relatedRegistries: Registry.PartialDbEntity[]
+    ) => {
+      status: Registry.Status
+      olderEntityIds: string[]
+      fallbackUpdate: { id: string; status: Registry.Status } | null
+    }
+  }): Promise<Registry.DbEntity | null>
 }
 
 export { IQueueComponent }

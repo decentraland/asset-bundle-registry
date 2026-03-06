@@ -333,6 +333,444 @@ describe('when using the registry component', () => {
     })
   })
 
+  describe('when a world scene overlaps an existing one and the new scene fails conversion', () => {
+    describe('and there are two scenes (A complete, B overlapping and failing)', () => {
+      let sceneA: Registry.DbEntity
+      let sceneB: Registry.DbEntity
+
+      beforeEach(() => {
+        sceneA = withAssetStatus(
+          createRelativeRegistry(-1000, Registry.Status.COMPLETE, 'scene-a'),
+          Registry.SimplifiedStatus.COMPLETE,
+          Registry.SimplifiedStatus.COMPLETE
+        )
+      })
+
+      it('should keep scene A as fallback when scene B is first deployed as pending', async () => {
+        sceneB = createRelativeRegistry(0, Registry.Status.PENDING, 'scene-b')
+
+        db.getRelatedRegistries.mockResolvedValue([sceneA])
+
+        await component.persistAndRotateStates(sceneB)
+
+        expect(db.insertRegistry).toHaveBeenCalledWith(
+          expect.objectContaining({ id: 'scene-b', status: Registry.Status.PENDING })
+        )
+        expect(db.updateRegistriesStatus).toHaveBeenCalledWith([sceneA.id], Registry.Status.FALLBACK)
+      })
+
+      it('should keep scene A as fallback when scene B fails conversion', async () => {
+        sceneA = createRelativeRegistry(-1000, Registry.Status.FALLBACK, 'scene-a')
+        sceneB = withAssetStatus(
+          createRelativeRegistry(0, Registry.Status.PENDING, 'scene-b'),
+          Registry.SimplifiedStatus.FAILED,
+          Registry.SimplifiedStatus.FAILED
+        )
+
+        db.getRelatedRegistries.mockResolvedValue([sceneA])
+
+        await component.persistAndRotateStates(sceneB)
+
+        expect(db.insertRegistry).toHaveBeenCalledWith(
+          expect.objectContaining({ id: 'scene-b', status: Registry.Status.FAILED })
+        )
+        expect(db.updateRegistriesStatus).toHaveBeenCalledWith([sceneA.id], Registry.Status.FALLBACK)
+      })
+
+      it('should not mark scene A as obsolete when scene B fails', async () => {
+        sceneA = createRelativeRegistry(-1000, Registry.Status.FALLBACK, 'scene-a')
+        sceneB = withAssetStatus(
+          createRelativeRegistry(0, Registry.Status.PENDING, 'scene-b'),
+          Registry.SimplifiedStatus.FAILED,
+          Registry.SimplifiedStatus.COMPLETE
+        )
+
+        db.getRelatedRegistries.mockResolvedValue([sceneA])
+
+        await component.persistAndRotateStates(sceneB)
+
+        expect(db.updateRegistriesStatus).not.toHaveBeenCalledWith([sceneA.id], Registry.Status.OBSOLETE)
+      })
+    })
+
+    describe('and there are three rapid deployments (A complete, B and C overlapping, both fail)', () => {
+      let sceneA: Registry.DbEntity
+      let sceneB: Registry.DbEntity
+      let sceneC: Registry.DbEntity
+
+      beforeEach(() => {
+        sceneA = withAssetStatus(
+          createRelativeRegistry(-2000, Registry.Status.FALLBACK, 'scene-a'),
+          Registry.SimplifiedStatus.COMPLETE,
+          Registry.SimplifiedStatus.COMPLETE
+        )
+        sceneB = createRelativeRegistry(-1000, Registry.Status.PENDING, 'scene-b')
+        sceneC = createRelativeRegistry(0, Registry.Status.PENDING, 'scene-c')
+      })
+
+      it('should keep scene A as fallback when scene C is deployed (marking scene B as obsolete)', async () => {
+        db.getRelatedRegistries.mockResolvedValue([sceneA, sceneB])
+
+        await component.persistAndRotateStates(sceneC)
+
+        expect(db.insertRegistry).toHaveBeenCalledWith(
+          expect.objectContaining({ id: 'scene-c', status: Registry.Status.PENDING })
+        )
+        expect(db.updateRegistriesStatus).toHaveBeenCalledWith(['scene-b'], Registry.Status.OBSOLETE)
+        expect(db.updateRegistriesStatus).toHaveBeenCalledWith([sceneA.id], Registry.Status.FALLBACK)
+      })
+
+      it('should keep scene A as fallback when scene C fails conversion', async () => {
+        sceneC = withAssetStatus(sceneC, Registry.SimplifiedStatus.FAILED, Registry.SimplifiedStatus.FAILED)
+
+        // Scene B is now obsolete, so only scene A appears in related registries
+        db.getRelatedRegistries.mockResolvedValue([sceneA])
+
+        await component.persistAndRotateStates(sceneC)
+
+        expect(db.insertRegistry).toHaveBeenCalledWith(
+          expect.objectContaining({ id: 'scene-c', status: Registry.Status.FAILED })
+        )
+        expect(db.updateRegistriesStatus).toHaveBeenCalledWith([sceneA.id], Registry.Status.FALLBACK)
+        expect(db.updateRegistriesStatus).not.toHaveBeenCalledWith([sceneA.id], Registry.Status.OBSOLETE)
+      })
+    })
+
+    describe('and the older scene was complete, a newer overlapping scene completes, then a third fails', () => {
+      let sceneA: Registry.DbEntity
+      let sceneB: Registry.DbEntity
+      let sceneC: Registry.DbEntity
+
+      it('should mark scene A as obsolete when scene B completes', async () => {
+        sceneA = withAssetStatus(
+          createRelativeRegistry(-2000, Registry.Status.FALLBACK, 'scene-a'),
+          Registry.SimplifiedStatus.COMPLETE,
+          Registry.SimplifiedStatus.COMPLETE
+        )
+        sceneB = withAssetStatus(
+          createRelativeRegistry(-1000, Registry.Status.PENDING, 'scene-b'),
+          Registry.SimplifiedStatus.COMPLETE,
+          Registry.SimplifiedStatus.COMPLETE
+        )
+
+        db.getRelatedRegistries.mockResolvedValue([sceneA])
+
+        await component.persistAndRotateStates(sceneB)
+
+        expect(db.insertRegistry).toHaveBeenCalledWith(
+          expect.objectContaining({ id: 'scene-b', status: Registry.Status.COMPLETE })
+        )
+        expect(db.updateRegistriesStatus).toHaveBeenCalledWith([sceneA.id], Registry.Status.OBSOLETE)
+      })
+
+      it('should keep scene B as fallback when scene C is deployed and then fails', async () => {
+        sceneB = withAssetStatus(
+          createRelativeRegistry(-1000, Registry.Status.FALLBACK, 'scene-b'),
+          Registry.SimplifiedStatus.COMPLETE,
+          Registry.SimplifiedStatus.COMPLETE
+        )
+        sceneC = withAssetStatus(
+          createRelativeRegistry(0, Registry.Status.PENDING, 'scene-c'),
+          Registry.SimplifiedStatus.FAILED,
+          Registry.SimplifiedStatus.FAILED
+        )
+
+        // Scene A is obsolete, only scene B appears in related registries
+        db.getRelatedRegistries.mockResolvedValue([sceneB])
+
+        await component.persistAndRotateStates(sceneC)
+
+        expect(db.insertRegistry).toHaveBeenCalledWith(
+          expect.objectContaining({ id: 'scene-c', status: Registry.Status.FAILED })
+        )
+        expect(db.updateRegistriesStatus).toHaveBeenCalledWith([sceneB.id], Registry.Status.FALLBACK)
+        expect(db.updateRegistriesStatus).not.toHaveBeenCalledWith([sceneB.id], Registry.Status.OBSOLETE)
+      })
+    })
+  })
+
+  describe('when concurrent texture events would have caused a race condition', () => {
+    /**
+     * This test verifies that updateBundleAndRotateStates prevents the following race condition
+     * that was possible with the old non-atomic persistAndRotateStates:
+     *
+     * 1. Scene A is COMPLETE, Scene B is deployed → A becomes FALLBACK, B is PENDING
+     * 2. B's mac and windows conversions complete concurrently (two SQS messages)
+     * 3. Thread 2 (windows) processes first:
+     *    - upsertRegistryBundle sets B.windows = COMPLETE
+     *    - RETURNING * gives B with mac=COMPLETE, windows=COMPLETE
+     *    - persistAndRotateStates → B = COMPLETE, A → OBSOLETE
+     * 4. Thread 1 (mac) processes after, but read B from DB BEFORE Thread 2's upsert:
+     *    - upsertRegistryBundle set B.mac = COMPLETE earlier
+     *    - But Thread 1's registryEntity snapshot still has windows=PENDING (stale)
+     *    - OLD BUG: persistAndRotateStates → B = PENDING (stale overwrite!)
+     *
+     * With updateBundleAndRotateStates, the status is determined from the current DB state
+     * inside a transaction AFTER the bundle update, so Thread 1 would see both platforms as
+     * COMPLETE and correctly determine B = COMPLETE.
+     */
+    it('should not overwrite scene B to pending with stale data after it was already set to complete', async () => {
+      const sceneA = withAssetStatus(
+        createRelativeRegistry(-1000, Registry.Status.FALLBACK, 'scene-a'),
+        Registry.SimplifiedStatus.COMPLETE,
+        Registry.SimplifiedStatus.COMPLETE
+      )
+
+      // The DB transaction always reads the CURRENT entity state after updating the bundle.
+      // Even though Thread 1's caller had stale data (windows=PENDING), the transaction reads
+      // the entity AFTER upsertRegistryBundle, which reflects both mac=COMPLETE and windows=COMPLETE.
+      const sceneBCurrentDbState = withAssetStatus(
+        createRelativeRegistry(0, Registry.Status.PENDING, 'scene-b'),
+        Registry.SimplifiedStatus.COMPLETE,
+        Registry.SimplifiedStatus.COMPLETE
+      )
+
+      db.persistRegistryInTransaction.mockImplementation(async (params) => {
+        // The transaction reads the entity's CURRENT state from DB (both platforms complete)
+        const result = params.determineStatusAndRotate(sceneBCurrentDbState, [sceneA])
+        return { ...sceneBCurrentDbState, status: result.status }
+      })
+
+      const updated = await component.updateBundleAndRotateStates({
+        bundleUpdate: {
+          entityId: 'scene-b',
+          platform: 'mac',
+          isLods: false,
+          status: Registry.SimplifiedStatus.COMPLETE
+        }
+      })
+
+      // B is correctly determined as COMPLETE from the current DB state, not PENDING from stale data
+      expect(updated!.status).not.toBe(Registry.Status.PENDING)
+      expect(updated!.status).toBe(Registry.Status.COMPLETE)
+    })
+
+    it('should not leave the world without a fallback after concurrent texture events', async () => {
+      const sceneA = withAssetStatus(
+        createRelativeRegistry(-1000, Registry.Status.FALLBACK, 'scene-a'),
+        Registry.SimplifiedStatus.COMPLETE,
+        Registry.SimplifiedStatus.COMPLETE
+      )
+
+      // Because the transaction reads the current DB state, B's status is correctly set to COMPLETE.
+      // When Scene C is later deployed and fails, B (COMPLETE) would be demoted to FALLBACK — not OBSOLETE.
+      const sceneBComplete = withAssetStatus(
+        createRelativeRegistry(0, Registry.Status.PENDING, 'scene-b'),
+        Registry.SimplifiedStatus.COMPLETE,
+        Registry.SimplifiedStatus.COMPLETE
+      )
+
+      let capturedResult: any = null
+      db.persistRegistryInTransaction.mockImplementation(async (params) => {
+        const result = params.determineStatusAndRotate(sceneBComplete, [sceneA])
+        capturedResult = result
+        return { ...sceneBComplete, status: result.status }
+      })
+
+      await component.updateBundleAndRotateStates({
+        bundleUpdate: {
+          entityId: 'scene-b',
+          platform: 'windows',
+          isLods: false,
+          status: Registry.SimplifiedStatus.COMPLETE
+        }
+      })
+
+      // B = COMPLETE, A's fallback is correctly marked OBSOLETE (because B successfully completed)
+      expect(capturedResult.status).toBe(Registry.Status.COMPLETE)
+      expect(capturedResult.fallbackUpdate).toEqual({
+        id: sceneA.id,
+        status: Registry.Status.OBSOLETE
+      })
+
+      // Now verify: if C is deployed and fails, B (now COMPLETE → FALLBACK) would NOT be marked OBSOLETE.
+      // The race condition would have left B as PENDING (stuck), causing it to be marked OBSOLETE
+      // when C arrived. With the fix, B is correctly COMPLETE, so it becomes FALLBACK — surviving the purger.
+      const sceneBFallback = withAssetStatus(
+        createRelativeRegistry(0, Registry.Status.FALLBACK, 'scene-b'),
+        Registry.SimplifiedStatus.COMPLETE,
+        Registry.SimplifiedStatus.COMPLETE
+      )
+      const sceneCFailed = withAssetStatus(
+        createRelativeRegistry(1000, Registry.Status.PENDING, 'scene-c'),
+        Registry.SimplifiedStatus.FAILED,
+        Registry.SimplifiedStatus.FAILED
+      )
+
+      db.persistRegistryInTransaction.mockImplementation(async (params) => {
+        const result = params.determineStatusAndRotate(sceneCFailed, [sceneBFallback])
+        capturedResult = result
+        return { ...sceneCFailed, status: result.status }
+      })
+
+      await component.updateBundleAndRotateStates({
+        bundleUpdate: {
+          entityId: 'scene-c',
+          platform: 'mac',
+          isLods: false,
+          status: Registry.SimplifiedStatus.FAILED
+        }
+      })
+
+      // C = FAILED, B stays as FALLBACK (not OBSOLETE)
+      expect(capturedResult.status).toBe(Registry.Status.FAILED)
+      expect(capturedResult.fallbackUpdate).toEqual({
+        id: sceneBFallback.id,
+        status: Registry.Status.FALLBACK
+      })
+      expect(capturedResult.olderEntityIds).not.toContain('scene-b')
+    })
+  })
+
+  describe('when using updateBundleAndRotateStates (atomic)', () => {
+    /**
+     * updateBundleAndRotateStates prevents the race condition by reading the current entity state
+     * from the DB inside a transaction AFTER updating the bundle, instead of trusting the caller's
+     * potentially stale data.
+     */
+    it('should determine status from current DB state, not stale caller data', async () => {
+      const sceneA = withAssetStatus(
+        createRelativeRegistry(-1000, Registry.Status.FALLBACK, 'scene-a'),
+        Registry.SimplifiedStatus.COMPLETE,
+        Registry.SimplifiedStatus.COMPLETE
+      )
+
+      // Simulate what persistRegistryInTransaction does:
+      // After upsertRegistryBundle, the DB returns the entity with CURRENT bundles (both complete),
+      // regardless of what the caller's snapshot had.
+      const sceneBCurrentDbState = withAssetStatus(
+        createRelativeRegistry(0, Registry.Status.PENDING, 'scene-b'),
+        Registry.SimplifiedStatus.COMPLETE,
+        Registry.SimplifiedStatus.COMPLETE
+      )
+
+      // The DB transaction mock calls determineStatusAndRotate with the current DB entity
+      db.persistRegistryInTransaction.mockImplementation(async (params) => {
+        const { determineStatusAndRotate } = params
+        // The transaction reads the entity's CURRENT state from DB (both platforms complete)
+        const result = determineStatusAndRotate(sceneBCurrentDbState, [sceneA])
+        return { ...sceneBCurrentDbState, status: result.status }
+      })
+
+      const updated = await component.updateBundleAndRotateStates({
+        bundleUpdate: {
+          entityId: 'scene-b',
+          platform: 'mac',
+          isLods: false,
+          status: Registry.SimplifiedStatus.COMPLETE
+        }
+      })
+
+      // The status is determined from the current DB state (both platforms complete),
+      // NOT from the caller's stale data. With scene A (FALLBACK) as the only related entity
+      // and no newer entities, B should be COMPLETE.
+      expect(updated!.status).toBe(Registry.Status.COMPLETE)
+    })
+
+    it('should correctly mark the fallback as obsolete when the entity completes', async () => {
+      const sceneA = withAssetStatus(
+        createRelativeRegistry(-1000, Registry.Status.FALLBACK, 'scene-a'),
+        Registry.SimplifiedStatus.COMPLETE,
+        Registry.SimplifiedStatus.COMPLETE
+      )
+
+      const sceneBComplete = withAssetStatus(
+        createRelativeRegistry(0, Registry.Status.PENDING, 'scene-b'),
+        Registry.SimplifiedStatus.COMPLETE,
+        Registry.SimplifiedStatus.COMPLETE
+      )
+
+      let capturedResult: any = null
+      db.persistRegistryInTransaction.mockImplementation(async (params) => {
+        const result = params.determineStatusAndRotate(sceneBComplete, [sceneA])
+        capturedResult = result
+        return { ...sceneBComplete, status: result.status }
+      })
+
+      await component.updateBundleAndRotateStates({
+        bundleUpdate: {
+          entityId: 'scene-b',
+          platform: 'windows',
+          isLods: false,
+          status: Registry.SimplifiedStatus.COMPLETE
+        }
+      })
+
+      expect(capturedResult.status).toBe(Registry.Status.COMPLETE)
+      expect(capturedResult.fallbackUpdate).toEqual({
+        id: sceneA.id,
+        status: Registry.Status.OBSOLETE
+      })
+    })
+
+    it('should keep the fallback when the entity fails', async () => {
+      const sceneA = withAssetStatus(
+        createRelativeRegistry(-1000, Registry.Status.FALLBACK, 'scene-a'),
+        Registry.SimplifiedStatus.COMPLETE,
+        Registry.SimplifiedStatus.COMPLETE
+      )
+
+      const sceneBFailed = withAssetStatus(
+        createRelativeRegistry(0, Registry.Status.PENDING, 'scene-b'),
+        Registry.SimplifiedStatus.FAILED,
+        Registry.SimplifiedStatus.COMPLETE
+      )
+
+      let capturedResult: any = null
+      db.persistRegistryInTransaction.mockImplementation(async (params) => {
+        const result = params.determineStatusAndRotate(sceneBFailed, [sceneA])
+        capturedResult = result
+        return { ...sceneBFailed, status: result.status }
+      })
+
+      await component.updateBundleAndRotateStates({
+        bundleUpdate: {
+          entityId: 'scene-b',
+          platform: 'mac',
+          isLods: false,
+          status: Registry.SimplifiedStatus.FAILED
+        }
+      })
+
+      expect(capturedResult.status).toBe(Registry.Status.FAILED)
+      expect(capturedResult.fallbackUpdate).toEqual({
+        id: sceneA.id,
+        status: Registry.Status.FALLBACK
+      })
+    })
+
+    it('should pass version update to the transaction when provided', async () => {
+      const sceneB = createRelativeRegistry(0, Registry.Status.PENDING, 'scene-b')
+
+      db.persistRegistryInTransaction.mockImplementation(async (params) => {
+        const result = params.determineStatusAndRotate(sceneB, [])
+        return { ...sceneB, status: result.status }
+      })
+
+      await component.updateBundleAndRotateStates({
+        bundleUpdate: {
+          entityId: 'scene-b',
+          platform: 'mac',
+          isLods: false,
+          status: Registry.SimplifiedStatus.COMPLETE
+        },
+        versionUpdate: {
+          entityId: 'scene-b',
+          platform: 'mac',
+          version: '1.0.0',
+          buildDate: '2026-01-01'
+        }
+      })
+
+      expect(db.persistRegistryInTransaction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          bundleUpdate: expect.objectContaining({ entityId: 'scene-b', platform: 'mac' }),
+          versionUpdate: expect.objectContaining({ version: '1.0.0', buildDate: '2026-01-01' })
+        })
+      )
+    })
+  })
+
   describe('and calling undeployWorldScenes', () => {
     let entityIds: string[]
     let eventTimestamp: number
