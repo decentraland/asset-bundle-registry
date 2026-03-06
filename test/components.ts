@@ -19,6 +19,7 @@ import { createCoordinatesComponent } from '../src/logic/coordinates'
 import { createQueuesStatusManagerComponent } from '../src/logic/queues-status-manager'
 import { createInMemoryCacheComponent } from '../src/adapters/memory-cache'
 import { createWorldsMockComponent } from './unit/mocks/worlds'
+import { createRefreshableFeaturesMockComponent } from './unit/mocks/refreshable-features'
 
 /**
  * Behaves like Jest "describe" function, used to describe a test for a
@@ -91,6 +92,7 @@ async function initComponents(): Promise<TestComponents> {
     localFetch: await createLocalFetchCompoment(config),
     messageConsumer,
     messageProcessor,
-    extendedDb: extendDbComponent({ db, pg })
+    extendedDb: extendDbComponent({ db, pg }),
+    refreshableFeatures: createRefreshableFeaturesMockComponent()
   }
 }

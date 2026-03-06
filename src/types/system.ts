@@ -6,6 +6,7 @@ import type {
   ILoggerComponent,
   IMetricsComponent
 } from '@well-known-components/interfaces'
+import type { IFeaturesComponent } from '@well-known-components/features-component'
 import { IPgComponent } from '@dcl/pg-component'
 import {
   ICatalystComponent,
@@ -25,7 +26,8 @@ import {
   IProfileRetrieverComponent,
   IFailedProfilesRetrierComponent,
   IProfilesSynchronizerComponent,
-  ISynchronizerComponent
+  ISynchronizerComponent,
+  IRefreshableFeaturesComponent
 } from './service'
 import { metricDeclarations } from '../metrics'
 import { IContentStorageComponent } from '@dcl/catalyst-storage'
@@ -52,6 +54,8 @@ export type BaseComponents = {
   profileRetriever: IProfileRetrieverComponent
   synchronizer: ISynchronizerComponent
   coordinates: ICoordinatesComponent
+  features: IFeaturesComponent
+  refreshableFeatures: IRefreshableFeaturesComponent
 }
 
 // components used in runtime

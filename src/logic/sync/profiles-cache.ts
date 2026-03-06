@@ -19,13 +19,13 @@ export function createProfilesCacheComponent(
 ): IProfilesCacheComponent {
   const { metrics } = components
 
-  // periodic metrics report
+  // periodic metrics report — unref so this timer doesn't prevent process exit
   setInterval(() => {
     const currentSize = cache.size()
     const maxSize = cache.maxSize()
     metrics.observe('profiles_cache_max_size', {}, maxSize)
     metrics.observe('profiles_cache_allocated_size', {}, currentSize)
-  }, FIVE_MINUTES_MS)
+  }, FIVE_MINUTES_MS).unref()
 
   function get(pointer: string): Entity | undefined {
     const entry = cache.get(pointer.toLowerCase())
