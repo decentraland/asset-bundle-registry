@@ -105,10 +105,7 @@ export function createRegistryComponent({
       registry.bundles.assets.windows === Registry.SimplifiedStatus.COMPLETE
 
     if (areAssetsComplete) {
-      const hasNewerPending = splitRelatedEntities.newerEntities.some(
-        (entity) => entity.status === Registry.Status.PENDING
-      )
-      return hasNewerPending ? Registry.Status.FALLBACK : Registry.Status.COMPLETE
+      return Registry.Status.COMPLETE
     }
 
     return Registry.Status.PENDING
@@ -131,16 +128,6 @@ export function createRegistryComponent({
       ...registry,
       status: registryStatus
     })
-
-    if (splitRelatedEntities.olderEntities.length) {
-      const olderEntitiesIds = splitRelatedEntities.olderEntities.map((entity: Registry.PartialDbEntity) => entity.id)
-      logger.debug('Marking older entities as outdated', {
-        newEntityId: registry.id,
-        olderEntitiesIds: olderEntitiesIds.join(', ')
-      })
-
-      await db.updateRegistriesStatus(olderEntitiesIds, Registry.Status.OBSOLETE)
-    }
 
     if (splitRelatedEntities.fallback) {
       logger.debug('Marking entity as fallback', {
@@ -233,16 +220,19 @@ export function createRegistryComponent({
           fallback: splitRelatedEntities.fallback?.id || ''
         })
 
-        const olderEntityIds = splitRelatedEntities.olderEntities.map((e) => e.id)
+        // Only rotate older entities and fallback when the current entity completes or is obsolete.
+        // When FAILED or PENDING, leave other entities untouched so fallbacks are preserved.
+        const shouldRotate = status === Registry.Status.COMPLETE || status === Registry.Status.OBSOLETE
+
+        const olderEntityIds = shouldRotate
+          ? splitRelatedEntities.olderEntities.map((e) => e.id)
+          : []
 
         let fallbackUpdate: { id: string; status: Registry.Status } | null = null
-        if (splitRelatedEntities.fallback) {
+        if (splitRelatedEntities.fallback && shouldRotate) {
           fallbackUpdate = {
             id: splitRelatedEntities.fallback.id,
-            status:
-              status === Registry.Status.OBSOLETE || status === Registry.Status.COMPLETE
-                ? Registry.Status.OBSOLETE
-                : Registry.Status.FALLBACK
+            status: Registry.Status.OBSOLETE
           }
         }
 

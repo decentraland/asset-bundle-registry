@@ -263,11 +263,11 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
     const lowerCasePointers = registry.pointers.map((p) => p.toLowerCase())
 
     const query: SQLStatement = SQL`
-      SELECT 
+      SELECT
         id, pointers, timestamp, status, bundles, versions
-      FROM 
+      FROM
         registries
-      WHERE 
+      WHERE
         pointers && ${lowerCasePointers}::varchar(255)[]
         AND LOWER(id) != ${registry.id.toLocaleLowerCase()}
         AND status != ${Registry.Status.OBSOLETE}

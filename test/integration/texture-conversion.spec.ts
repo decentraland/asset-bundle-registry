@@ -279,4 +279,197 @@ test('texture conversion handling', async ({ components, spyComponents }) => {
       expect(olderRegistry!.status).toBe(Registry.Status.OBSOLETE)
     })
   })
+
+  describe('when a redeployment arrives before the first scene finishes conversion and the second one fails', () => {
+    let olderEntityId: string
+    let newerEntityId: string
+
+    beforeEach(async () => {
+      olderEntityId = `texture-redeploy-older-${Date.now()}`
+      newerEntityId = `texture-redeploy-newer-${Date.now()}`
+
+      // Deploy the older scene (textures have NOT completed yet)
+      const olderEntity = createEntity({ id: olderEntityId, pointers: ['905,905'], timestamp: 1000 })
+      mockGenesisCityDeployment(olderEntity)
+      registriesToCleanUp.push(olderEntityId)
+      await components.messageProcessor.process(createDeploymentMessage(olderEntityId))
+
+      // Deploy the newer scene at the same pointers BEFORE older scene's textures complete
+      const newerEntity = createEntity({ id: newerEntityId, pointers: ['905,905'], timestamp: 2000 })
+      mockGenesisCityDeployment(newerEntity)
+      registriesToCleanUp.push(newerEntityId)
+      await components.messageProcessor.process(createDeploymentMessage(newerEntityId))
+
+      // The older scene's textures complete — it was left as PENDING (not marked OBSOLETE)
+      await components.messageProcessor.process(createTextureEvent(olderEntityId, 'windows'))
+      await components.messageProcessor.process(createTextureEvent(olderEntityId, 'mac'))
+
+      // The newer scene's textures fail
+      await components.messageProcessor.process(createTextureEvent(newerEntityId, 'windows'))
+      await components.messageProcessor.process(
+        createTextureEvent(newerEntityId, 'mac', {
+          metadata: {
+            entityId: newerEntityId,
+            platform: 'mac',
+            statusCode: ManifestStatusCode.ASSET_BUNDLE_BUILD_FAIL,
+            isLods: false,
+            isWorld: false,
+            version: 'v1'
+          }
+        })
+      )
+    })
+
+    it('should keep the older registry as complete since it was never marked obsolete', async () => {
+      const olderRegistry = await components.db.getRegistryById(olderEntityId)
+
+      expect(olderRegistry).not.toBeNull()
+      expect(olderRegistry!.status).toBe(Registry.Status.COMPLETE)
+    })
+
+    it('should have the older registry bundles as complete', async () => {
+      const olderRegistry = await components.db.getRegistryById(olderEntityId)
+
+      expect(olderRegistry!.bundles.assets.windows).toBe(Registry.SimplifiedStatus.COMPLETE)
+      expect(olderRegistry!.bundles.assets.mac).toBe(Registry.SimplifiedStatus.COMPLETE)
+    })
+
+    it('should mark the newer registry as failed', async () => {
+      const newerRegistry = await components.db.getRegistryById(newerEntityId)
+
+      expect(newerRegistry).not.toBeNull()
+      expect(newerRegistry!.status).toBe(Registry.Status.FAILED)
+    })
+
+    it('should still have an active registry at the pointers', async () => {
+      const olderRegistry = await components.db.getRegistryById(olderEntityId)
+
+      // The older registry was never marked OBSOLETE — it completed and is served
+      expect(olderRegistry!.status).toBe(Registry.Status.COMPLETE)
+    })
+  })
+
+  describe('when the newer scene completes before the older one (out-of-order)', () => {
+    let olderEntityId: string
+    let newerEntityId: string
+
+    beforeEach(async () => {
+      olderEntityId = `texture-ooo-older-${Date.now()}`
+      newerEntityId = `texture-ooo-newer-${Date.now()}`
+
+      // Deploy both scenes before any textures arrive
+      const olderEntity = createEntity({ id: olderEntityId, pointers: ['906,906'], timestamp: 1000 })
+      mockGenesisCityDeployment(olderEntity)
+      registriesToCleanUp.push(olderEntityId)
+      await components.messageProcessor.process(createDeploymentMessage(olderEntityId))
+
+      const newerEntity = createEntity({ id: newerEntityId, pointers: ['906,906'], timestamp: 2000 })
+      mockGenesisCityDeployment(newerEntity)
+      registriesToCleanUp.push(newerEntityId)
+      await components.messageProcessor.process(createDeploymentMessage(newerEntityId))
+
+      // Newer scene completes FIRST
+      await components.messageProcessor.process(createTextureEvent(newerEntityId, 'windows'))
+      await components.messageProcessor.process(createTextureEvent(newerEntityId, 'mac'))
+
+      // Older scene completes AFTER
+      await components.messageProcessor.process(createTextureEvent(olderEntityId, 'windows'))
+      await components.messageProcessor.process(createTextureEvent(olderEntityId, 'mac'))
+    })
+
+    it('should mark the older registry as obsolete since a newer one is already complete', async () => {
+      const olderRegistry = await components.db.getRegistryById(olderEntityId)
+
+      expect(olderRegistry).not.toBeNull()
+      expect(olderRegistry!.status).toBe(Registry.Status.OBSOLETE)
+    })
+
+    it('should keep the newer registry as complete', async () => {
+      const newerRegistry = await components.db.getRegistryById(newerEntityId)
+
+      expect(newerRegistry).not.toBeNull()
+      expect(newerRegistry!.status).toBe(Registry.Status.COMPLETE)
+    })
+  })
+
+  describe('when three rapid deployments happen and none complete before the next arrives', () => {
+    let entityAId: string
+    let entityBId: string
+    let entityCId: string
+
+    beforeEach(async () => {
+      entityAId = `texture-triple-a-${Date.now()}`
+      entityBId = `texture-triple-b-${Date.now()}`
+      entityCId = `texture-triple-c-${Date.now()}`
+
+      // Deploy all three before any textures complete
+      const entityA = createEntity({ id: entityAId, pointers: ['907,907'], timestamp: 1000 })
+      mockGenesisCityDeployment(entityA)
+      registriesToCleanUp.push(entityAId)
+      await components.messageProcessor.process(createDeploymentMessage(entityAId))
+
+      const entityB = createEntity({ id: entityBId, pointers: ['907,907'], timestamp: 2000 })
+      mockGenesisCityDeployment(entityB)
+      registriesToCleanUp.push(entityBId)
+      await components.messageProcessor.process(createDeploymentMessage(entityBId))
+
+      const entityC = createEntity({ id: entityCId, pointers: ['907,907'], timestamp: 3000 })
+      mockGenesisCityDeployment(entityC)
+      registriesToCleanUp.push(entityCId)
+      await components.messageProcessor.process(createDeploymentMessage(entityCId))
+
+      // A completes
+      await components.messageProcessor.process(createTextureEvent(entityAId, 'windows'))
+      await components.messageProcessor.process(createTextureEvent(entityAId, 'mac'))
+
+      // B fails
+      await components.messageProcessor.process(
+        createTextureEvent(entityBId, 'mac', {
+          metadata: {
+            entityId: entityBId,
+            platform: 'mac',
+            statusCode: ManifestStatusCode.ASSET_BUNDLE_BUILD_FAIL,
+            isLods: false,
+            isWorld: false,
+            version: 'v1'
+          }
+        })
+      )
+
+      // C fails
+      await components.messageProcessor.process(
+        createTextureEvent(entityCId, 'mac', {
+          metadata: {
+            entityId: entityCId,
+            platform: 'mac',
+            statusCode: ManifestStatusCode.ASSET_BUNDLE_BUILD_FAIL,
+            isLods: false,
+            isWorld: false,
+            version: 'v1'
+          }
+        })
+      )
+    })
+
+    it('should keep entity A as complete since it successfully converted', async () => {
+      const registryA = await components.db.getRegistryById(entityAId)
+
+      expect(registryA).not.toBeNull()
+      expect(registryA!.status).toBe(Registry.Status.COMPLETE)
+    })
+
+    it('should mark entity B as failed', async () => {
+      const registryB = await components.db.getRegistryById(entityBId)
+
+      expect(registryB).not.toBeNull()
+      expect(registryB!.status).toBe(Registry.Status.FAILED)
+    })
+
+    it('should mark entity C as failed', async () => {
+      const registryC = await components.db.getRegistryById(entityCId)
+
+      expect(registryC).not.toBeNull()
+      expect(registryC!.status).toBe(Registry.Status.FAILED)
+    })
+  })
 })
