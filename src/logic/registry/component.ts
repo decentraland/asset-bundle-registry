@@ -224,9 +224,7 @@ export function createRegistryComponent({
         // When FAILED or PENDING, leave other entities untouched so fallbacks are preserved.
         const shouldRotate = status === Registry.Status.COMPLETE || status === Registry.Status.OBSOLETE
 
-        const olderEntityIds = shouldRotate
-          ? splitRelatedEntities.olderEntities.map((e) => e.id)
-          : []
+        const olderEntityIds = shouldRotate ? splitRelatedEntities.olderEntities.map((e) => e.id) : []
 
         let fallbackUpdate: { id: string; status: Registry.Status } | null = null
         if (splitRelatedEntities.fallback && shouldRotate) {
