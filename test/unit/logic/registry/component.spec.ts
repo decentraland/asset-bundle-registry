@@ -852,6 +852,7 @@ describe('when using the registry component', () => {
     })
   })
 
+
   describe('and calling undeployWorldScenes', () => {
     let entityIds: string[]
     let eventTimestamp: number

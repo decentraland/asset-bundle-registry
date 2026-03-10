@@ -39,6 +39,7 @@
     "@dcl/sqs-component": "^2.0.4",
     "@sentry/node": "9.12.0",
     "@well-known-components/env-config-provider": "^1.2.0",
+    "@well-known-components/features-component": "^2.1.0",
     "@well-known-components/fetch-component": "^3.0.0",
     "@well-known-components/interfaces": "^1.4.3",
     "@well-known-components/logger": "^3.1.3",

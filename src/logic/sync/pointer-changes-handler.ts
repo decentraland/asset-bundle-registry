@@ -9,10 +9,18 @@ export async function createPointerChangesHandlerComponent({
   db,
   profileSanitizer,
   entityPersister,
-  entityDeploymentTracker
+  entityDeploymentTracker,
+  refreshableFeatures
 }: Pick<
   AppComponents,
-  'config' | 'logs' | 'fetch' | 'db' | 'profileSanitizer' | 'entityPersister' | 'entityDeploymentTracker'
+  | 'config'
+  | 'logs'
+  | 'fetch'
+  | 'db'
+  | 'profileSanitizer'
+  | 'entityPersister'
+  | 'entityDeploymentTracker'
+  | 'refreshableFeatures'
 >): Promise<IProfilesSynchronizerComponent> {
   const logger = logs.getLogger('pointer-changes-handler')
   const CATALYST_LOAD_BALANCER = await config.requireString('CATALYST_LOADBALANCER_HOST')
@@ -55,33 +63,42 @@ export async function createPointerChangesHandlerComponent({
           pointer: entity.pointers[0]
         })
 
-        const sanitizedProfile = await profileSanitizer.sanitizeProfiles(
-          [
-            {
-              entityId: entity.entityId,
-              pointer: entity.pointers[0],
-              timestamp: entity.entityTimestamp,
-              authChain: entity.authChain
+        const maliciousAddresses = await refreshableFeatures.getMaliciousAddresses()
+        if (!maliciousAddresses || !maliciousAddresses.includes(entity.pointers[0].toLowerCase())) {
+          const sanitizedProfile = await profileSanitizer.sanitizeProfiles(
+            [
+              {
+                entityId: entity.entityId,
+                pointer: entity.pointers[0],
+                timestamp: entity.entityTimestamp,
+                authChain: entity.authChain
+              }
+            ],
+            (profile) => {
+              return db.insertFailedProfileFetch({
+                entityId: profile.entityId,
+                pointer: profile.pointer,
+                timestamp: profile.timestamp,
+                authChain: profile.authChain,
+                firstFailedAt: Date.now(),
+                retryCount: 0,
+                errorMessage: 'Profile not found in Catalyst response'
+              })
             }
-          ],
-          (profile) => {
-            return db.insertFailedProfileFetch({
-              entityId: profile.entityId,
-              pointer: profile.pointer,
-              timestamp: profile.timestamp,
-              authChain: profile.authChain,
-              firstFailedAt: Date.now(),
-              retryCount: 0,
-              errorMessage: 'Profile not found in Catalyst response'
-            })
-          }
-        )
+          )
 
-        if (sanitizedProfile.length === 0) {
-          continue
+          if (sanitizedProfile.length === 0) {
+            continue
+          }
+
+          await entityPersister.persistEntity(sanitizedProfile[0])
+        } else {
+          logger.info('Skipping profile update because it is marked as malicious', {
+            entityId: entity.entityId,
+            pointer: entity.pointers[0]
+          })
         }
 
-        await entityPersister.persistEntity(sanitizedProfile[0])
         lastProfileTimestampProcessed = entity.entityTimestamp
       }
     } finally {

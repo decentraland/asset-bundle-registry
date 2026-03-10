@@ -222,6 +222,7 @@ export interface IRegistryOrchestratorComponent {
 }
 
 export { IRegistryComponent } from '../logic/registry/component'
+export { IRefreshableFeaturesComponent } from '../logic/refreshable-features'
 
 export interface ICacheStorage extends IBaseComponent {
   get<T>(key: string): Promise<T[]>

@@ -5,7 +5,8 @@ import {
   IEntityDeploymentTrackerComponent,
   IEntityPersisterComponent,
   IProfileSanitizerComponent,
-  IProfilesSynchronizerComponent
+  IProfilesSynchronizerComponent,
+  IRefreshableFeaturesComponent
 } from '../../../../src/types'
 import { createConfigMockComponent } from '../../mocks/config'
 import { createDbMockComponent } from '../../mocks/db'
@@ -14,6 +15,7 @@ import { createLogMockComponent } from '../../mocks/logs'
 import { createFetchMockComponent } from '../../mocks/fetch'
 import { createEntityPersisterMockComponent } from '../../mocks/entity-persister'
 import { createEntityDeploymentTrackerMockComponent } from '../../mocks/entity-deployment-tracker'
+import { createRefreshableFeaturesMockComponent } from '../../mocks/refreshable-features'
 import { createPointerChangesHandlerComponent } from '../../../../src/logic/sync/pointer-changes-handler'
 import { createValidPointerChangesResponse, parseToEntity } from '../../mocks/data/pointer-changes'
 
@@ -25,6 +27,7 @@ describe('pointer-changes-handler', () => {
   let mockProfileSanitizer: IProfileSanitizerComponent
   let mockEntityPersister: IEntityPersisterComponent
   let mockEntityDeploymentTracker: IEntityDeploymentTrackerComponent
+  let mockRefreshableFeatures: IRefreshableFeaturesComponent
   let component: IProfilesSynchronizerComponent
 
   beforeEach(async () => {
@@ -36,6 +39,7 @@ describe('pointer-changes-handler', () => {
     mockProfileSanitizer = createProfileSanitizerMockComponent()
     mockEntityPersister = createEntityPersisterMockComponent()
     mockEntityDeploymentTracker = createEntityDeploymentTrackerMockComponent()
+    mockRefreshableFeatures = createRefreshableFeaturesMockComponent()
 
     component = await createPointerChangesHandlerComponent({
       config: mockConfig,
@@ -44,7 +48,8 @@ describe('pointer-changes-handler', () => {
       db: mockDb,
       profileSanitizer: mockProfileSanitizer,
       entityPersister: mockEntityPersister,
-      entityDeploymentTracker: mockEntityDeploymentTracker
+      entityDeploymentTracker: mockEntityDeploymentTracker,
+      refreshableFeatures: mockRefreshableFeatures
     })
   })
 
