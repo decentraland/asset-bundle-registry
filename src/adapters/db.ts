@@ -1174,6 +1174,304 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
     })
   }
 
+  /**
+   * Internal: Updates the bundle status for a specific platform within a transaction.
+   * Sets the simplified status (PENDING, COMPLETE, FAILED) for either the assets or lods bundle type.
+   *
+   * @param id - The entity ID to update
+   * @param platform - The platform to update (e.g., 'windows', 'mac', 'webgl')
+   * @param lods - Whether to update the LODs bundle (true) or assets bundle (false)
+   * @param status - The new simplified status for the bundle
+   * @param executor - The transaction client to use for the query
+   * @returns The updated registry entity, or null if the entity was not found
+   */
+  async function _upsertRegistryBundle(
+    id: string,
+    platform: string,
+    lods: boolean,
+    status: Registry.SimplifiedStatus,
+    executor: QueryExecutor
+  ): Promise<Registry.DbEntity | null> {
+    const bundleType = lods ? 'lods' : 'assets'
+
+    const query: SQLStatement = SQL`
+      UPDATE registries
+      SET
+        bundles = jsonb_set(
+          registries.bundles,
+          ARRAY[${bundleType}::text, ${platform}::text],
+          to_jsonb(${status}::text)
+        )
+      WHERE LOWER(registries.id) = ${id.toLocaleLowerCase()}
+      RETURNING *
+    `
+
+    const result = await executor.query<Registry.DbEntity>(query)
+    return result.rows[0] || null
+  }
+
+  /**
+   * Internal: Updates the version and build date for a specific platform's asset bundle within a transaction.
+   *
+   * @param id - The entity ID to update
+   * @param platform - The platform to update (e.g., 'windows', 'mac', 'webgl')
+   * @param version - The asset bundle version string
+   * @param buildDate - The ISO date string of when the bundle was built
+   * @param executor - The transaction client to use for the query
+   * @returns The updated registry entity, or null if the entity was not found
+   */
+  async function _updateRegistryVersionWithBuildDate(
+    id: string,
+    platform: string,
+    version: string,
+    buildDate: string,
+    executor: QueryExecutor
+  ): Promise<Registry.DbEntity | null> {
+    const bundleType = 'assets'
+    const versionData = { version, buildDate }
+    const query: SQLStatement = SQL`
+      UPDATE registries
+      SET
+        versions = jsonb_set(
+          COALESCE(registries.versions, '{}'::jsonb),
+          ARRAY[${bundleType}::text, ${platform}::text],
+          to_jsonb(${versionData}::jsonb)
+        )
+      WHERE LOWER(registries.id) = ${id.toLocaleLowerCase()}
+      RETURNING *
+    `
+
+    const result = await executor.query<Registry.DbEntity>(query)
+    return result.rows[0] || null
+  }
+
+  /**
+   * Internal: Gets registries related to a given registry by overlapping pointers within a transaction.
+   * Filters by world name context (same as the public getRelatedRegistries) and excludes OBSOLETE entities.
+   *
+   * @param registry - The registry to find related entities for (uses pointers, id, and metadata)
+   * @param executor - The transaction client to use for the query
+   * @returns Related registries that share pointers within the same context (world or Genesis City)
+   */
+  async function _getRelatedRegistries(
+    registry: Pick<Registry.DbEntity, 'pointers' | 'id' | 'metadata'>,
+    executor: QueryExecutor
+  ): Promise<Registry.PartialDbEntity[]> {
+    const worldName = (registry.metadata as any)?.worldConfiguration?.name as string | undefined
+    const lowerCasePointers = registry.pointers.map((p) => p.toLowerCase())
+
+    const query: SQLStatement = SQL`
+      SELECT
+        id, pointers, timestamp, status, bundles, versions
+      FROM
+        registries
+      WHERE
+        pointers && ${lowerCasePointers}::varchar(255)[]
+        AND LOWER(id) != ${registry.id.toLocaleLowerCase()}
+        AND status != ${Registry.Status.OBSOLETE}
+    `
+
+    if (worldName) {
+      const normalizedWorldName = worldName.toLowerCase()
+      query.append(SQL`
+        AND LOWER(metadata->'worldConfiguration'->>'name') = ${normalizedWorldName}
+      `)
+    } else {
+      query.append(SQL`
+        AND metadata->'worldConfiguration'->>'name' IS NULL
+      `)
+    }
+
+    query.append(SQL`
+      ORDER BY timestamp DESC
+    `)
+
+    const result = await executor.query<Registry.PartialDbEntity>(query)
+    return result.rows
+  }
+
+  /**
+   * Internal: Inserts or updates a registry entity within a transaction.
+   * Uses an upsert (INSERT ... ON CONFLICT DO UPDATE) to handle both new and existing entities.
+   * Preserves the existing deployer if the new deployer is empty.
+   *
+   * @param registry - The full registry entity to insert or update
+   * @param executor - The transaction client to use for the query
+   * @returns The inserted or updated registry entity
+   */
+  async function _insertRegistry(registry: Registry.DbEntity, executor: QueryExecutor): Promise<Registry.DbEntity> {
+    const query: SQLStatement = SQL`
+        INSERT INTO registries (
+          id, type, timestamp, deployer, pointers, content, metadata, status, bundles, versions
+        )
+        VALUES (
+          ${registry.id},
+          ${registry.type},
+          ${registry.timestamp},
+          ${registry.deployer.toLocaleLowerCase()},
+          ${registry.pointers}::varchar(255)[],
+          ${JSON.stringify(registry.content)}::jsonb,
+          ${JSON.stringify(registry.metadata)}::jsonb,
+          ${registry.status},
+          ${JSON.stringify(registry.bundles)}::jsonb,
+          ${JSON.stringify(registry.versions)}::jsonb
+        )
+        ON CONFLICT (id) DO UPDATE
+        SET
+          type = EXCLUDED.type,
+          timestamp = EXCLUDED.timestamp,
+          pointers = EXCLUDED.pointers,
+          content = EXCLUDED.content,
+          metadata = EXCLUDED.metadata,
+          status = EXCLUDED.status,
+          bundles = EXCLUDED.bundles,
+          deployer = CASE
+            WHEN EXCLUDED.deployer != '' THEN EXCLUDED.deployer
+            ELSE registries.deployer
+          END,
+          versions = EXCLUDED.versions
+        RETURNING
+          id,
+          type,
+          timestamp,
+          deployer,
+          pointers,
+          content,
+          metadata,
+          status,
+          bundles,
+          versions
+      `
+
+    const result = await executor.query<Registry.DbEntity>(query)
+    return result.rows[0]
+  }
+
+  /**
+   * Internal: Updates the status of multiple registries by their IDs within a transaction.
+   *
+   * @param ids - Array of entity IDs to update
+   * @param status - The new status to set
+   * @param executor - The transaction client to use for the query
+   * @returns The updated registry entities
+   */
+  async function _updateRegistriesStatus(
+    ids: string[],
+    status: Registry.Status,
+    executor: QueryExecutor
+  ): Promise<Registry.DbEntity[]> {
+    const parsedIds = ids.map((id) => id.toLocaleLowerCase())
+
+    const query: SQLStatement = SQL`
+        UPDATE registries
+        SET status = ${status}
+        WHERE LOWER(id) = ANY(${parsedIds}::varchar(255)[])
+        RETURNING
+          id,
+          type,
+          timestamp,
+          pointers,
+          deployer,
+          content,
+          metadata,
+          status,
+          bundles,
+          versions
+      `
+
+    const result = await executor.query<Registry.DbEntity>(query)
+    return result.rows || null
+  }
+
+  /**
+   * Atomically updates a bundle, optionally updates the version, reads the current entity state and
+   * related registries, then persists the registry with rotated statuses — all within a single transaction.
+   *
+   * This prevents race conditions where concurrent texture events for the same entity could result in
+   * a stale thread overwriting a correct COMPLETE status back to PENDING, because the status determination
+   * always uses the current DB state (after the bundle update) rather than the caller's potentially stale snapshot.
+   *
+   * The transaction executes the following steps:
+   * 1. Updates the bundle status for the specified platform
+   * 2. Optionally updates the version and build date
+   * 3. Reads related registries (consistent within the transaction)
+   * 4. Calls the provided callback to determine the registry status and rotation actions
+   * 5. Inserts/updates the registry with the determined status
+   * 6. Marks older entities as OBSOLETE
+   * 7. Updates the fallback entity's status
+   *
+   * @param params.bundleUpdate - The bundle status update to apply (entityId, platform, isLods, status)
+   * @param params.versionUpdate - Optional version and build date update
+   * @param params.determineStatusAndRotate - Callback that receives the current entity and related registries,
+   *   and returns the status, older entity IDs to mark as OBSOLETE, and an optional fallback update
+   * @returns The persisted registry entity with its final status, or null if the entity was not found
+   */
+  async function persistRegistryInTransaction(params: {
+    bundleUpdate: { entityId: string; platform: string; isLods: boolean; status: Registry.SimplifiedStatus }
+    versionUpdate?: { entityId: string; platform: string; version: string; buildDate: string }
+    determineStatusAndRotate: (
+      currentEntity: Registry.DbEntity,
+      relatedRegistries: Registry.PartialDbEntity[]
+    ) => {
+      status: Registry.Status
+      olderEntityIds: string[]
+      fallbackUpdate: { id: string; status: Registry.Status } | null
+    }
+  }): Promise<Registry.DbEntity | null> {
+    return pg.withTransaction(async (client) => {
+      const { bundleUpdate, versionUpdate, determineStatusAndRotate } = params
+
+      // 1. Update the bundle status
+      let entity = await _upsertRegistryBundle(
+        bundleUpdate.entityId,
+        bundleUpdate.platform,
+        bundleUpdate.isLods,
+        bundleUpdate.status,
+        client
+      )
+
+      if (!entity) {
+        return null
+      }
+
+      // 2. Optionally update version
+      if (versionUpdate) {
+        entity = await _updateRegistryVersionWithBuildDate(
+          versionUpdate.entityId,
+          versionUpdate.platform,
+          versionUpdate.version,
+          versionUpdate.buildDate,
+          client
+        )
+
+        if (!entity) {
+          return null
+        }
+      }
+
+      // 3. Read related registries (within the same transaction for consistency)
+      const relatedRegistries = await _getRelatedRegistries(entity, client)
+
+      // 4. Let the caller determine status and rotation
+      const { status, olderEntityIds, fallbackUpdate } = determineStatusAndRotate(entity, relatedRegistries)
+
+      // 5. Insert/update the registry with the determined status
+      const insertedRegistry = await _insertRegistry({ ...entity, status }, client)
+
+      // 6. Update older entities
+      if (olderEntityIds.length > 0) {
+        await _updateRegistriesStatus(olderEntityIds, Registry.Status.OBSOLETE, client)
+      }
+
+      // 7. Update fallback
+      if (fallbackUpdate) {
+        await _updateRegistriesStatus([fallbackUpdate.id], fallbackUpdate.status, client)
+      }
+
+      return insertedRegistry
+    })
+  }
+
   return {
     insertRegistry,
     updateRegistriesStatus,
@@ -1210,6 +1508,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
     setSpawnCoordinate,
     recalculateSpawnCoordinate,
     undeployWorldScenes,
-    undeployWorldByName
+    undeployWorldByName,
+    persistRegistryInTransaction
   }
 }

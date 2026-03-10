@@ -39,6 +39,7 @@ export function createDbMockComponent(): jest.Mocked<IDbComponent> {
     setSpawnCoordinate: jest.fn(),
     recalculateSpawnCoordinate: jest.fn(),
     undeployWorldScenes: jest.fn(),
-    undeployWorldByName: jest.fn()
+    undeployWorldByName: jest.fn(),
+    persistRegistryInTransaction: jest.fn()
   }
 }
