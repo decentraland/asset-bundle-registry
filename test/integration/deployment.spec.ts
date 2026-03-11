@@ -123,11 +123,11 @@ test('deployment message handling', async ({ components, spyComponents }) => {
         await components.messageProcessor.process(createDeploymentMessage(newerEntityId))
       })
 
-      it('should mark the older registry as obsolete', async () => {
+      it('should keep the older registry as pending since it has not completed conversion yet', async () => {
         const olderRegistry = await components.db.getRegistryById(olderEntityId)
 
         expect(olderRegistry).not.toBeNull()
-        expect(olderRegistry!.status).toBe(Registry.Status.OBSOLETE)
+        expect(olderRegistry!.status).toBe(Registry.Status.PENDING)
       })
 
       it('should persist the newer registry with pending status', async () => {
@@ -278,11 +278,11 @@ test('deployment message handling', async ({ components, spyComponents }) => {
         await components.messageProcessor.process(createDeploymentMessage(newerEntityId, [worldContentServerUrl]))
       })
 
-      it('should mark the older registry as obsolete', async () => {
+      it('should keep the older registry as pending since it has not completed conversion yet', async () => {
         const olderRegistry = await components.db.getRegistryById(olderEntityId)
 
         expect(olderRegistry).not.toBeNull()
-        expect(olderRegistry!.status).toBe(Registry.Status.OBSOLETE)
+        expect(olderRegistry!.status).toBe(Registry.Status.PENDING)
       })
 
       it('should persist the newer registry with pending status', async () => {
@@ -487,11 +487,11 @@ test('deployment message handling', async ({ components, spyComponents }) => {
         await components.messageProcessor.process(createDeploymentMessage(newerEntityId, [worldContentServerUrl]))
       })
 
-      it('should mark the older registry as obsolete', async () => {
+      it('should keep the older registry as pending since it has not completed conversion yet', async () => {
         const olderRegistry = await components.db.getRegistryById(olderEntityId)
 
         expect(olderRegistry).not.toBeNull()
-        expect(olderRegistry!.status).toBe(Registry.Status.OBSOLETE)
+        expect(olderRegistry!.status).toBe(Registry.Status.PENDING)
       })
 
       it('should persist the newer registry with pending status', async () => {

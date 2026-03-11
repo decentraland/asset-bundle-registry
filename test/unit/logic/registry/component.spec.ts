@@ -196,10 +196,10 @@ describe('when using the registry component', () => {
         )
       })
 
-      it('should mark the registry as fallback and not update the newer registry', async () => {
+      it('should mark the registry as complete and not update the newer registry', async () => {
         await component.persistAndRotateStates(registry)
 
-        expect(db.insertRegistry).toHaveBeenCalledWith({ ...registry, status: Registry.Status.FALLBACK })
+        expect(db.insertRegistry).toHaveBeenCalledWith({ ...registry, status: Registry.Status.COMPLETE })
         expect(db.updateRegistriesStatus).not.toHaveBeenCalled()
       })
     })
@@ -252,11 +252,11 @@ describe('when using the registry component', () => {
         )
       })
 
-      it('should mark the registry as complete and mark the older pending registry as obsolete', async () => {
+      it('should mark the registry as complete and not mark the older pending registry as obsolete', async () => {
         await component.persistAndRotateStates(registry)
 
         expect(db.insertRegistry).toHaveBeenCalledWith({ ...registry, status: Registry.Status.COMPLETE })
-        expect(db.updateRegistriesStatus).toHaveBeenCalledWith([olderPendingRegistry.id], Registry.Status.OBSOLETE)
+        expect(db.updateRegistriesStatus).not.toHaveBeenCalled()
       })
     })
 
@@ -319,10 +319,10 @@ describe('when using the registry component', () => {
         expect(db.insertRegistry).toHaveBeenCalledWith({ ...registry, status: Registry.Status.FAILED })
       })
 
-      it('should mark older pending registry as obsolete', async () => {
+      it('should not mark older pending registry as obsolete', async () => {
         await component.persistAndRotateStates(registry)
 
-        expect(db.updateRegistriesStatus).toHaveBeenCalledWith([olderPendingRegistry.id], Registry.Status.OBSOLETE)
+        expect(db.updateRegistriesStatus).not.toHaveBeenCalledWith([olderPendingRegistry.id], Registry.Status.OBSOLETE)
       })
 
       it('should mark older complete registry as fallback', async () => {
@@ -408,7 +408,7 @@ describe('when using the registry component', () => {
         sceneC = createRelativeRegistry(0, Registry.Status.PENDING, 'scene-c')
       })
 
-      it('should keep scene A as fallback when scene C is deployed (marking scene B as obsolete)', async () => {
+      it('should keep scene A as fallback when scene C is deployed (not marking scene B as obsolete)', async () => {
         db.getRelatedRegistries.mockResolvedValue([sceneA, sceneB])
 
         await component.persistAndRotateStates(sceneC)
@@ -416,7 +416,7 @@ describe('when using the registry component', () => {
         expect(db.insertRegistry).toHaveBeenCalledWith(
           expect.objectContaining({ id: 'scene-c', status: Registry.Status.PENDING })
         )
-        expect(db.updateRegistriesStatus).toHaveBeenCalledWith(['scene-b'], Registry.Status.OBSOLETE)
+        expect(db.updateRegistriesStatus).not.toHaveBeenCalledWith(['scene-b'], Registry.Status.OBSOLETE)
         expect(db.updateRegistriesStatus).toHaveBeenCalledWith([sceneA.id], Registry.Status.FALLBACK)
       })
 
@@ -612,13 +612,10 @@ describe('when using the registry component', () => {
         }
       })
 
-      // C = FAILED, B stays as FALLBACK (not OBSOLETE)
+      // C = FAILED, no rotation happens — B is untouched
       expect(capturedResult.status).toBe(Registry.Status.FAILED)
-      expect(capturedResult.fallbackUpdate).toEqual({
-        id: sceneBFallback.id,
-        status: Registry.Status.FALLBACK
-      })
-      expect(capturedResult.olderEntityIds).not.toContain('scene-b')
+      expect(capturedResult.fallbackUpdate).toBeNull()
+      expect(capturedResult.olderEntityIds).toEqual([])
     })
   })
 
@@ -733,10 +730,8 @@ describe('when using the registry component', () => {
       })
 
       expect(capturedResult.status).toBe(Registry.Status.FAILED)
-      expect(capturedResult.fallbackUpdate).toEqual({
-        id: sceneA.id,
-        status: Registry.Status.FALLBACK
-      })
+      expect(capturedResult.olderEntityIds).toEqual([])
+      expect(capturedResult.fallbackUpdate).toBeNull()
     })
 
     it('should pass version update to the transaction when provided', async () => {
@@ -768,6 +763,92 @@ describe('when using the registry component', () => {
           versionUpdate: expect.objectContaining({ version: '1.0.0', buildDate: '2026-01-01' })
         })
       )
+    })
+  })
+
+  describe('when a redeployment arrives before the first scene finishes conversion', () => {
+    it('should not mark the older pending entity as obsolete during deployment', async () => {
+      const sceneA = createRelativeRegistry(-1000, Registry.Status.PENDING, 'scene-a')
+      const sceneB = createRelativeRegistry(0, Registry.Status.PENDING, 'scene-b')
+
+      db.getRelatedRegistries.mockResolvedValue([sceneA])
+
+      await component.persistAndRotateStates(sceneB)
+
+      expect(db.insertRegistry).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'scene-b', status: Registry.Status.PENDING })
+      )
+      // Older PENDING entities are NOT marked as OBSOLETE during deployment
+      expect(db.updateRegistriesStatus).not.toHaveBeenCalled()
+    })
+
+    it('should allow the older entity to complete and become the active scene when the newer fails', async () => {
+      // Scene A completes after being left as PENDING (not marked OBSOLETE by B's deployment)
+      const sceneAComplete = withAssetStatus(
+        createRelativeRegistry(-1000, Registry.Status.PENDING, 'scene-a'),
+        Registry.SimplifiedStatus.COMPLETE,
+        Registry.SimplifiedStatus.COMPLETE
+      )
+
+      // Scene B (newer) is still PENDING — no newer COMPLETE/FALLBACK
+      const sceneBPending = createRelativeRegistry(1000, Registry.Status.PENDING, 'scene-b')
+
+      let capturedResult: any = null
+      db.persistRegistryInTransaction.mockImplementation(async (params) => {
+        const result = params.determineStatusAndRotate(sceneAComplete, [sceneBPending])
+        capturedResult = result
+        return { ...sceneAComplete, status: result.status }
+      })
+
+      await component.updateBundleAndRotateStates({
+        bundleUpdate: {
+          entityId: 'scene-a',
+          platform: 'mac',
+          isLods: false,
+          status: Registry.SimplifiedStatus.COMPLETE
+        }
+      })
+
+      // Scene A is COMPLETE (not FALLBACK — no longer returned by determineRegistryStatus)
+      expect(capturedResult.status).toBe(Registry.Status.COMPLETE)
+      // No older entities to mark as OBSOLETE
+      expect(capturedResult.olderEntityIds).toEqual([])
+      expect(capturedResult.fallbackUpdate).toBeNull()
+    })
+
+    it('should not rotate other entities when the newer scene fails', async () => {
+      const sceneA = withAssetStatus(
+        createRelativeRegistry(-1000, Registry.Status.COMPLETE, 'scene-a'),
+        Registry.SimplifiedStatus.COMPLETE,
+        Registry.SimplifiedStatus.COMPLETE
+      )
+
+      const sceneBFailed = withAssetStatus(
+        createRelativeRegistry(0, Registry.Status.PENDING, 'scene-b'),
+        Registry.SimplifiedStatus.FAILED,
+        Registry.SimplifiedStatus.COMPLETE
+      )
+
+      let capturedResult: any = null
+      db.persistRegistryInTransaction.mockImplementation(async (params) => {
+        const result = params.determineStatusAndRotate(sceneBFailed, [sceneA])
+        capturedResult = result
+        return { ...sceneBFailed, status: result.status }
+      })
+
+      await component.updateBundleAndRotateStates({
+        bundleUpdate: {
+          entityId: 'scene-b',
+          platform: 'mac',
+          isLods: false,
+          status: Registry.SimplifiedStatus.FAILED
+        }
+      })
+
+      // Scene B is FAILED, and no rotation happens — scene A is untouched
+      expect(capturedResult.status).toBe(Registry.Status.FAILED)
+      expect(capturedResult.olderEntityIds).toEqual([])
+      expect(capturedResult.fallbackUpdate).toBeNull()
     })
   })
 
