@@ -8,11 +8,7 @@ import { createLogMockComponent } from '../../mocks/logs'
 import { createCatalystMockComponent } from '../../mocks/catalyst'
 import { createWorldsMockComponent } from '../../mocks/worlds'
 import { createRegistryMockComponent } from '../../mocks/registry'
-
-jest.mock('../../../../src/logic/entity-validator')
-
-import { validateEntity } from '../../../../src/logic/entity-validator'
-const mockValidateEntity = validateEntity as jest.Mock
+import { createEntityValidatorMockComponent } from '../../mocks/entity-validator'
 
 describe('when handling deployment events', () => {
   const createDeploymentEvent = (entityId: string, contentServerUrls?: string[]): DeploymentToSqs => ({
@@ -46,16 +42,17 @@ describe('when handling deployment events', () => {
     let catalyst: ReturnType<typeof createCatalystMockComponent>
     let worlds: ReturnType<typeof createWorldsMockComponent>
     let registry: ReturnType<typeof createRegistryMockComponent>
+    let entityValidator: ReturnType<typeof createEntityValidatorMockComponent>
     let handler: ReturnType<typeof createDeploymentEventHandler>
 
     beforeEach(() => {
-      mockValidateEntity.mockReturnValue({ ok: true })
       logs = createLogMockComponent()
       db = createDbMockComponent()
       catalyst = createCatalystMockComponent()
       worlds = createWorldsMockComponent()
       registry = createRegistryMockComponent()
-      handler = createDeploymentEventHandler({ logs, db, catalyst, worlds, registry })
+      entityValidator = createEntityValidatorMockComponent()
+      handler = createDeploymentEventHandler({ logs, db, catalyst, worlds, registry, entityValidator })
     })
 
     afterEach(() => {
@@ -93,16 +90,17 @@ describe('when handling deployment events', () => {
     let catalyst: ReturnType<typeof createCatalystMockComponent>
     let worlds: ReturnType<typeof createWorldsMockComponent>
     let registry: ReturnType<typeof createRegistryMockComponent>
+    let entityValidator: ReturnType<typeof createEntityValidatorMockComponent>
     let handler: ReturnType<typeof createDeploymentEventHandler>
 
     beforeEach(() => {
-      mockValidateEntity.mockReturnValue({ ok: true })
       logs = createLogMockComponent()
       db = createDbMockComponent()
       catalyst = createCatalystMockComponent()
       worlds = createWorldsMockComponent()
       registry = createRegistryMockComponent()
-      handler = createDeploymentEventHandler({ logs, db, catalyst, worlds, registry })
+      entityValidator = createEntityValidatorMockComponent()
+      handler = createDeploymentEventHandler({ logs, db, catalyst, worlds, registry, entityValidator })
     })
 
     afterEach(() => {

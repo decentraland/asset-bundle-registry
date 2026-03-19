@@ -39,6 +39,7 @@ import { createPointerChangesHandlerComponent } from './logic/sync/pointer-chang
 import { createSynchronizerComponent } from './logic/sync/synchronizer'
 import { createOwnershipValidatorJob } from './logic/sync/ownership-validator-job'
 import { createCoordinatesComponent } from './logic/coordinates'
+import { createEntityValidatorComponent } from './logic/entity-validator'
 
 // Initialize all the components of the app
 export async function initComponents(): Promise<AppComponents> {
@@ -117,6 +118,7 @@ export async function initComponents(): Promise<AppComponents> {
     logs,
     config
   })
+  const entityValidator = createEntityValidatorComponent({ logs })
   const catalyst = await createCatalystAdapter({ logs, fetch, config })
   const entityPersister = createEntityPersisterComponent({
     logs,
@@ -144,7 +146,8 @@ export async function initComponents(): Promise<AppComponents> {
     db,
     profileSanitizer,
     entityPersister,
-    snapshotContentStorage
+    snapshotContentStorage,
+    entityValidator
   })
   const features = await createFeaturesComponent({ config, logs, fetch }, await config.requireString('SERVICE_URL'))
   const refreshableFeatures = await createRefreshableFeaturesComponent({ features, logs })
@@ -156,7 +159,8 @@ export async function initComponents(): Promise<AppComponents> {
     profileSanitizer,
     entityPersister,
     entityDeploymentTracker,
-    refreshableFeatures
+    refreshableFeatures,
+    entityValidator
   })
   const failedProfilesRetrier = createFailedProfilesRetrierComponent({
     logs,
@@ -209,7 +213,8 @@ export async function initComponents(): Promise<AppComponents> {
     coordinates,
     db,
     logs,
-    config
+    config,
+    entityValidator
   })
   const messageConsumer = createMessagesConsumerComponent({
     logs,
@@ -238,6 +243,7 @@ export async function initComponents(): Promise<AppComponents> {
     memoryStorage,
     queuesStatusManager,
     coordinates,
+    entityValidator,
     profileRetriever,
     profileSanitizer,
     entityDeploymentTracker,

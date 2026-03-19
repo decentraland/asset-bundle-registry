@@ -282,3 +282,12 @@ export interface IFailedProfilesRetrierComponent {
 }
 
 export interface ISynchronizerComponent extends IBaseComponent {}
+
+export type EntityValidationResult = {
+  ok: boolean
+  errors?: string[]
+}
+
+export interface IEntityValidatorComponent {
+  validate(entity: unknown): EntityValidationResult
+}

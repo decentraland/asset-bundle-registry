@@ -1,7 +1,6 @@
 import { EntityType } from '@dcl/schemas'
 import { getDeployedEntitiesStreamFromPointerChanges } from '@dcl/snapshots-fetcher'
 import { AppComponents, IProfilesSynchronizerComponent } from '../../types'
-import { validateEntity } from '../entity-validator'
 
 export async function createPointerChangesHandlerComponent({
   config,
@@ -11,7 +10,8 @@ export async function createPointerChangesHandlerComponent({
   profileSanitizer,
   entityPersister,
   entityDeploymentTracker,
-  refreshableFeatures
+  refreshableFeatures,
+  entityValidator
 }: Pick<
   AppComponents,
   | 'config'
@@ -22,6 +22,7 @@ export async function createPointerChangesHandlerComponent({
   | 'entityPersister'
   | 'entityDeploymentTracker'
   | 'refreshableFeatures'
+  | 'entityValidator'
 >): Promise<IProfilesSynchronizerComponent> {
   const logger = logs.getLogger('pointer-changes-handler')
   const CATALYST_LOAD_BALANCER = await config.requireString('CATALYST_LOADBALANCER_HOST')
@@ -92,13 +93,12 @@ export async function createPointerChangesHandlerComponent({
             continue
           }
 
-          const validationResult = validateEntity(sanitizedProfile[0], logger)
+          const validationResult = entityValidator.validate(sanitizedProfile[0])
           if (!validationResult.ok) {
             logger.warn('Skipping invalid profile from pointer changes', {
               entityId: sanitizedProfile[0].id,
               errors: JSON.stringify(validationResult.errors)
             })
-            continue
           }
 
           await entityPersister.persistEntity(sanitizedProfile[0])

@@ -18,10 +18,7 @@ import { createEntityDeploymentTrackerMockComponent } from '../../mocks/entity-d
 import { createRefreshableFeaturesMockComponent } from '../../mocks/refreshable-features'
 import { createPointerChangesHandlerComponent } from '../../../../src/logic/sync/pointer-changes-handler'
 import { createValidPointerChangesResponse, parseToEntity } from '../../mocks/data/pointer-changes'
-
-jest.mock('../../../../src/logic/entity-validator', () => ({
-  validateEntity: jest.fn().mockReturnValue({ ok: true })
-}))
+import { createEntityValidatorMockComponent } from '../../mocks/entity-validator'
 
 describe('pointer-changes-handler', () => {
   let mockConfig: IConfigComponent
@@ -32,6 +29,7 @@ describe('pointer-changes-handler', () => {
   let mockEntityPersister: IEntityPersisterComponent
   let mockEntityDeploymentTracker: IEntityDeploymentTrackerComponent
   let mockRefreshableFeatures: IRefreshableFeaturesComponent
+  let mockEntityValidator: ReturnType<typeof createEntityValidatorMockComponent>
   let component: IProfilesSynchronizerComponent
 
   beforeEach(async () => {
@@ -44,6 +42,7 @@ describe('pointer-changes-handler', () => {
     mockEntityPersister = createEntityPersisterMockComponent()
     mockEntityDeploymentTracker = createEntityDeploymentTrackerMockComponent()
     mockRefreshableFeatures = createRefreshableFeaturesMockComponent()
+    mockEntityValidator = createEntityValidatorMockComponent()
 
     component = await createPointerChangesHandlerComponent({
       config: mockConfig,
@@ -53,7 +52,8 @@ describe('pointer-changes-handler', () => {
       profileSanitizer: mockProfileSanitizer,
       entityPersister: mockEntityPersister,
       entityDeploymentTracker: mockEntityDeploymentTracker,
-      refreshableFeatures: mockRefreshableFeatures
+      refreshableFeatures: mockRefreshableFeatures,
+      entityValidator: mockEntityValidator
     })
   })
 

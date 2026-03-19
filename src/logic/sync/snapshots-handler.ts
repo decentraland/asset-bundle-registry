@@ -3,7 +3,6 @@ import { AppComponents, IProfilesSynchronizerComponent, Sync } from '../../types
 import { getDeployedEntitiesStreamFromSnapshot } from '@dcl/snapshots-fetcher'
 import { EntityType } from '@dcl/schemas'
 import { SNAPSHOT_DOWNLOAD_FOLDER } from './snapshots-content-storage'
-import { validateEntity } from '../entity-validator'
 
 export async function createSnapshotsHandlerComponent({
   config,
@@ -12,10 +11,18 @@ export async function createSnapshotsHandlerComponent({
   db,
   profileSanitizer,
   entityPersister,
-  snapshotContentStorage
+  snapshotContentStorage,
+  entityValidator
 }: Pick<
   AppComponents,
-  'config' | 'logs' | 'fetch' | 'db' | 'profileSanitizer' | 'entityPersister' | 'snapshotContentStorage'
+  | 'config'
+  | 'logs'
+  | 'fetch'
+  | 'db'
+  | 'profileSanitizer'
+  | 'entityPersister'
+  | 'snapshotContentStorage'
+  | 'entityValidator'
 >): Promise<IProfilesSynchronizerComponent> {
   const CATALYST_LOAD_BALANCER = await config.requireString('CATALYST_LOADBALANCER_HOST')
   const logger = logs.getLogger('snapshots-handler')
@@ -121,7 +128,7 @@ export async function createSnapshotsHandlerComponent({
           })
         })
         const validProfiles = profilesFetched.filter((p) => {
-          const result = validateEntity(p, logger)
+          const result = entityValidator.validate(p)
           if (!result.ok) {
             logger.warn('Skipping invalid profile from snapshot', {
               entityId: p.id,

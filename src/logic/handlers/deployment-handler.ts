@@ -2,17 +2,17 @@ import { Entity } from '@dcl/schemas'
 import { AppComponents, IEventHandlerComponent, EventHandlerName, EventHandlerResult, Registry } from '../../types'
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
 import { Authenticator } from '@dcl/crypto'
-import { validateEntity } from '../entity-validator'
 
 export const createDeploymentEventHandler = ({
   registry,
   catalyst,
   worlds,
   db,
-  logs
+  logs,
+  entityValidator
 }: Pick<
   AppComponents,
-  'catalyst' | 'worlds' | 'db' | 'logs' | 'registry'
+  'catalyst' | 'worlds' | 'db' | 'logs' | 'registry' | 'entityValidator'
 >): IEventHandlerComponent<DeploymentToSqs> => {
   const HANDLER_NAME = EventHandlerName.DEPLOYMENT
   const logger = logs.getLogger('deployment-handler')
@@ -49,7 +49,7 @@ export const createDeploymentEventHandler = ({
           }
         }
 
-        const validationResult = validateEntity(entity, logger)
+        const validationResult = entityValidator.validate(entity)
         if (!validationResult.ok) {
           return {
             ok: false,

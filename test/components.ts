@@ -76,7 +76,8 @@ async function initComponents(): Promise<TestComponents> {
     coordinates,
     db,
     logs,
-    config
+    config,
+    entityValidator: components.entityValidator
   })
 
   const messageConsumer = createMessageConsumerMockComponent()
