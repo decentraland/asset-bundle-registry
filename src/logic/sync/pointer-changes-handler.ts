@@ -1,6 +1,7 @@
 import { EntityType } from '@dcl/schemas'
 import { getDeployedEntitiesStreamFromPointerChanges } from '@dcl/snapshots-fetcher'
 import { AppComponents, IProfilesSynchronizerComponent } from '../../types'
+import { validateEntity } from '../entity-validator'
 
 export async function createPointerChangesHandlerComponent({
   config,
@@ -88,6 +89,15 @@ export async function createPointerChangesHandlerComponent({
           )
 
           if (sanitizedProfile.length === 0) {
+            continue
+          }
+
+          const validationResult = validateEntity(sanitizedProfile[0], logger)
+          if (!validationResult.ok) {
+            logger.warn('Skipping invalid profile from pointer changes', {
+              entityId: sanitizedProfile[0].id,
+              errors: JSON.stringify(validationResult.errors)
+            })
             continue
           }
 

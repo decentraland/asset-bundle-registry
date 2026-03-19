@@ -22,6 +22,10 @@ jest.mock('@dcl/snapshots-fetcher', () => ({
   getDeployedEntitiesStreamFromSnapshot: jest.fn()
 }))
 
+jest.mock('../../../../src/logic/entity-validator', () => ({
+  validateEntity: jest.fn().mockReturnValue({ ok: true })
+}))
+
 import { getDeployedEntitiesStreamFromSnapshot } from '@dcl/snapshots-fetcher'
 const mockGetDeployedEntitiesStreamFromSnapshot = getDeployedEntitiesStreamFromSnapshot as jest.Mock
 

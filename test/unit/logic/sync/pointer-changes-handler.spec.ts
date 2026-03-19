@@ -19,6 +19,10 @@ import { createRefreshableFeaturesMockComponent } from '../../mocks/refreshable-
 import { createPointerChangesHandlerComponent } from '../../../../src/logic/sync/pointer-changes-handler'
 import { createValidPointerChangesResponse, parseToEntity } from '../../mocks/data/pointer-changes'
 
+jest.mock('../../../../src/logic/entity-validator', () => ({
+  validateEntity: jest.fn().mockReturnValue({ ok: true })
+}))
+
 describe('pointer-changes-handler', () => {
   let mockConfig: IConfigComponent
   let mockLogs: ILoggerComponent

@@ -2,6 +2,7 @@ import { Entity } from '@dcl/schemas'
 import { AppComponents, IEventHandlerComponent, EventHandlerName, EventHandlerResult, Registry } from '../../types'
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
 import { Authenticator } from '@dcl/crypto'
+import { validateEntity } from '../entity-validator'
 
 export const createDeploymentEventHandler = ({
   registry,
@@ -44,6 +45,15 @@ export const createDeploymentEventHandler = ({
           return {
             ok: false,
             errors: [`Entity with id ${event.entity.entityId} was not found`],
+            handlerName: HANDLER_NAME
+          }
+        }
+
+        const validationResult = validateEntity(entity, logger)
+        if (!validationResult.ok) {
+          return {
+            ok: false,
+            errors: validationResult.errors,
             handlerName: HANDLER_NAME
           }
         }

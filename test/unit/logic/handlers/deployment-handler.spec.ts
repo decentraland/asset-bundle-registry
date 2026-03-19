@@ -9,6 +9,11 @@ import { createCatalystMockComponent } from '../../mocks/catalyst'
 import { createWorldsMockComponent } from '../../mocks/worlds'
 import { createRegistryMockComponent } from '../../mocks/registry'
 
+jest.mock('../../../../src/logic/entity-validator')
+
+import { validateEntity } from '../../../../src/logic/entity-validator'
+const mockValidateEntity = validateEntity as jest.Mock
+
 describe('when handling deployment events', () => {
   const createDeploymentEvent = (entityId: string, contentServerUrls?: string[]): DeploymentToSqs => ({
     entity: {
@@ -44,6 +49,7 @@ describe('when handling deployment events', () => {
     let handler: ReturnType<typeof createDeploymentEventHandler>
 
     beforeEach(() => {
+      mockValidateEntity.mockReturnValue({ ok: true })
       logs = createLogMockComponent()
       db = createDbMockComponent()
       catalyst = createCatalystMockComponent()
@@ -90,6 +96,7 @@ describe('when handling deployment events', () => {
     let handler: ReturnType<typeof createDeploymentEventHandler>
 
     beforeEach(() => {
+      mockValidateEntity.mockReturnValue({ ok: true })
       logs = createLogMockComponent()
       db = createDbMockComponent()
       catalyst = createCatalystMockComponent()

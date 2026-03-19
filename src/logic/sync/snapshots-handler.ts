@@ -3,6 +3,7 @@ import { AppComponents, IProfilesSynchronizerComponent, Sync } from '../../types
 import { getDeployedEntitiesStreamFromSnapshot } from '@dcl/snapshots-fetcher'
 import { EntityType } from '@dcl/schemas'
 import { SNAPSHOT_DOWNLOAD_FOLDER } from './snapshots-content-storage'
+import { validateEntity } from '../entity-validator'
 
 export async function createSnapshotsHandlerComponent({
   config,
@@ -119,7 +120,17 @@ export async function createSnapshotsHandlerComponent({
             errorMessage: 'Profile not found in Catalyst response'
           })
         })
-        await Promise.all(profilesFetched.map((p) => entityPersister.persistEntity(p)))
+        const validProfiles = profilesFetched.filter((p) => {
+          const result = validateEntity(p, logger)
+          if (!result.ok) {
+            logger.warn('Skipping invalid profile from snapshot', {
+              entityId: p.id,
+              errors: JSON.stringify(result.errors)
+            })
+          }
+          return result.ok
+        })
+        await Promise.all(validProfiles.map((p) => entityPersister.persistEntity(p)))
       }
       await db.markSnapshotProcessed(snapshot.hash)
       lastProcessedTimestamp = Math.max(lastProcessedTimestamp, snapshot.timeRange.endTimestamp)
