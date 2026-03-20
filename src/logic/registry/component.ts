@@ -27,9 +27,10 @@ export interface IRegistryComponent {
    * Operations are performed in separate transactions with timestamp-based conflict resolution.
    *
    * @param entityIds - Array of entity IDs to undeploy
+   * @param worldName - The world name from the undeployment event
    * @param eventTimestamp - The timestamp of the event that triggered this undeployment
    */
-  undeployWorldScenes(entityIds: string[], eventTimestamp: number): Promise<UndeploymentResult>
+  undeployWorldScenes(entityIds: string[], worldName: string, eventTimestamp: number): Promise<UndeploymentResult>
 
   /**
    * Undeploys all registries belonging to a world and recalculates spawn coordinates.
@@ -148,11 +149,20 @@ export function createRegistryComponent({
     return insertedRegistry
   }
 
-  async function undeployWorldScenes(entityIds: string[], eventTimestamp: number): Promise<UndeploymentResult> {
-    logger.info('Undeploying world scenes', { entityIds: entityIds.join(', '), eventTimestamp })
+  async function undeployWorldScenes(
+    entityIds: string[],
+    worldName: string,
+    eventTimestamp: number
+  ): Promise<UndeploymentResult> {
+    const normalizedWorldName = worldName.toLowerCase()
 
-    // 1. Undeploy registries and get the world name (only those created before eventTimestamp)
-    const result = await db.undeployWorldScenes(entityIds, eventTimestamp)
+    logger.info('Undeploying world scenes', {
+      entityIds: entityIds.join(', '),
+      worldName: normalizedWorldName,
+      eventTimestamp
+    })
+
+    const result = await db.undeployWorldScenes(entityIds, normalizedWorldName, eventTimestamp)
 
     logger.info('Registries marked as obsolete', {
       undeployedCount: result.undeployedCount,
@@ -160,8 +170,7 @@ export function createRegistryComponent({
       eventTimestamp
     })
 
-    // 2. Recalculate spawn coordinate for the affected world (if any)
-    if (result.worldName) {
+    if (result.worldName && result.undeployedCount > 0) {
       await coordinates.recalculateSpawnIfNeeded(result.worldName, eventTimestamp)
     }
 

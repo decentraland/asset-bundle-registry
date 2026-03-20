@@ -47,12 +47,13 @@ export const createUndeploymentEventHandler = ({
      */
     handle: async (event: WorldScenesUndeploymentEvent): Promise<EventHandlerResult> => {
       const entityIds = event.metadata.scenes.map((scene) => scene.entityId)
+      const worldName = event.metadata.worldName.toLowerCase()
       const eventTimestamp = event.timestamp
 
       try {
-        logger.info('Processing undeployment', { entityIds: entityIds.join(', '), eventTimestamp })
+        logger.info('Processing undeployment', { entityIds: entityIds.join(', '), worldName, eventTimestamp })
 
-        const result = await registry.undeployWorldScenes(entityIds, eventTimestamp)
+        const result = await registry.undeployWorldScenes(entityIds, worldName, eventTimestamp)
 
         logger.info('Undeployment complete', {
           requestedEntityIds: entityIds.join(', '),

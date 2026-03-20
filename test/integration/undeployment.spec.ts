@@ -474,23 +474,24 @@ test('undeployRegistries', async ({ components }) => {
     })
 
     describe('and an empty array is provided', () => {
-      it('should return 0 count and null world name', async () => {
-        const result = await components.db.undeployWorldScenes([], futureEventTimestamp)
+      it('should return 0 count and the world name', async () => {
+        const result = await components.db.undeployWorldScenes([], 'some-world.dcl.eth', futureEventTimestamp)
 
         expect(result.undeployedCount).toBe(0)
-        expect(result.worldName).toBeNull()
+        expect(result.worldName).toBe('some-world.dcl.eth')
       })
     })
 
     describe('and the entity IDs do not exist in the database', () => {
-      it('should return 0 count and null world name', async () => {
+      it('should return 0 count and the world name', async () => {
         const result = await components.db.undeployWorldScenes(
           ['non-existent-entity-1', 'non-existent-entity-2'],
+          'some-world.dcl.eth',
           futureEventTimestamp
         )
 
         expect(result.undeployedCount).toBe(0)
-        expect(result.worldName).toBeNull()
+        expect(result.worldName).toBe('some-world.dcl.eth')
       })
     })
 
@@ -517,7 +518,11 @@ test('undeployRegistries', async ({ components }) => {
       })
 
       it('should mark it as OBSOLETE and return the world name', async () => {
-        const result = await components.db.undeployWorldScenes([registry.id], futureEventTimestamp)
+        const result = await components.db.undeployWorldScenes(
+          [registry.id],
+          'scenes-world1.dcl.eth',
+          futureEventTimestamp
+        )
 
         expect(result.undeployedCount).toBe(1)
         expect(result.worldName).toBe('scenes-world1.dcl.eth')
@@ -553,7 +558,11 @@ test('undeployRegistries', async ({ components }) => {
       it('should NOT mark it as OBSOLETE when event timestamp is before registry timestamp', async () => {
         const pastEventTimestamp = 3000 // Before the registry timestamp of 5000
 
-        const result = await components.db.undeployWorldScenes([registry.id], pastEventTimestamp)
+        const result = await components.db.undeployWorldScenes(
+          [registry.id],
+          'scenes-world-timestamp1.dcl.eth',
+          pastEventTimestamp
+        )
 
         expect(result.undeployedCount).toBe(0)
         expect(result.worldName).toBe('scenes-world-timestamp1.dcl.eth')
@@ -605,7 +614,11 @@ test('undeployRegistries', async ({ components }) => {
       })
 
       it('should mark all as OBSOLETE and return the world name', async () => {
-        const result = await components.db.undeployWorldScenes([registry1.id, registry2.id], futureEventTimestamp)
+        const result = await components.db.undeployWorldScenes(
+          [registry1.id, registry2.id],
+          'scenes-world2.dcl.eth',
+          futureEventTimestamp
+        )
 
         expect(result.undeployedCount).toBe(2)
         expect(result.worldName).toBe('scenes-world2.dcl.eth')
@@ -634,11 +647,15 @@ test('undeployRegistries', async ({ components }) => {
         await createRegistryOnDatabase(registry)
       })
 
-      it('should mark the entity as OBSOLETE and return null world name', async () => {
-        const result = await components.db.undeployWorldScenes([registry.id], futureEventTimestamp)
+      it('should mark the entity as OBSOLETE and return the provided world name', async () => {
+        const result = await components.db.undeployWorldScenes(
+          [registry.id],
+          'scenes-world3.dcl.eth',
+          futureEventTimestamp
+        )
 
         expect(result.undeployedCount).toBe(1)
-        expect(result.worldName).toBeNull()
+        expect(result.worldName).toBe('scenes-world3.dcl.eth')
 
         const updatedRegistry = await components.db.getRegistryById(registry.id)
         expect(updatedRegistry?.status).toBe(Registry.Status.OBSOLETE)
@@ -690,7 +707,11 @@ test('undeployRegistries', async ({ components }) => {
       })
 
       it('should mark both the target and the fallback as OBSOLETE', async () => {
-        const result = await components.db.undeployWorldScenes([targetRegistry.id], futureEventTimestamp)
+        const result = await components.db.undeployWorldScenes(
+          [targetRegistry.id],
+          'scenes-world4.dcl.eth',
+          futureEventTimestamp
+        )
 
         expect(result.undeployedCount).toBe(2)
         expect(result.worldName).toBe('scenes-world4.dcl.eth')
@@ -744,7 +765,11 @@ test('undeployRegistries', async ({ components }) => {
       })
 
       it('should only mark the target entity as OBSOLETE', async () => {
-        const result = await components.db.undeployWorldScenes([targetRegistry.id], futureEventTimestamp)
+        const result = await components.db.undeployWorldScenes(
+          [targetRegistry.id],
+          'scenes-world5.dcl.eth',
+          futureEventTimestamp
+        )
 
         expect(result.undeployedCount).toBe(1)
         expect(result.worldName).toBe('scenes-world5.dcl.eth')
@@ -796,7 +821,11 @@ test('undeployRegistries', async ({ components }) => {
       })
 
       it('should NOT mark the genesis city FALLBACK scene as OBSOLETE', async () => {
-        const result = await components.db.undeployWorldScenes([worldTargetRegistry.id], futureEventTimestamp)
+        const result = await components.db.undeployWorldScenes(
+          [worldTargetRegistry.id],
+          'coord-overlap-world.dcl.eth',
+          futureEventTimestamp
+        )
 
         expect(result.undeployedCount).toBe(1)
         expect(result.worldName).toBe('coord-overlap-world.dcl.eth')

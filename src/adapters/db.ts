@@ -1040,31 +1040,6 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
   }
 
   /**
-   * Internal: Gets registries by entity IDs.
-   * @param entityIds - Array of entity IDs
-   * @param executor - Query executor (pg or PoolClient)
-   * @returns Array of registries with their metadata
-   */
-  async function _getRegistriesByIds(entityIds: string[], executor: QueryExecutor = pg): Promise<Registry.DbEntity[]> {
-    if (entityIds.length === 0) {
-      return []
-    }
-
-    const parsedIds = entityIds.map((id) => id.toLowerCase())
-    const query = SQL`
-      SELECT
-        id, type, timestamp, deployer, pointers, content, metadata, status, bundles, versions
-      FROM
-        registries
-      WHERE
-        LOWER(id) = ANY(${parsedIds}::varchar(255)[])
-    `
-
-    const result = await executor.query<Registry.DbEntity>(query)
-    return result.rows
-  }
-
-  /**
    * Atomically gets the processed world parcels and spawn coordinate for a world.
    *
    * This method performs both queries within a database transaction to ensure
@@ -1093,44 +1068,31 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
    *
    * Note: The undeploy event is per-world based, so all entity IDs belong to a single world.
    *
-   * The operation:
-   * 1. Gets registries by IDs to extract the world name
-   * 2. Marks target registries and fallbacks as OBSOLETE (only if created before eventTimestamp)
-   *
    * @param entityIds - Array of entity IDs to undeploy (all belong to the same world)
+   * @param worldName - The world name from the undeployment event
    * @param eventTimestamp - The timestamp of the undeployment event
    * @returns Result containing count and the affected world name
    */
-  async function undeployWorldScenes(entityIds: string[], eventTimestamp: number): Promise<UndeploymentResult> {
+  async function undeployWorldScenes(
+    entityIds: string[],
+    worldName: string,
+    eventTimestamp: number
+  ): Promise<UndeploymentResult> {
+    const normalizedWorldName = worldName.toLowerCase()
+
     if (entityIds.length === 0) {
       return {
         undeployedCount: 0,
-        worldName: null
+        worldName: normalizedWorldName
       }
     }
 
-    return pg.withTransaction(async (client) => {
-      // 1. Get registries to extract the world name
-      const registries = await _getRegistriesByIds(entityIds, client)
+    const undeployedCount = await _undeployRegistries(entityIds, eventTimestamp, pg, normalizedWorldName)
 
-      // Extract world name - all entities belong to the same world
-      let worldName: string | null = null
-      for (const registry of registries) {
-        const name = (registry.metadata as any)?.worldConfiguration?.name
-        if (name) {
-          worldName = name.toLowerCase()
-          break
-        }
-      }
-
-      // 2. Undeploy registries (mark as OBSOLETE) - only those created before eventTimestamp
-      const undeployedCount = await _undeployRegistries(entityIds, eventTimestamp, client, worldName)
-
-      return {
-        undeployedCount,
-        worldName
-      }
-    })
+    return {
+      undeployedCount,
+      worldName: normalizedWorldName
+    }
   }
 
   /**

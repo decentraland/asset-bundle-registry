@@ -854,14 +854,16 @@ describe('when using the registry component', () => {
 
   describe('and calling undeployWorldScenes', () => {
     let entityIds: string[]
+    let worldName: string
     let eventTimestamp: number
 
     beforeEach(() => {
       entityIds = ['entity-1', 'entity-2']
+      worldName = 'Test-World'
       eventTimestamp = Date.now()
     })
 
-    describe('when the undeployment is successful and a world is found', () => {
+    describe('when the undeployment is successful', () => {
       beforeEach(() => {
         db.undeployWorldScenes.mockResolvedValue({
           undeployedCount: 2,
@@ -869,20 +871,20 @@ describe('when using the registry component', () => {
         })
       })
 
-      it('should undeploy the world scenes for the given entity IDs with the event timestamp', async () => {
-        await component.undeployWorldScenes(entityIds, eventTimestamp)
+      it('should undeploy the world scenes for the given entity IDs with the lowercased world name and event timestamp', async () => {
+        await component.undeployWorldScenes(entityIds, worldName, eventTimestamp)
 
-        expect(db.undeployWorldScenes).toHaveBeenCalledWith(entityIds, eventTimestamp)
+        expect(db.undeployWorldScenes).toHaveBeenCalledWith(entityIds, 'test-world', eventTimestamp)
       })
 
       it('should recalculate the spawn coordinates for the affected world', async () => {
-        await component.undeployWorldScenes(entityIds, eventTimestamp)
+        await component.undeployWorldScenes(entityIds, worldName, eventTimestamp)
 
         expect(coordinates.recalculateSpawnIfNeeded).toHaveBeenCalledWith('test-world', eventTimestamp)
       })
 
       it('should return the undeployment result', async () => {
-        const result = await component.undeployWorldScenes(entityIds, eventTimestamp)
+        const result = await component.undeployWorldScenes(entityIds, worldName, eventTimestamp)
 
         expect(result).toEqual({
           undeployedCount: 2,
@@ -891,26 +893,26 @@ describe('when using the registry component', () => {
       })
     })
 
-    describe('when no world is found in the registries', () => {
+    describe('when no registries are undeployed', () => {
       beforeEach(() => {
         db.undeployWorldScenes.mockResolvedValue({
           undeployedCount: 0,
-          worldName: null
+          worldName: 'test-world'
         })
       })
 
       it('should not recalculate spawn coordinates', async () => {
-        await component.undeployWorldScenes(entityIds, eventTimestamp)
+        await component.undeployWorldScenes(entityIds, worldName, eventTimestamp)
 
         expect(coordinates.recalculateSpawnIfNeeded).not.toHaveBeenCalled()
       })
 
-      it('should return the undeployment result with null worldName', async () => {
-        const result = await component.undeployWorldScenes(entityIds, eventTimestamp)
+      it('should return the undeployment result', async () => {
+        const result = await component.undeployWorldScenes(entityIds, worldName, eventTimestamp)
 
         expect(result).toEqual({
           undeployedCount: 0,
-          worldName: null
+          worldName: 'test-world'
         })
       })
     })
