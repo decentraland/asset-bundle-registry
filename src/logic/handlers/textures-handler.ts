@@ -32,6 +32,9 @@ export const createTexturesEventHandler = ({
             logger.info('Entity was previously purged, skipping stale texture event', {
               entityId: eventMetadata.entityId
             })
+            if (!eventMetadata.isLods) {
+              await queuesStatusManager.markAsFinished(eventMetadata.platform, eventMetadata.entityId)
+            }
             return { ok: true, handlerName: HANDLER_NAME }
           }
 
@@ -46,6 +49,9 @@ export const createTexturesEventHandler = ({
 
           if (!fetchedEntity) {
             logger.error('Entity not found', { event: JSON.stringify(event) })
+            if (!eventMetadata.isLods) {
+              await queuesStatusManager.markAsFinished(eventMetadata.platform, eventMetadata.entityId)
+            }
             return {
               ok: false,
               errors: [`Entity with id ${eventMetadata.entityId} was not found`],

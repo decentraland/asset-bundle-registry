@@ -204,6 +204,52 @@ describe('textures-handler', () => {
         expect(result.errors).toEqual([`Entity with id ${event.metadata.entityId} was not found`])
       })
 
+      it('should clear the pending queue counter when entity not found anywhere', async () => {
+        const event = createEvent({
+          metadata: {
+            entityId: 'missing-1',
+            platform: 'webgl',
+            statusCode: ManifestStatusCode.SUCCESS,
+            isLods: false,
+            isWorld: false,
+            version: 'v1'
+          }
+        })
+
+        await queuesStatusManager.markAsQueued('webgl', 'missing-1')
+        db.getRegistryById = jest.fn().mockResolvedValue(null)
+        db.getHistoricalRegistryById = jest.fn().mockResolvedValue(null)
+        catalyst.getEntityById = jest.fn().mockResolvedValue(null)
+
+        await handler.handle(event)
+
+        const pending = await queuesStatusManager.getAllPendingEntities('webgl')
+        expect(pending.find((e: any) => e.entityId === 'missing-1')).toBeUndefined()
+      })
+
+      it('should not clear the pending queue counter for lod events when entity not found', async () => {
+        const event = createEvent({
+          metadata: {
+            entityId: 'missing-2',
+            platform: 'webgl',
+            statusCode: ManifestStatusCode.SUCCESS,
+            isLods: true,
+            isWorld: false,
+            version: 'v1'
+          }
+        })
+
+        await queuesStatusManager.markAsQueued('webgl', 'missing-2')
+        db.getRegistryById = jest.fn().mockResolvedValue(null)
+        db.getHistoricalRegistryById = jest.fn().mockResolvedValue(null)
+        catalyst.getEntityById = jest.fn().mockResolvedValue(null)
+
+        await handler.handle(event)
+
+        const pending = await queuesStatusManager.getAllPendingEntities('webgl')
+        expect(pending.find((e: any) => e.entityId === 'missing-2')).toBeDefined()
+      })
+
       describe('and the entity was previously purged', () => {
         let event: AssetBundleConversionFinishedEvent
         let result: { ok: boolean; errors?: string[] }
@@ -232,6 +278,54 @@ describe('textures-handler', () => {
           expect(catalyst.getEntityById).not.toHaveBeenCalled()
           expect(registry.persistAndRotateStates).not.toHaveBeenCalled()
           expect(db.upsertRegistryBundle).not.toHaveBeenCalled()
+        })
+
+        it('should clear the pending queue counter for non-lod events', async () => {
+          const ev = createEvent({
+            metadata: {
+              entityId: 'purged-1',
+              platform: 'windows',
+              statusCode: ManifestStatusCode.SUCCESS,
+              isLods: false,
+              isWorld: false,
+              version: 'v1'
+            }
+          })
+          const entity = createEntity({ id: 'purged-1' })
+          const dbEntity = createDbEntity(entity)
+
+          await queuesStatusManager.markAsQueued('windows', 'purged-1')
+          db.getRegistryById = jest.fn().mockResolvedValue(null)
+          db.getHistoricalRegistryById = jest.fn().mockResolvedValue({ ...dbEntity, status: Registry.Status.OBSOLETE })
+
+          await handler.handle(ev)
+
+          const pending = await queuesStatusManager.getAllPendingEntities('windows')
+          expect(pending.find((e: any) => e.entityId === 'purged-1')).toBeUndefined()
+        })
+
+        it('should not clear the pending queue counter for lod events', async () => {
+          const ev = createEvent({
+            metadata: {
+              entityId: 'purged-2',
+              platform: 'mac',
+              statusCode: ManifestStatusCode.SUCCESS,
+              isLods: true,
+              isWorld: false,
+              version: 'v1'
+            }
+          })
+          const entity = createEntity({ id: 'purged-2' })
+          const dbEntity = createDbEntity(entity)
+
+          await queuesStatusManager.markAsQueued('mac', 'purged-2')
+          db.getRegistryById = jest.fn().mockResolvedValue(null)
+          db.getHistoricalRegistryById = jest.fn().mockResolvedValue({ ...dbEntity, status: Registry.Status.OBSOLETE })
+
+          await handler.handle(ev)
+
+          const pending = await queuesStatusManager.getAllPendingEntities('mac')
+          expect(pending.find((e: any) => e.entityId === 'purged-2')).toBeDefined()
         })
       })
     })
