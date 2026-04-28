@@ -12,17 +12,12 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     updated_at: { type: 'bigint', notNull: true }
   })
 
-  pgm.createIndex('denylist', 'LOWER(entity_id)', {
-    name: 'idx_denylist_entity_id_lower'
-  })
-
   pgm.createIndex('denylist', 'LOWER(created_by)', {
     name: 'idx_denylist_created_by_lower'
   })
 }
 
 export async function down(pgm: MigrationBuilder): Promise<void> {
-  pgm.dropIndex('denylist', [], { name: 'idx_denylist_entity_id_lower', ifExists: true })
   pgm.dropIndex('denylist', [], { name: 'idx_denylist_created_by_lower', ifExists: true })
   pgm.dropTable('denylist', { ifExists: true })
 }

@@ -47,7 +47,10 @@ export async function createRefreshableFeaturesComponent(components: Pick<AppCom
         maliciousAddresses = null
       }
 
-      const userModeratorsVariant = await features.getFeatureVariant(ApplicationName.DAPPS, USER_MODERATORS_FEATURE_FLAG)
+      const userModeratorsVariant = await features.getFeatureVariant(
+        ApplicationName.DAPPS,
+        USER_MODERATORS_FEATURE_FLAG
+      )
 
       logger.debug('Refreshed user moderators feature flag', {
         userModeratorsVariant: userModeratorsVariant?.payload?.value ?? ''

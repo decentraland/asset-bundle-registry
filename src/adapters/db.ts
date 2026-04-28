@@ -1456,7 +1456,6 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
       VALUES (${entityId.toLowerCase()}, ${reason ?? null}, ${createdBy.toLowerCase()}, ${now}, ${now})
       ON CONFLICT (entity_id) DO UPDATE
         SET reason = EXCLUDED.reason,
-            created_by = EXCLUDED.created_by,
             updated_at = EXCLUDED.updated_at
       RETURNING entity_id, reason, created_by, created_at, updated_at
     `
