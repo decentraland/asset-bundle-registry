@@ -2,6 +2,7 @@ import { IBaseComponent } from '@well-known-components/interfaces'
 import { IQueueComponent } from '@dcl/sqs-component'
 import {
   CatalystFetchOptions,
+  Denylist,
   EntityStatusInQueue,
   EventHandlerName,
   MessageProcessorResult,
@@ -160,6 +161,10 @@ export interface IDbComponent {
   ): Promise<void>
   undeployWorldScenes(entityIds: string[], worldName: string, eventTimestamp: number): Promise<UndeploymentResult>
   undeployWorldByName(worldName: string, eventTimestamp: number): Promise<UndeploymentResult>
+  // Denylist methods
+  getDenylist(): Promise<Denylist.DbEntity[]>
+  addDenylistEntry(entityId: string, createdBy: string, reason?: string | null): Promise<Denylist.DbEntity>
+  removeDenylistEntry(entityId: string): Promise<boolean>
   /**
    * Atomically updates a bundle, optionally updates the version, reads the current entity state,
    * reads related registries, and persists the registry with rotated statuses — all within a single transaction.

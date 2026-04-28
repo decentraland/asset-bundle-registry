@@ -6,6 +6,7 @@ import { AppComponents } from '../../types'
 
 const FEATURE_FLAG_REFRESH_INTERVAL = 4 * 60 * 1000 // 4 minutes
 const MALICIOUS_ADDRESSES_FEATURE_FLAG = 'malicious-profiles'
+const USER_MODERATORS_FEATURE_FLAG = 'platform_user_moderators'
 
 export async function createRefreshableFeaturesComponent(components: Pick<AppComponents, 'features' | 'logs'>) {
   const { features, logs } = components
@@ -17,6 +18,7 @@ export async function createRefreshableFeaturesComponent(components: Pick<AppCom
   })
 
   let maliciousAddresses: string[] | null = null
+  let userModerators: string[] | null = null
   let refreshInterval: NodeJS.Timeout | null = null
 
   async function refreshFeatureFlags() {
@@ -43,6 +45,27 @@ export async function createRefreshableFeaturesComponent(components: Pick<AppCom
         logger.info('Malicious addresses updated', { count: maliciousAddresses.length })
       } else {
         maliciousAddresses = null
+      }
+
+      const userModeratorsVariant = await features.getFeatureVariant(ApplicationName.DAPPS, USER_MODERATORS_FEATURE_FLAG)
+
+      logger.debug('Refreshed user moderators feature flag', {
+        userModeratorsVariant: userModeratorsVariant?.payload?.value ?? ''
+      })
+
+      if (userModeratorsVariant?.payload?.value) {
+        userModerators = Array.from(
+          new Set(
+            userModeratorsVariant.payload.value
+              .replace(/\n/g, '')
+              .split(',')
+              .map((address: string) => address.toLowerCase().trim())
+              .filter((address: string) => EthAddress.validate(address))
+          )
+        )
+        logger.info('User moderators updated', { count: userModerators.length })
+      } else {
+        userModerators = null
       }
     } catch (error) {
       logger.error('Failed to refresh feature flags', {
@@ -78,8 +101,14 @@ export async function createRefreshableFeaturesComponent(components: Pick<AppCom
     return maliciousAddresses
   }
 
+  async function getUserModerators(): Promise<string[] | null> {
+    await promiseOfFirstRefresh
+    return userModerators
+  }
+
   return {
     getMaliciousAddresses,
+    getUserModerators,
     refreshFeatureFlags,
     [START_COMPONENT]: start,
     [STOP_COMPONENT]: stop
