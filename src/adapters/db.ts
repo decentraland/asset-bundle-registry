@@ -104,7 +104,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
     if (excludeDenylisted) {
       query.append(SQL`
         AND NOT EXISTS (
-          SELECT 1 FROM denylist WHERE LOWER(denylist.entity_id) = LOWER(registries.id)
+          SELECT 1 FROM denylist WHERE denylist.entity_id = LOWER(registries.id)
         )
       `)
     }
