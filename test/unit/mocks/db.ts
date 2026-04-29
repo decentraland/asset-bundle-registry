@@ -40,6 +40,10 @@ export function createDbMockComponent(): jest.Mocked<IDbComponent> {
     recalculateSpawnCoordinate: jest.fn(),
     undeployWorldScenes: jest.fn(),
     undeployWorldByName: jest.fn(),
-    persistRegistryInTransaction: jest.fn()
+    persistRegistryInTransaction: jest.fn(),
+    // Denylist methods
+    getDenylist: jest.fn(),
+    addDenylistEntry: jest.fn(),
+    removeDenylistEntry: jest.fn()
   }
 }

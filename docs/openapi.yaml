@@ -55,6 +55,8 @@ tags:
     description: Processing queue status and monitoring
   - name: Admin
     description: Administrative endpoints (requires bearer token authentication)
+  - name: Denylist
+    description: Denylist management endpoints — block specific entity IDs from being served
 paths:
   /status:
     get:
@@ -374,6 +376,129 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  /denylist:
+    get:
+      tags:
+        - Denylist
+      summary: Get all denylist entries
+      description: |
+        Returns all entity IDs currently in the denylist. This endpoint is public and requires no authentication.
+      operationId: getDenylist
+      security: []
+      responses:
+        '200':
+          description: List of denylist entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DenylistEntry'
+  /denylist/{entityId}:
+    post:
+      tags:
+        - Denylist
+      summary: Add or update a denylist entry
+      description: |
+        Adds an entity ID to the denylist or updates an existing entry. Requires a valid signed fetch
+        from an address listed in the `dapps-platform_user_moderators` feature flag.
+
+        If the entity is already in the denylist, its `reason` and `updated_at` fields are updated
+        but `created_by` is preserved from the original entry.
+      operationId: addDenylistEntry
+      security:
+        - SignedFetch: []
+      parameters:
+        - name: entityId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Entity ID (e.g. a Catalyst CID) to add to the denylist
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  nullable: true
+                  description: Optional human-readable reason for denylisting this entity
+      responses:
+        '201':
+          description: Entry created or updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DenylistEntry'
+        '400':
+          description: Bad request — entity ID is missing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationResult'
+        '401':
+          description: Unauthorized — invalid or missing signed fetch
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden — signer is not an authorized moderator
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationResult'
+    delete:
+      tags:
+        - Denylist
+      summary: Remove a denylist entry
+      description: |
+        Removes an entity ID from the denylist. Requires a valid signed fetch from an address
+        listed in the `dapps-platform_user_moderators` feature flag.
+      operationId: removeDenylistEntry
+      security:
+        - SignedFetch: []
+      parameters:
+        - name: entityId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Entity ID to remove from the denylist
+      responses:
+        '200':
+          description: Entry successfully removed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationResult'
+        '400':
+          description: Bad request — entity ID is missing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationResult'
+        '401':
+          description: Unauthorized — invalid or missing signed fetch
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden — signer is not an authorized moderator
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationResult'
+        '404':
+          description: Entity ID not found in the denylist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationResult'
   /flush-cache:
     delete:
       tags:
@@ -796,6 +921,43 @@ components:
       required:
         - ok
         - message
+    DenylistEntry:
+      type: object
+      description: A single entry in the denylist, representing a blocked entity
+      properties:
+        entity_id:
+          type: string
+          description: Lowercase entity ID (Catalyst CID) that is blocked
+        reason:
+          type: string
+          nullable: true
+          description: Optional human-readable reason why this entity was denylisted
+        created_by:
+          type: string
+          description: Lowercase Ethereum address of the moderator who first added the entry
+        created_at:
+          type: number
+          description: Unix timestamp in milliseconds when the entry was created
+        updated_at:
+          type: number
+          description: Unix timestamp in milliseconds when the entry was last updated
+      required:
+        - entity_id
+        - created_by
+        - created_at
+        - updated_at
+    OperationResult:
+      type: object
+      description: Generic result for mutating operations
+      properties:
+        ok:
+          type: boolean
+          description: Whether the operation succeeded
+        message:
+          type: string
+          description: Optional human-readable message
+      required:
+        - ok
     Error:
       type: object
       properties:

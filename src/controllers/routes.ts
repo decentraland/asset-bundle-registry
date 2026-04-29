@@ -11,6 +11,9 @@ import { getEntityVersionsHandler } from './handlers/get-entity-versions'
 import { getProfilesHandler } from './handlers/get-profiles'
 import { getProfilesMetadataHandler } from './handlers/get-profiles-metadata'
 import { getWorldManifestHandler } from './handlers/get-world-manifest'
+import { getDenylistHandler } from './handlers/get-denylist'
+import { postDenylistEntryHandler } from './handlers/post-denylist-entry'
+import { deleteDenylistEntryHandler } from './handlers/delete-denylist-entry'
 
 export async function setupRouter(globalContext: GlobalContext): Promise<Router<GlobalContext>> {
   const router = new Router<GlobalContext>()
@@ -35,6 +38,10 @@ export async function setupRouter(globalContext: GlobalContext): Promise<Router<
   router.post('/profiles', getProfilesHandler)
   router.post('/profiles/metadata', getProfilesMetadataHandler)
   router.get('/worlds/:worldName/manifest', getWorldManifestHandler)
+
+  router.get('/denylist', getDenylistHandler)
+  router.post('/denylist/:entityId', signedFetchMiddleware, postDenylistEntryHandler)
+  router.delete('/denylist/:entityId', signedFetchMiddleware, deleteDenylistEntryHandler)
 
   const adminToken = await globalContext.components.config.getString('API_ADMIN_TOKEN')
 

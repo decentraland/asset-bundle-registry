@@ -1,6 +1,7 @@
 import SQL, { SQLStatement } from 'sql-template-strings'
 import {
   AppComponents,
+  Denylist,
   IDbComponent,
   Registry,
   SetSpawnCoordinateResult,
@@ -61,7 +62,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
     pointers: string[],
     options?: GetSortedRegistriesByPointersOptions
   ): Promise<Registry.DbEntity[]> {
-    const { statuses, sortOrder, worldName } = options ?? {}
+    const { statuses, sortOrder, worldName, excludeDenylisted } = options ?? {}
     const order = sortOrder === SortOrder.DESC ? 'DESC' : 'ASC'
     const lowerCasePointers = pointers.map((p) => p.toLowerCase())
 
@@ -97,6 +98,14 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
     if (statuses) {
       query.append(SQL`
         AND status = ANY(${statuses}::varchar(255)[])
+      `)
+    }
+
+    if (excludeDenylisted) {
+      query.append(SQL`
+        AND NOT EXISTS (
+          SELECT 1 FROM denylist WHERE denylist.entity_id = LOWER(registries.id)
+        )
       `)
     }
 
@@ -1434,6 +1443,43 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
     })
   }
 
+  async function getDenylist(): Promise<Denylist.DbEntity[]> {
+    const query: SQLStatement = SQL`
+      SELECT entity_id, reason, created_by, created_at, updated_at
+      FROM denylist
+      ORDER BY created_at DESC
+    `
+    const result = await pg.query<Denylist.DbEntity>(query)
+    return result.rows
+  }
+
+  async function addDenylistEntry(
+    entityId: string,
+    createdBy: string,
+    reason?: string | null
+  ): Promise<Denylist.DbEntity> {
+    const now = Date.now()
+    const query: SQLStatement = SQL`
+      INSERT INTO denylist (entity_id, reason, created_by, created_at, updated_at)
+      VALUES (${entityId.toLowerCase()}, ${reason ?? null}, ${createdBy.toLowerCase()}, ${now}, ${now})
+      ON CONFLICT (entity_id) DO UPDATE
+        SET reason = EXCLUDED.reason,
+            updated_at = EXCLUDED.updated_at
+      RETURNING entity_id, reason, created_by, created_at, updated_at
+    `
+    const result = await pg.query<Denylist.DbEntity>(query)
+    return result.rows[0]
+  }
+
+  async function removeDenylistEntry(entityId: string): Promise<boolean> {
+    const query: SQLStatement = SQL`
+      DELETE FROM denylist
+      WHERE LOWER(entity_id) = ${entityId.toLowerCase()}
+    `
+    const result = await pg.query(query)
+    return (result.rowCount ?? 0) > 0
+  }
+
   return {
     insertRegistry,
     updateRegistriesStatus,
@@ -1471,6 +1517,9 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
     recalculateSpawnCoordinate,
     undeployWorldScenes,
     undeployWorldByName,
-    persistRegistryInTransaction
+    persistRegistryInTransaction,
+    getDenylist,
+    addDenylistEntry,
+    removeDenylistEntry
   }
 }

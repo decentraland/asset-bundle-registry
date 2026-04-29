@@ -140,6 +140,16 @@ export enum EventHandlerName {
   SPAWN_COORDINATE = 'Spawn Coordinate Handler'
 }
 
+export namespace Denylist {
+  export type DbEntity = {
+    entity_id: string
+    reason: string | null
+    created_by: string
+    created_at: number // bigint ms
+    updated_at: number // bigint ms
+  }
+}
+
 export type MessageProcessorResult = {
   ok: boolean
   failedHandlers: EventHandlerName[]

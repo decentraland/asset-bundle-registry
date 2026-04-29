@@ -15,6 +15,7 @@ export function extendDbComponent({ db, pg }: Pick<AppComponents, 'db' | 'pg'>):
     timestamp: number
   ) => Promise<void>
   getSpawnCoordinateByWorldName: (worldName: string) => Promise<SpawnCoordinate | null>
+  deleteDenylistEntries: (entityIds: string[]) => Promise<void>
   close: () => Promise<void>
 } {
   return {
@@ -67,6 +68,13 @@ export function extendDbComponent({ db, pg }: Pick<AppComponents, 'db' | 'pg'>):
 
       const result = await pg.query<SpawnCoordinate>(query)
       return result.rows[0] || null
+    },
+    deleteDenylistEntries: async (entityIds: string[]) => {
+      const query: SQLStatement = SQL`
+            DELETE FROM denylist
+            WHERE LOWER(entity_id) = ANY(${entityIds.map((id) => id.toLowerCase())}::varchar(255)[])
+          `
+      await pg.query(query)
     },
     close: async () => {
       await pg.getPool().end()
