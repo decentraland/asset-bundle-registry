@@ -62,7 +62,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
     pointers: string[],
     options?: GetSortedRegistriesByPointersOptions
   ): Promise<Registry.DbEntity[]> {
-    const { statuses, sortOrder, worldName } = options ?? {}
+    const { statuses, sortOrder, worldName, excludeDenylisted } = options ?? {}
     const order = sortOrder === SortOrder.DESC ? 'DESC' : 'ASC'
     const lowerCasePointers = pointers.map((p) => p.toLowerCase())
 
@@ -98,6 +98,14 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
     if (statuses) {
       query.append(SQL`
         AND status = ANY(${statuses}::varchar(255)[])
+      `)
+    }
+
+    if (excludeDenylisted) {
+      query.append(SQL`
+        AND NOT EXISTS (
+          SELECT 1 FROM denylist WHERE LOWER(denylist.entity_id) = LOWER(registries.id)
+        )
       `)
     }
 

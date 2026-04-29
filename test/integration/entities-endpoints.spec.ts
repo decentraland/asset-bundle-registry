@@ -597,4 +597,82 @@ test('POST /entities endpoints', async function ({ components }) {
       })
     })
   })
+
+  describe('POST /entities/active — denylist filtering', () => {
+    const denylistToCleanUp: string[] = []
+
+    afterEach(async function () {
+      if (denylistToCleanUp.length > 0) {
+        await components.extendedDb.deleteDenylistEntries([...denylistToCleanUp])
+        denylistToCleanUp.length = 0
+      }
+    })
+
+    describe('when a denylisted entity is requested', () => {
+      describe('and the entity is in the denylist', () => {
+        let registry: Registry.DbEntity
+
+        beforeEach(async () => {
+          registry = createRegistryEntity(
+            identity.realAccount.address,
+            Registry.Status.COMPLETE,
+            Registry.SimplifiedStatus.COMPLETE,
+            { id: 'bafkreidenied1111111111111111111111111111111111111111111111111111111111', pointers: ['9000,9000'] }
+          )
+          await createRegistryOnDatabase(registry)
+          await components.db.addDenylistEntry(registry.id, '0xabcdef1234567890abcdef1234567890abcdef12')
+          denylistToCleanUp.push(registry.id)
+        })
+
+        it('should return an empty array', async () => {
+          const response = await fetchLocally('POST', '/entities/active', undefined, {
+            pointers: [registry.pointers[0]]
+          })
+          const parsedResponse = await response.json()
+
+          expect(parsedResponse).toEqual([])
+        })
+      })
+
+      describe('and only one of multiple requested entities is denylisted', () => {
+        let deniedRegistry: Registry.DbEntity
+        let allowedRegistry: Registry.DbEntity
+
+        beforeEach(async () => {
+          deniedRegistry = createRegistryEntity(
+            identity.realAccount.address,
+            Registry.Status.COMPLETE,
+            Registry.SimplifiedStatus.COMPLETE,
+            { id: 'bafkreidenied2222222222222222222222222222222222222222222222222222222222', pointers: ['9001,9001'] }
+          )
+          allowedRegistry = createRegistryEntity(
+            identity.realAccount.address,
+            Registry.Status.COMPLETE,
+            Registry.SimplifiedStatus.COMPLETE,
+            { id: 'bafkreiallowed111111111111111111111111111111111111111111111111111111111', pointers: ['9002,9002'] }
+          )
+          await createRegistryOnDatabase(deniedRegistry)
+          await createRegistryOnDatabase(allowedRegistry)
+          await components.db.addDenylistEntry(deniedRegistry.id, '0xabcdef1234567890abcdef1234567890abcdef12')
+          denylistToCleanUp.push(deniedRegistry.id)
+        })
+
+        it('should return only the non-denylisted entity', async () => {
+          const response = await fetchLocally('POST', '/entities/active', undefined, {
+            pointers: [deniedRegistry.pointers[0], allowedRegistry.pointers[0]]
+          })
+          const parsedResponse = await response.json()
+
+          expect(parsedResponse).toEqual(
+            [allowedRegistry].map((entity: Registry.DbEntity) => ({
+              ...entity,
+              deployer: entity.deployer.toLocaleLowerCase(),
+              timestamp: entity.timestamp.toString(),
+              versions: entity.versions
+            }))
+          )
+        })
+      })
+    })
+  })
 })
