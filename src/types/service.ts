@@ -84,6 +84,7 @@ export interface GetSortedRegistriesByPointersOptions {
   statuses?: Registry.Status[]
   sortOrder?: SortOrder
   worldName?: string
+  excludeDenylisted?: boolean
 }
 
 export interface IDbComponent {
