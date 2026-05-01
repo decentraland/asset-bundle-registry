@@ -878,7 +878,9 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
   }
 
   /**
-   * Internal: Gets all processed (COMPLETE or FALLBACK) parcels for a world.
+   * Internal: Gets all processed (COMPLETE or FALLBACK) parcels for a world,
+   * excluding parcels that come exclusively from denylisted entities. A parcel
+   * is still returned if any non-denylisted scene of the world covers it.
    * @param worldName - The world name (case-insensitive)
    * @param executor - Query executor (pg or PoolClient)
    * @returns Array of parcel strings in "x,y" format
@@ -890,6 +892,9 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
       WHERE
         LOWER(metadata->'worldConfiguration'->>'name') = ${worldName.toLowerCase()}
         AND status IN (${Registry.Status.COMPLETE}, ${Registry.Status.FALLBACK})
+        AND NOT EXISTS (
+          SELECT 1 FROM denylist WHERE denylist.entity_id = LOWER(registries.id)
+        )
     `
 
     const result = await executor.query<{ parcel: string }>(query)
