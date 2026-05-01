@@ -192,6 +192,11 @@ test('GET /worlds/:worldName/manifest', async ({ components }) => {
         expect(body.spawn_coordinate).toEqual({ x: 2, y: 0 })
         expect(body.total).toBe(2)
       })
+
+      it('should expose a bounding rectangle that excludes denylisted parcels (so spawn validation matches the served area)', async () => {
+        const bounds = await components.db.getWorldBoundingRectangle(worldName)
+        expect(bounds).toEqual({ minX: 2, maxX: 3, minY: 0, maxY: 0 })
+      })
     })
   })
 

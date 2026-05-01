@@ -913,7 +913,10 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
 
   /**
    * Internal: Gets the bounding rectangle that covers all processed parcels in a world.
-   * This is more efficient than fetching all parcels when only bounds are needed.
+   * Excludes parcels coming exclusively from denylisted entities so the bounds match
+   * what the manifest will actually serve. This keeps spawn-coordinate validation
+   * (setSpawnCoordinate / _recalculateSpawnCoordinate) consistent with the runtime
+   * resolvable area of the world.
    * @param worldName - The world name (case-insensitive)
    * @param executor - Query executor (pg or PoolClient)
    * @returns Bounding rectangle or null if no processed scenes exist
@@ -934,6 +937,9 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
         WHERE
           LOWER(metadata->'worldConfiguration'->>'name') = ${worldName.toLowerCase()}
           AND status IN (${Registry.Status.COMPLETE}, ${Registry.Status.FALLBACK})
+          AND NOT EXISTS (
+            SELECT 1 FROM denylist WHERE denylist.entity_id = LOWER(registries.id)
+          )
       ) AS parcels
     `
 
