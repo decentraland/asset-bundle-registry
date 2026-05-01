@@ -7,6 +7,7 @@ test('GET /worlds/:worldName/manifest', async ({ components }) => {
   let fetchLocally: ReturnType<typeof createRequestMaker>['makeLocalRequest']
   const registriesToCleanUp: string[] = []
   const spawnCoordinatesToCleanUp: string[] = []
+  const denylistToCleanUp: string[] = []
 
   beforeAll(async () => {
     const { makeLocalRequest } = createRequestMaker(components)
@@ -23,6 +24,11 @@ test('GET /worlds/:worldName/manifest', async ({ components }) => {
     if (spawnCoordinatesToCleanUp.length > 0) {
       await components.extendedDb.deleteSpawnCoordinates(spawnCoordinatesToCleanUp)
       spawnCoordinatesToCleanUp.length = 0
+    }
+
+    if (denylistToCleanUp.length > 0) {
+      await components.extendedDb.deleteDenylistEntries([...denylistToCleanUp])
+      denylistToCleanUp.length = 0
     }
   })
 
@@ -131,6 +137,65 @@ test('GET /worlds/:worldName/manifest', async ({ components }) => {
         expect(body.occupied).toEqual([])
         expect(body.spawn_coordinate).toEqual({ x: 0, y: 0 })
         expect(body.total).toBe(0)
+      })
+    })
+
+    describe('and every scene of the world is denylisted', () => {
+      const worldName = 'fully-denylisted-world.dcl.eth'
+
+      beforeEach(async () => {
+        const registry = await createWorldRegistry(worldName, ['0,0', '1,0'], {
+          id: 'world-manifest-entity-denylisted-only',
+          timestamp: 1000
+        })
+        await components.extendedDb.insertSpawnCoordinate(worldName, 1, 0, true, 1000)
+        await components.db.addDenylistEntry(registry.id, '0xabcdef1234567890abcdef1234567890abcdef12')
+        denylistToCleanUp.push(registry.id)
+      })
+
+      it('should respond with a 200 status and an empty manifest', async () => {
+        const response = await fetchLocally('GET', `/worlds/${worldName}/manifest`, undefined, undefined)
+
+        expect(response.status).toBe(200)
+        const body = await response.json()
+        expect(body.occupied).toEqual([])
+        expect(body.spawn_coordinate).toEqual({ x: 0, y: 0 })
+        expect(body.total).toBe(0)
+      })
+    })
+
+    describe('and only some scenes of the world are denylisted', () => {
+      const worldName = 'partially-denylisted-world.dcl.eth'
+
+      beforeEach(async () => {
+        const deniedRegistry = await createWorldRegistry(worldName, ['0,0', '1,0'], {
+          id: 'world-manifest-entity-denied',
+          timestamp: 1000
+        })
+        await createWorldRegistry(worldName, ['2,0', '3,0'], {
+          id: 'world-manifest-entity-allowed',
+          timestamp: 2000
+        })
+        await components.extendedDb.insertSpawnCoordinate(worldName, 2, 0, true, 2000)
+        await components.db.addDenylistEntry(deniedRegistry.id, '0xabcdef1234567890abcdef1234567890abcdef12')
+        denylistToCleanUp.push(deniedRegistry.id)
+      })
+
+      it('should respond with a 200 status and the manifest containing only parcels from non-denylisted scenes', async () => {
+        const response = await fetchLocally('GET', `/worlds/${worldName}/manifest`, undefined, undefined)
+
+        expect(response.status).toBe(200)
+        const body = await response.json()
+        expect(body.occupied).toEqual(expect.arrayContaining(['2,0', '3,0']))
+        expect(body.occupied).not.toEqual(expect.arrayContaining(['0,0']))
+        expect(body.occupied).not.toEqual(expect.arrayContaining(['1,0']))
+        expect(body.spawn_coordinate).toEqual({ x: 2, y: 0 })
+        expect(body.total).toBe(2)
+      })
+
+      it('should expose a bounding rectangle that excludes denylisted parcels (so spawn validation matches the served area)', async () => {
+        const bounds = await components.db.getWorldBoundingRectangle(worldName)
+        expect(bounds).toEqual({ minX: 2, maxX: 3, minY: 0, maxY: 0 })
       })
     })
   })
