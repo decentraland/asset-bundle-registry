@@ -512,6 +512,12 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
    * preserved from history; the entity status is reset to PENDING and will be recomputed
    * by the next bundle update.
    *
+   * Uses SELECT ... FOR UPDATE on the historical row to serialize concurrent restores
+   * for the same entity. Without it, two concurrent texture events (e.g. windows + mac
+   * arriving simultaneously) could both read the historical row, and the slower one's
+   * upsert into `registries` would stomp the faster one's bundle update with stale
+   * bundle data from history.
+   *
    * @param id - The entity ID to restore
    * @returns The restored registry entity, or null if no historical row was found
    */
@@ -519,16 +525,19 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
     return pg.withTransaction(async (client) => {
       const lowerId = id.toLocaleLowerCase()
 
-      const selectResult = await client.query<Registry.DbEntity>(SQL`
+      const historicalResult = await client.query<Registry.DbEntity>(SQL`
         SELECT id, type, timestamp, deployer, pointers, content, metadata, status, bundles, versions
         FROM historical_registries
         WHERE LOWER(id) = ${lowerId}
+        FOR UPDATE
       `)
 
-      const historical = selectResult.rows[0]
+      const historical = historicalResult.rows[0]
       if (!historical) {
-        // A concurrent restore for the same entity may have already moved the row.
-        // Fall back to returning whatever is now in `registries`.
+        // Either the entity was never in history, or a concurrent restore already moved
+        // it. In the latter case the row is now in `registries` (and any in-flight bundle
+        // update from the winning thread is already applied or will be serialized by the
+        // row lock), so we return the live row as-is.
         const currentResult = await client.query<Registry.DbEntity>(SQL`
           SELECT id, type, timestamp, deployer, pointers, content, metadata, status, bundles, versions
           FROM registries
