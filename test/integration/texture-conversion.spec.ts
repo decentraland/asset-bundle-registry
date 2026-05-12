@@ -1,4 +1,10 @@
-import { AssetBundleConversionFinishedEvent, Entity, EntityType, Events } from '@dcl/schemas'
+import {
+  AssetBundleConversionFinishedEvent,
+  AssetBundleConversionManuallyQueuedEvent,
+  Entity,
+  EntityType,
+  Events
+} from '@dcl/schemas'
 import { AuthLinkType } from '@dcl/crypto'
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
 import { Registry } from '../../src/types'
@@ -15,6 +21,7 @@ import { test } from '../components'
 test('texture conversion handling', async ({ components, spyComponents }) => {
   let identity: Identity
   const registriesToCleanUp: string[] = []
+  const historicalRegistriesToCleanUp: string[] = []
 
   beforeAll(async () => {
     identity = await getIdentity()
@@ -24,6 +31,10 @@ test('texture conversion handling', async ({ components, spyComponents }) => {
     if (registriesToCleanUp.length > 0) {
       await components.db.deleteRegistries(registriesToCleanUp)
       registriesToCleanUp.length = 0
+    }
+    if (historicalRegistriesToCleanUp.length > 0) {
+      await components.extendedDb.deleteHistoricalRegistries(historicalRegistriesToCleanUp)
+      historicalRegistriesToCleanUp.length = 0
     }
   })
 
@@ -80,6 +91,59 @@ test('texture conversion handling', async ({ components, spyComponents }) => {
   const mockGenesisCityDeployment = (entity: Entity): void => {
     spyComponents.worlds.isWorldDeployment.mockReturnValue(false)
     spyComponents.catalyst.getEntityById.mockResolvedValue(entity)
+  }
+
+  const createManualRequeueEvent = (
+    entityId: string,
+    platform: 'windows' | 'mac' | 'webgl'
+  ): AssetBundleConversionManuallyQueuedEvent => ({
+    type: Events.Type.ASSET_BUNDLE,
+    subType: Events.SubType.AssetBundle.MANUALLY_QUEUED,
+    key: entityId,
+    timestamp: Date.now(),
+    metadata: {
+      entityId,
+      platform,
+      isLods: false,
+      isPriority: false,
+      version: 'v1'
+    }
+  })
+
+  const seedHistoricalEntity = async (
+    entity: Entity,
+    overrides: Partial<Registry.DbEntity> = {}
+  ): Promise<Registry.DbEntity> => {
+    const dbEntity: Registry.DbEntity = {
+      ...entity,
+      deployer: identity.realAccount.address,
+      type: EntityType.SCENE,
+      status: Registry.Status.FAILED,
+      bundles: {
+        assets: {
+          windows: Registry.SimplifiedStatus.PENDING,
+          mac: Registry.SimplifiedStatus.PENDING,
+          webgl: Registry.SimplifiedStatus.PENDING
+        },
+        lods: {
+          windows: Registry.SimplifiedStatus.PENDING,
+          mac: Registry.SimplifiedStatus.PENDING,
+          webgl: Registry.SimplifiedStatus.PENDING
+        }
+      },
+      versions: {
+        assets: {
+          windows: { version: '', buildDate: '' },
+          mac: { version: '', buildDate: '' },
+          webgl: { version: '', buildDate: '' }
+        }
+      },
+      ...overrides
+    }
+
+    await components.extendedDb.insertHistoricalRegistry(dbEntity)
+    historicalRegistriesToCleanUp.push(dbEntity.id)
+    return dbEntity
   }
 
   describe('when both platform texture conversions complete for a scene', () => {
@@ -470,6 +534,241 @@ test('texture conversion handling', async ({ components, spyComponents }) => {
 
       expect(registryC).not.toBeNull()
       expect(registryC!.status).toBe(Registry.Status.FAILED)
+    })
+  })
+
+  describe('when a purged entity is manually re-queued and a texture event arrives', () => {
+    let entityId: string
+
+    beforeEach(async () => {
+      entityId = `texture-restore-happy-${Date.now()}`
+      const entity = createEntity({ id: entityId, pointers: ['910,910'], timestamp: 1000 })
+      await seedHistoricalEntity(entity, {
+        status: Registry.Status.FAILED,
+        bundles: {
+          assets: {
+            windows: Registry.SimplifiedStatus.FAILED,
+            mac: Registry.SimplifiedStatus.COMPLETE,
+            webgl: Registry.SimplifiedStatus.COMPLETE
+          },
+          lods: {
+            windows: Registry.SimplifiedStatus.PENDING,
+            mac: Registry.SimplifiedStatus.PENDING,
+            webgl: Registry.SimplifiedStatus.PENDING
+          }
+        }
+      })
+      registriesToCleanUp.push(entityId)
+
+      await components.messageProcessor.process(createManualRequeueEvent(entityId, 'windows'))
+      await components.messageProcessor.process(createTextureEvent(entityId, 'windows'))
+    })
+
+    it('should restore the entity into the active registries table', async () => {
+      const registry = await components.db.getRegistryById(entityId)
+      expect(registry).not.toBeNull()
+    })
+
+    it('should apply the successful bundle update to the restored entity', async () => {
+      const registry = await components.db.getRegistryById(entityId)
+      expect(registry!.bundles.assets.windows).toBe(Registry.SimplifiedStatus.COMPLETE)
+      expect(registry!.bundles.assets.mac).toBe(Registry.SimplifiedStatus.COMPLETE)
+    })
+
+    it('should mark the restored entity as complete', async () => {
+      const registry = await components.db.getRegistryById(entityId)
+      expect(registry!.status).toBe(Registry.Status.COMPLETE)
+    })
+
+    it('should remove the historical row after the restore', async () => {
+      const historical = await components.db.getHistoricalRegistryById(entityId)
+      expect(historical).toBeNull()
+    })
+
+    it('should clear the manual re-queue marker so a follow-up stale event is skipped again', async () => {
+      const stillManuallyQueued = await components.queuesStatusManager.isManuallyQueued('windows', entityId)
+      expect(stillManuallyQueued).toBe(false)
+    })
+  })
+
+  describe('when a purged entity has no manual re-queue marker and a texture event arrives', () => {
+    let entityId: string
+
+    beforeEach(async () => {
+      entityId = `texture-restore-skip-${Date.now()}`
+      const entity = createEntity({ id: entityId, pointers: ['911,911'], timestamp: 1000 })
+      await seedHistoricalEntity(entity, { status: Registry.Status.FAILED })
+
+      await components.messageProcessor.process(createTextureEvent(entityId, 'windows'))
+    })
+
+    it('should not move the entity into the active registries table', async () => {
+      const registry = await components.db.getRegistryById(entityId)
+      expect(registry).toBeNull()
+    })
+
+    it('should leave the historical row untouched', async () => {
+      const historical = await components.db.getHistoricalRegistryById(entityId)
+      expect(historical).not.toBeNull()
+      expect(historical!.status).toBe(Registry.Status.FAILED)
+    })
+  })
+
+  describe('when two concurrent texture events arrive for a purged, manually re-queued entity', () => {
+    let entityId: string
+
+    beforeEach(async () => {
+      entityId = `texture-restore-race-${Date.now()}`
+      const entity = createEntity({ id: entityId, pointers: ['912,912'], timestamp: 1000 })
+      await seedHistoricalEntity(entity, {
+        status: Registry.Status.FAILED,
+        bundles: {
+          assets: {
+            windows: Registry.SimplifiedStatus.FAILED,
+            mac: Registry.SimplifiedStatus.FAILED,
+            webgl: Registry.SimplifiedStatus.PENDING
+          },
+          lods: {
+            windows: Registry.SimplifiedStatus.PENDING,
+            mac: Registry.SimplifiedStatus.PENDING,
+            webgl: Registry.SimplifiedStatus.PENDING
+          }
+        }
+      })
+      registriesToCleanUp.push(entityId)
+
+      await components.messageProcessor.process(createManualRequeueEvent(entityId, 'windows'))
+      await components.messageProcessor.process(createManualRequeueEvent(entityId, 'mac'))
+
+      await Promise.all([
+        components.messageProcessor.process(createTextureEvent(entityId, 'windows')),
+        components.messageProcessor.process(createTextureEvent(entityId, 'mac'))
+      ])
+    })
+
+    it('should mark the restored entity as complete', async () => {
+      const registry = await components.db.getRegistryById(entityId)
+      expect(registry).not.toBeNull()
+      expect(registry!.status).toBe(Registry.Status.COMPLETE)
+    })
+
+    it('should not let either platform stomp the other back to a stale historical bundle', async () => {
+      const registry = await components.db.getRegistryById(entityId)
+      expect(registry!.bundles.assets.windows).toBe(Registry.SimplifiedStatus.COMPLETE)
+      expect(registry!.bundles.assets.mac).toBe(Registry.SimplifiedStatus.COMPLETE)
+    })
+
+    it('should remove the historical row exactly once', async () => {
+      const historical = await components.db.getHistoricalRegistryById(entityId)
+      expect(historical).toBeNull()
+    })
+  })
+
+  describe('when an OBSOLETE purged entity is manually re-queued while a newer COMPLETE entity exists at the same pointers', () => {
+    let olderEntityId: string
+    let newerEntityId: string
+
+    beforeEach(async () => {
+      olderEntityId = `texture-restore-obsolete-older-${Date.now()}`
+      newerEntityId = `texture-restore-obsolete-newer-${Date.now()}`
+
+      // Newer COMPLETE entity is the active one in registries at this pointer
+      const newerEntity = createEntity({ id: newerEntityId, pointers: ['913,913'], timestamp: 2000 })
+      mockGenesisCityDeployment(newerEntity)
+      registriesToCleanUp.push(newerEntityId)
+      await components.messageProcessor.process(createDeploymentMessage(newerEntityId))
+      await components.messageProcessor.process(createTextureEvent(newerEntityId, 'windows'))
+      await components.messageProcessor.process(createTextureEvent(newerEntityId, 'mac'))
+
+      // Older entity sits in historical_registries having been OBSOLETE-purged
+      const olderEntity = createEntity({ id: olderEntityId, pointers: ['913,913'], timestamp: 1000 })
+      await seedHistoricalEntity(olderEntity, {
+        status: Registry.Status.OBSOLETE,
+        bundles: {
+          assets: {
+            windows: Registry.SimplifiedStatus.FAILED,
+            mac: Registry.SimplifiedStatus.COMPLETE,
+            webgl: Registry.SimplifiedStatus.COMPLETE
+          },
+          lods: {
+            windows: Registry.SimplifiedStatus.PENDING,
+            mac: Registry.SimplifiedStatus.PENDING,
+            webgl: Registry.SimplifiedStatus.PENDING
+          }
+        }
+      })
+      registriesToCleanUp.push(olderEntityId)
+
+      await components.messageProcessor.process(createManualRequeueEvent(olderEntityId, 'windows'))
+      await components.messageProcessor.process(createTextureEvent(olderEntityId, 'windows'))
+    })
+
+    it('should still mark the restored older entity as OBSOLETE because a newer COMPLETE one exists', async () => {
+      const olderRegistry = await components.db.getRegistryById(olderEntityId)
+      expect(olderRegistry).not.toBeNull()
+      expect(olderRegistry!.status).toBe(Registry.Status.OBSOLETE)
+    })
+
+    it('should leave the newer COMPLETE entity untouched', async () => {
+      const newerRegistry = await components.db.getRegistryById(newerEntityId)
+      expect(newerRegistry).not.toBeNull()
+      expect(newerRegistry!.status).toBe(Registry.Status.COMPLETE)
+    })
+  })
+
+  describe('db.restoreFromHistoricalRegistry direct behavior', () => {
+    describe('when only a historical row exists', () => {
+      let entityId: string
+
+      beforeEach(async () => {
+        entityId = `db-restore-direct-historical-${Date.now()}`
+        const entity = createEntity({ id: entityId, pointers: ['914,914'], timestamp: 1000 })
+        await seedHistoricalEntity(entity, { status: Registry.Status.FAILED })
+        registriesToCleanUp.push(entityId)
+      })
+
+      it('should move the row into registries with status PENDING and remove the historical row', async () => {
+        const restored = await components.db.restoreFromHistoricalRegistry(entityId)
+
+        expect(restored).not.toBeNull()
+        expect(restored!.status).toBe(Registry.Status.PENDING)
+
+        const inRegistries = await components.db.getRegistryById(entityId)
+        const inHistorical = await components.db.getHistoricalRegistryById(entityId)
+        expect(inRegistries).not.toBeNull()
+        expect(inHistorical).toBeNull()
+      })
+    })
+
+    describe('when no historical row exists but a live registries row does', () => {
+      let entityId: string
+
+      beforeEach(async () => {
+        entityId = `db-restore-direct-fallback-${Date.now()}`
+        const entity = createEntity({ id: entityId, pointers: ['915,915'], timestamp: 1000 })
+        mockGenesisCityDeployment(entity)
+        registriesToCleanUp.push(entityId)
+        await components.messageProcessor.process(createDeploymentMessage(entityId))
+      })
+
+      it('should return the existing live row without modifying it', async () => {
+        const before = await components.db.getRegistryById(entityId)
+        const restored = await components.db.restoreFromHistoricalRegistry(entityId)
+        const after = await components.db.getRegistryById(entityId)
+
+        expect(restored).not.toBeNull()
+        expect(restored!.id).toBe(entityId)
+        expect(after!.status).toBe(before!.status)
+        expect(after!.bundles).toEqual(before!.bundles)
+      })
+    })
+
+    describe('when neither historical nor active registries have the row', () => {
+      it('should return null', async () => {
+        const entityId = `db-restore-direct-missing-${Date.now()}`
+        const restored = await components.db.restoreFromHistoricalRegistry(entityId)
+        expect(restored).toBeNull()
+      })
     })
   })
 })
