@@ -493,16 +493,59 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
 
   async function getHistoricalRegistryById(id: string): Promise<Registry.DbEntity | null> {
     const query: SQLStatement = SQL`
-      SELECT 
+      SELECT
         id, type, timestamp, deployer, pointers, content, metadata, status, bundles, versions
-      FROM 
+      FROM
         historical_registries
-      WHERE 
+      WHERE
         LOWER(id) = ${id.toLocaleLowerCase()}
     `
 
     const result = await pg.query<Registry.DbEntity>(query)
     return result.rows[0] || null
+  }
+
+  /**
+   * Atomically moves a registry from `historical_registries` back to `registries`.
+   * Used when a previously purged entity is manually re-queued for conversion so that
+   * incoming texture events have a live row to write back to. Bundles and versions are
+   * preserved from history; the entity status is reset to PENDING and will be recomputed
+   * by the next bundle update.
+   *
+   * @param id - The entity ID to restore
+   * @returns The restored registry entity, or null if no historical row was found
+   */
+  async function restoreFromHistoricalRegistry(id: string): Promise<Registry.DbEntity | null> {
+    return pg.withTransaction(async (client) => {
+      const lowerId = id.toLocaleLowerCase()
+
+      const selectResult = await client.query<Registry.DbEntity>(SQL`
+        SELECT id, type, timestamp, deployer, pointers, content, metadata, status, bundles, versions
+        FROM historical_registries
+        WHERE LOWER(id) = ${lowerId}
+      `)
+
+      const historical = selectResult.rows[0]
+      if (!historical) {
+        // A concurrent restore for the same entity may have already moved the row.
+        // Fall back to returning whatever is now in `registries`.
+        const currentResult = await client.query<Registry.DbEntity>(SQL`
+          SELECT id, type, timestamp, deployer, pointers, content, metadata, status, bundles, versions
+          FROM registries
+          WHERE LOWER(id) = ${lowerId}
+        `)
+        return currentResult.rows[0] || null
+      }
+
+      const restored = await _insertRegistry({ ...historical, status: Registry.Status.PENDING }, client)
+
+      await client.query(SQL`
+        DELETE FROM historical_registries
+        WHERE LOWER(id) = ${lowerId}
+      `)
+
+      return restored
+    })
   }
 
   async function upsertProfileIfNewer(profile: Sync.ProfileDbEntity): Promise<boolean> {
@@ -1506,6 +1549,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
     insertHistoricalRegistry,
     getSortedHistoricalRegistriesByOwner,
     getHistoricalRegistryById,
+    restoreFromHistoricalRegistry,
     upsertProfileIfNewer,
     bulkUpsertProfilesIfNewer,
     getProfileByPointer,

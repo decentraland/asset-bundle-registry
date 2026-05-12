@@ -328,6 +328,150 @@ describe('textures-handler', () => {
           expect(pending.find((e: any) => e.entityId === 'purged-2')).toBeDefined()
         })
       })
+
+      describe('and the entity was previously purged but is manually re-queued', () => {
+        let event: AssetBundleConversionFinishedEvent
+        let result: { ok: boolean; errors?: string[] }
+        let historicalEntity: Registry.DbEntity
+        let restoredEntity: Registry.DbEntity
+
+        beforeEach(async () => {
+          event = createEvent()
+          const entity = createEntity()
+          const dbEntity = createDbEntity(entity)
+          historicalEntity = {
+            ...dbEntity,
+            status: Registry.Status.FAILED,
+            bundles: {
+              ...dbEntity.bundles,
+              assets: { ...dbEntity.bundles.assets, windows: Registry.SimplifiedStatus.FAILED }
+            }
+          }
+          restoredEntity = { ...historicalEntity, status: Registry.Status.PENDING }
+
+          db.getRegistryById = jest.fn().mockResolvedValue(null)
+          db.getHistoricalRegistryById = jest.fn().mockResolvedValue(historicalEntity)
+          db.restoreFromHistoricalRegistry = jest.fn().mockResolvedValue(restoredEntity)
+          registry.updateBundleAndRotateStates = jest
+            .fn()
+            .mockResolvedValue({ ...restoredEntity, status: Registry.Status.COMPLETE })
+
+          await memoryStorage.flush('manual-jobs:*')
+          await queuesStatusManager.markAsManuallyQueued(event.metadata.platform, event.metadata.entityId)
+
+          result = await handler.handle(event)
+        })
+
+        afterEach(async () => {
+          await memoryStorage.flush('manual-jobs:*')
+          jest.resetAllMocks()
+        })
+
+        it('should return ok', () => {
+          expect(result.ok).toBe(true)
+        })
+
+        it('should restore the entity from historical registries', () => {
+          expect(db.restoreFromHistoricalRegistry).toHaveBeenCalledWith(event.metadata.entityId)
+        })
+
+        it('should not refetch the entity from catalyst', () => {
+          expect(catalyst.getEntityById).not.toHaveBeenCalled()
+          expect(registry.persistAndRotateStates).not.toHaveBeenCalled()
+        })
+
+        it('should clear the manual re-queue marker after restoring', async () => {
+          expect(await queuesStatusManager.isManuallyQueued(event.metadata.platform, event.metadata.entityId)).toBe(
+            false
+          )
+        })
+
+        it('should process the texture event by updating the bundle and rotating states', () => {
+          expect(registry.updateBundleAndRotateStates).toHaveBeenCalledWith({
+            bundleUpdate: {
+              entityId: event.metadata.entityId,
+              platform: event.metadata.platform,
+              isLods: false,
+              status: Registry.SimplifiedStatus.COMPLETE
+            },
+            versionUpdate: {
+              entityId: event.metadata.entityId,
+              platform: event.metadata.platform,
+              version: event.metadata.version,
+              buildDate: new Date(event.timestamp).toISOString()
+            }
+          })
+        })
+      })
+
+      describe('and the entity was purged but only the deployment queue tracking was set (not a manual re-queue)', () => {
+        let event: AssetBundleConversionFinishedEvent
+        let result: { ok: boolean; errors?: string[] }
+
+        beforeEach(async () => {
+          event = createEvent()
+          const entity = createEntity()
+          const dbEntity = createDbEntity(entity)
+          const historicalEntity = { ...dbEntity, status: Registry.Status.FAILED }
+
+          db.getRegistryById = jest.fn().mockResolvedValue(null)
+          db.getHistoricalRegistryById = jest.fn().mockResolvedValue(historicalEntity)
+          db.restoreFromHistoricalRegistry = jest.fn()
+
+          await memoryStorage.flush('manual-jobs:*')
+          await queuesStatusManager.markAsQueued(event.metadata.platform, event.metadata.entityId)
+
+          result = await handler.handle(event)
+        })
+
+        afterEach(async () => {
+          await memoryStorage.flush('manual-jobs:*')
+          jest.resetAllMocks()
+        })
+
+        it('should return ok and skip processing (stale event)', () => {
+          expect(result.ok).toBe(true)
+          expect(db.restoreFromHistoricalRegistry).not.toHaveBeenCalled()
+          expect(registry.updateBundleAndRotateStates).not.toHaveBeenCalled()
+        })
+      })
+
+      describe('and the entity was previously purged and the restore fails unexpectedly', () => {
+        let event: AssetBundleConversionFinishedEvent
+        let result: { ok: boolean; errors?: string[] }
+
+        beforeEach(async () => {
+          event = createEvent()
+          const entity = createEntity()
+          const dbEntity = createDbEntity(entity)
+          const historicalEntity = { ...dbEntity, status: Registry.Status.FAILED }
+
+          db.getRegistryById = jest.fn().mockResolvedValue(null)
+          db.getHistoricalRegistryById = jest.fn().mockResolvedValue(historicalEntity)
+          db.restoreFromHistoricalRegistry = jest.fn().mockResolvedValue(null)
+
+          await memoryStorage.flush('manual-jobs:*')
+          await queuesStatusManager.markAsManuallyQueued(event.metadata.platform, event.metadata.entityId)
+
+          result = await handler.handle(event)
+        })
+
+        afterEach(async () => {
+          await memoryStorage.flush('manual-jobs:*')
+          jest.resetAllMocks()
+        })
+
+        it('should return an error', () => {
+          expect(result.ok).toBe(false)
+          expect(result.errors).toEqual([
+            `Failed to restore entity ${event.metadata.entityId} from historical registry`
+          ])
+        })
+
+        it('should not process the texture event', () => {
+          expect(registry.updateBundleAndRotateStates).not.toHaveBeenCalled()
+        })
+      })
     })
 
     describe('when entity exists', () => {

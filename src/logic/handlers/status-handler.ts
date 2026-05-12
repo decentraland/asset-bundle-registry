@@ -14,6 +14,7 @@ export const createStatusEventHandler = ({
   function getEventProperties(event: any) {
     let entityId: string = ''
     let isLods: boolean = false
+    let isManuallyQueued: boolean = false
     const platforms: ('webgl' | 'windows' | 'mac')[] = []
 
     if (event.type === Events.Type.ASSET_BUNDLE && event.subType === Events.SubType.AssetBundle.MANUALLY_QUEUED) {
@@ -22,6 +23,7 @@ export const createStatusEventHandler = ({
       entityId = metadata.entityId
       platforms.push(metadata.platform)
       isLods = metadata.isLods
+      isManuallyQueued = true
     } else {
       const deploymentEvent = event as DeploymentToSqs
 
@@ -34,14 +36,15 @@ export const createStatusEventHandler = ({
     return {
       entityId,
       platforms,
-      isLods
+      isLods,
+      isManuallyQueued
     }
   }
 
   return {
     handle: async (event: DeploymentToSqs | AssetBundleConversionManuallyQueuedEvent): Promise<EventHandlerResult> => {
       try {
-        const { entityId, platforms, isLods } = getEventProperties(event)
+        const { entityId, platforms, isLods, isManuallyQueued } = getEventProperties(event)
 
         if (isLods) {
           logger.info('Skipping processing status for LODs', { entityId, platforms: platforms.join(', ') })
@@ -52,6 +55,9 @@ export const createStatusEventHandler = ({
 
         for (const platform of platforms) {
           await queuesStatusManager.markAsQueued(platform, entityId)
+          if (isManuallyQueued) {
+            await queuesStatusManager.markAsManuallyQueued(platform, entityId)
+          }
         }
 
         return { ok: true, handlerName: HANDLER_NAME }
