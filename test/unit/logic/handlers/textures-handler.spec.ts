@@ -471,6 +471,12 @@ describe('textures-handler', () => {
         it('should not process the texture event', () => {
           expect(registry.updateBundleAndRotateStates).not.toHaveBeenCalled()
         })
+
+        it('should clear the manual re-queue marker so it does not stick around', async () => {
+          expect(await queuesStatusManager.isManuallyQueued(event.metadata.platform, event.metadata.entityId)).toBe(
+            false
+          )
+        })
       })
     })
 

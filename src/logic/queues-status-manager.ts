@@ -1,4 +1,4 @@
-import { AppComponents, EntityStatusInQueue, IQueuesStatusManagerComponent } from '../types'
+import { AppComponents, EntityStatusInQueue, IQueuesStatusManagerComponent, ManualQueueMarker } from '../types'
 
 export function createQueuesStatusManagerComponent({
   memoryStorage
@@ -59,11 +59,11 @@ export function createQueuesStatusManagerComponent({
   }
 
   async function markAsManuallyQueued(platform: 'windows' | 'mac' | 'webgl', entityId: string): Promise<void> {
-    await memoryStorage.set(generateManualQueueKey(platform, entityId), { entityId, platform })
+    await memoryStorage.set<ManualQueueMarker>(generateManualQueueKey(platform, entityId), { entityId, platform })
   }
 
   async function isManuallyQueued(platform: 'windows' | 'mac' | 'webgl', entityId: string): Promise<boolean> {
-    const entries = await memoryStorage.get<EntityStatusInQueue>(generateManualQueueKey(platform, entityId))
+    const entries = await memoryStorage.get<ManualQueueMarker>(generateManualQueueKey(platform, entityId))
     return entries.length > 0
   }
 

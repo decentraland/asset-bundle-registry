@@ -113,6 +113,11 @@ export type EntityStatusInQueue = {
   status: EntityQueueStatusValue
 }
 
+export type ManualQueueMarker = {
+  entityId: string
+  platform: 'windows' | 'mac' | 'webgl'
+}
+
 export type CatalystFetchOptions = {
   parallelFetch?: {
     catalystServers: string[]

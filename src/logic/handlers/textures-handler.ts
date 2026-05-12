@@ -55,6 +55,7 @@ export const createTexturesEventHandler = ({
               logger.error('Failed to restore entity from historical registry', {
                 entityId: eventMetadata.entityId
               })
+              await queuesStatusManager.clearManualQueue(eventMetadata.platform, eventMetadata.entityId)
               if (!eventMetadata.isLods) {
                 await queuesStatusManager.markAsFinished(eventMetadata.platform, eventMetadata.entityId)
               }
