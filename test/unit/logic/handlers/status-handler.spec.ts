@@ -49,6 +49,16 @@ describe('status processor', () => {
     expect(queuesStatusManager.markAsManuallyQueued).toHaveBeenCalledTimes(1)
     expect(queuesStatusManager.markAsManuallyQueued).toHaveBeenCalledWith('windows', 'baf1')
   })
+
+  it('should not set any marker when the manually queued event is for LODs', async () => {
+    jest.spyOn(queuesStatusManager, 'markAsQueued')
+    jest.spyOn(queuesStatusManager, 'markAsManuallyQueued')
+    const event = createAssetBundleConversionManuallyQueuedEvent('baf1', 'windows', true)
+    const result = await statusProcessor.handle(event)
+    expect(result.ok).toBe(true)
+    expect(queuesStatusManager.markAsQueued).not.toHaveBeenCalled()
+    expect(queuesStatusManager.markAsManuallyQueued).not.toHaveBeenCalled()
+  })
 })
 
 function createDeploymentEvent(entityId: string): DeploymentToSqs {
@@ -68,7 +78,8 @@ function createDeploymentEvent(entityId: string): DeploymentToSqs {
 
 function createAssetBundleConversionManuallyQueuedEvent(
   entityId: string,
-  platform: 'windows' | 'mac' | 'webgl'
+  platform: 'windows' | 'mac' | 'webgl',
+  isLods: boolean = false
 ): AssetBundleConversionManuallyQueuedEvent {
   return {
     type: Events.Type.ASSET_BUNDLE,
@@ -78,7 +89,7 @@ function createAssetBundleConversionManuallyQueuedEvent(
     metadata: {
       entityId,
       platform,
-      isLods: false,
+      isLods,
       isPriority: false,
       version: 'v1'
     }

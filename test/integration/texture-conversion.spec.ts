@@ -591,6 +591,65 @@ test('texture conversion handling', async ({ components, spyComponents }) => {
     })
   })
 
+  describe('when a purged entity is manually re-queued and the re-conversion itself fails', () => {
+    let entityId: string
+
+    beforeEach(async () => {
+      entityId = `texture-restore-fail-${Date.now()}`
+      const entity = createEntity({ id: entityId, pointers: ['916,916'], timestamp: 1000 })
+      await seedHistoricalEntity(entity, {
+        status: Registry.Status.FAILED,
+        bundles: {
+          assets: {
+            windows: Registry.SimplifiedStatus.FAILED,
+            mac: Registry.SimplifiedStatus.COMPLETE,
+            webgl: Registry.SimplifiedStatus.COMPLETE
+          },
+          lods: {
+            windows: Registry.SimplifiedStatus.PENDING,
+            mac: Registry.SimplifiedStatus.PENDING,
+            webgl: Registry.SimplifiedStatus.PENDING
+          }
+        }
+      })
+      registriesToCleanUp.push(entityId)
+
+      await components.messageProcessor.process(createManualRequeueEvent(entityId, 'windows'))
+      await components.messageProcessor.process(
+        createTextureEvent(entityId, 'windows', {
+          metadata: {
+            entityId,
+            platform: 'windows',
+            statusCode: ManifestStatusCode.ASSET_BUNDLE_BUILD_FAIL,
+            isLods: false,
+            isWorld: false,
+            version: 'v1'
+          }
+        })
+      )
+    })
+
+    it('should still restore the entity into the active registries table', async () => {
+      const registry = await components.db.getRegistryById(entityId)
+      expect(registry).not.toBeNull()
+    })
+
+    it('should record the failed windows bundle on the restored entity', async () => {
+      const registry = await components.db.getRegistryById(entityId)
+      expect(registry!.bundles.assets.windows).toBe(Registry.SimplifiedStatus.FAILED)
+    })
+
+    it('should mark the restored entity as failed because windows is still failed', async () => {
+      const registry = await components.db.getRegistryById(entityId)
+      expect(registry!.status).toBe(Registry.Status.FAILED)
+    })
+
+    it('should still clear the manual re-queue marker so the next stale event is skipped', async () => {
+      const stillManuallyQueued = await components.queuesStatusManager.isManuallyQueued('windows', entityId)
+      expect(stillManuallyQueued).toBe(false)
+    })
+  })
+
   describe('when a purged entity has no manual re-queue marker and a texture event arrives', () => {
     let entityId: string
 
