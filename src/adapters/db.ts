@@ -412,15 +412,15 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
       .join(',')
 
     const baseQuery = SQL`
-      SELECT 
+      SELECT
         id, type, timestamp, deployer, pointers, content, metadata, status, bundles, versions
-      FROM 
+      FROM
         registries
-      WHERE 
+      WHERE
         timestamp < ${dateInMilliseconds}
-        AND status NOT IN (${Registry.Status.COMPLETE}::text, ${Registry.Status.FALLBACK}::text, ${Registry.Status.PENDING}::text)
+        AND status = ${Registry.Status.OBSOLETE}::text
         AND LOWER(id) NOT IN (${parsedIds})
-      ORDER BY 
+      ORDER BY
         timestamp DESC
       LIMIT ${limit}
     `
