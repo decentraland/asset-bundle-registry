@@ -404,12 +404,10 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
 
   async function getBatchOfDeprecatedRegistriesOlderThan(
     dateInMilliseconds: number,
-    failedIds: Set<string>,
+    excludedIds: Set<string>,
     limit: number = 100
   ): Promise<{ registries: Registry.DbEntity[] }> {
-    const parsedIds = Array.from(failedIds)
-      .map((id) => `'${id.toLocaleLowerCase()}'`)
-      .join(',')
+    const parsedIds = Array.from(excludedIds).map((id) => id.toLocaleLowerCase())
 
     const baseQuery = SQL`
       SELECT
@@ -419,7 +417,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
       WHERE
         timestamp < ${dateInMilliseconds}
         AND status = ${Registry.Status.OBSOLETE}::text
-        AND LOWER(id) NOT IN (${parsedIds})
+        AND LOWER(id) <> ALL(${parsedIds}::varchar(255)[])
       ORDER BY
         timestamp DESC
       LIMIT ${limit}
