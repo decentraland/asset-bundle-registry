@@ -115,7 +115,7 @@ export interface IDbComponent {
   deleteRegistries(entityIds: string[]): Promise<void>
   getBatchOfDeprecatedRegistriesOlderThan(
     dateInMilliseconds: number,
-    failedIds: Set<string>,
+    excludedIds: Set<string>,
     limit: number
   ): Promise<{ registries: Registry.DbEntity[] }>
   insertHistoricalRegistry(registry: Registry.DbEntity): Promise<Registry.DbEntity>
