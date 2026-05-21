@@ -30,33 +30,13 @@ describe('entity status fetcher', () => {
   const ENTITY_ID = 'bafkreig4pgot2bf6iw3bfxgo4nn7ich35ztjfjhjdomz2yqmtmnagpxhjq'
 
   describe('bundles status and version', () => {
-    it('should fetch COMPLETE bundle status and version for webgl platform', async () => {
+    it('should fetch COMPLETE bundle status and version using the platform-suffixed manifest URL', async () => {
       const sut: IEntityStatusFetcherComponent = await createEntityStatusFetcherComponent({
         fetch: mockFetch,
         logs,
         config
       })
-      const platform = 'webgl'
-
-      const manifest = createManifest(ManifestStatusCode.SUCCESS, 'v2')
-      mockFetch.fetch.mockResolvedValue({
-        ok: true,
-        json: jest.fn().mockResolvedValue(manifest)
-      })
-
-      const result = await sut.fetchBundleManifestData(ENTITY_ID, platform)
-      expect(result.status).toBe(Registry.SimplifiedStatus.COMPLETE)
-      expect(result.version).toBe('v2')
-      expect(mockFetch.fetch).toHaveBeenCalledWith(`${ASSET_BUNDLE_CDN_URL}manifest/${ENTITY_ID}.json`)
-    })
-
-    it('should fetch COMPLETE bundle status and version for non-webgl platform', async () => {
-      const sut: IEntityStatusFetcherComponent = await createEntityStatusFetcherComponent({
-        fetch: mockFetch,
-        logs,
-        config
-      })
-      const platform = 'android'
+      const platform = 'mac'
 
       const manifest = createManifest(ManifestStatusCode.SUCCESS, 'v3')
       mockFetch.fetch.mockResolvedValue({
@@ -83,7 +63,7 @@ describe('entity status fetcher', () => {
         json: jest.fn().mockResolvedValue(manifest)
       })
 
-      const result = await sut.fetchBundleManifestData(ENTITY_ID, 'webgl')
+      const result = await sut.fetchBundleManifestData(ENTITY_ID, 'mac')
       expect(result.status).toBe(Registry.SimplifiedStatus.COMPLETE)
       expect(result.version).toBe('v4')
     })
@@ -101,7 +81,7 @@ describe('entity status fetcher', () => {
         json: jest.fn().mockResolvedValue(manifest)
       })
 
-      const result = await sut.fetchBundleManifestData(ENTITY_ID, 'webgl')
+      const result = await sut.fetchBundleManifestData(ENTITY_ID, 'mac')
       expect(result.status).toBe(Registry.SimplifiedStatus.COMPLETE)
       expect(result.version).toBe('v5')
     })
@@ -119,7 +99,7 @@ describe('entity status fetcher', () => {
         json: jest.fn().mockResolvedValue(manifest)
       })
 
-      const result = await sut.fetchBundleManifestData(ENTITY_ID, 'webgl')
+      const result = await sut.fetchBundleManifestData(ENTITY_ID, 'mac')
       expect(result.status).toBe(Registry.SimplifiedStatus.FAILED)
       expect(result.version).toBe('v6')
     })
@@ -136,7 +116,7 @@ describe('entity status fetcher', () => {
         status: 404
       })
 
-      await expect(sut.fetchBundleManifestData(ENTITY_ID, 'webgl')).rejects.toThrow('Failed to fetch bundle status')
+      await expect(sut.fetchBundleManifestData(ENTITY_ID, 'mac')).rejects.toThrow('Failed to fetch bundle status')
     })
 
     it('should throw error for non-404 fetch failures', async () => {
@@ -151,7 +131,7 @@ describe('entity status fetcher', () => {
         status: 500
       })
 
-      await expect(sut.fetchBundleManifestData(ENTITY_ID, 'webgl')).rejects.toThrow('Failed to fetch bundle status')
+      await expect(sut.fetchBundleManifestData(ENTITY_ID, 'mac')).rejects.toThrow('Failed to fetch bundle status')
     })
   })
 
@@ -165,7 +145,7 @@ describe('entity status fetcher', () => {
 
       mockFetch.fetch.mockResolvedValue({ ok: true })
 
-      const status = await sut.fetchLODsStatus(ENTITY_ID, 'webgl')
+      const status = await sut.fetchLODsStatus(ENTITY_ID, 'mac')
       expect(status).toBe(Registry.SimplifiedStatus.COMPLETE)
       expect(mockFetch.fetch).toHaveBeenCalledTimes(3)
     })
@@ -182,7 +162,7 @@ describe('entity status fetcher', () => {
         .mockResolvedValueOnce({ ok: false })
         .mockResolvedValueOnce({ ok: true })
 
-      const status = await sut.fetchLODsStatus(ENTITY_ID, 'webgl')
+      const status = await sut.fetchLODsStatus(ENTITY_ID, 'mac')
       expect(status).toBe(Registry.SimplifiedStatus.FAILED)
     })
 
@@ -199,7 +179,7 @@ describe('entity status fetcher', () => {
         json: jest.fn().mockResolvedValue(manifest)
       })
 
-      const result = await sut.fetchBundleManifestData(ENTITY_ID, 'webgl')
+      const result = await sut.fetchBundleManifestData(ENTITY_ID, 'mac')
       expect(result.status).toBe(Registry.SimplifiedStatus.COMPLETE)
       expect(result.version).toBe('v7')
       expect(mockFetch.fetch).toHaveBeenCalledTimes(2)
@@ -214,17 +194,17 @@ describe('entity status fetcher', () => {
 
       mockFetch.fetch.mockRejectedValue(new Error('ECONNRESET'))
 
-      await expect(sut.fetchBundleManifestData(ENTITY_ID, 'webgl')).rejects.toThrow('ECONNRESET')
+      await expect(sut.fetchBundleManifestData(ENTITY_ID, 'mac')).rejects.toThrow('ECONNRESET')
       expect(mockFetch.fetch).toHaveBeenCalledTimes(2)
     })
 
-    it('should use platform suffix for non-webgl platforms', async () => {
+    it('should include the platform suffix in every LOD URL', async () => {
       const sut: IEntityStatusFetcherComponent = await createEntityStatusFetcherComponent({
         fetch: mockFetch,
         logs,
         config
       })
-      const platform = 'android'
+      const platform = 'mac'
 
       mockFetch.fetch.mockResolvedValue({ ok: true })
 

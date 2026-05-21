@@ -687,15 +687,9 @@ components:
           items:
             type: string
           description: List of entity IDs with pending Mac asset bundle conversions
-        webglPendingJobs:
-          type: array
-          items:
-            type: string
-          description: List of entity IDs with pending WebGL asset bundle conversions
       required:
         - windowsPendingJobs
         - macPendingJobs
-        - webglPendingJobs
     VersionsRequest:
       type: object
       properties:
@@ -737,8 +731,6 @@ components:
               $ref: '#/components/schemas/VersionInfo'
             mac:
               $ref: '#/components/schemas/VersionInfo'
-            webgl:
-              $ref: '#/components/schemas/VersionInfo'
     VersionInfo:
       type: object
       description: Version details for a specific platform
@@ -770,13 +762,9 @@ components:
         mac:
           type: string
           enum: [pending, complete, failed]
-        webgl:
-          type: string
-          enum: [pending, complete, failed]
       required:
         - windows
         - mac
-        - webgl
     ProfilesRequest:
       type: object
       properties:

@@ -1159,7 +1159,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
    * Sets the simplified status (PENDING, COMPLETE, FAILED) for either the assets or lods bundle type.
    *
    * @param id - The entity ID to update
-   * @param platform - The platform to update (e.g., 'windows', 'mac', 'webgl')
+   * @param platform - The platform to update (e.g., 'windows', 'mac')
    * @param lods - Whether to update the LODs bundle (true) or assets bundle (false)
    * @param status - The new simplified status for the bundle
    * @param executor - The transaction client to use for the query
@@ -1194,7 +1194,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
    * Internal: Updates the version and build date for a specific platform's asset bundle within a transaction.
    *
    * @param id - The entity ID to update
-   * @param platform - The platform to update (e.g., 'windows', 'mac', 'webgl')
+   * @param platform - The platform to update (e.g., 'windows', 'mac')
    * @param version - The asset bundle version string
    * @param buildDate - The ISO date string of when the bundle was built
    * @param executor - The transaction client to use for the query

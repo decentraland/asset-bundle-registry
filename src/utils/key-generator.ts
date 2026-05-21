@@ -1,3 +1,3 @@
-export function generateCacheKey(platform: 'windows' | 'mac' | 'webgl', entityId: string): string {
+export function generateCacheKey(platform: 'windows' | 'mac', entityId: string): string {
   return `jobs:${platform}:${entityId}`
 }

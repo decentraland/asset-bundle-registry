@@ -120,20 +120,17 @@ describe('when handling deployment events', () => {
           bundles: {
             assets: {
               windows: Registry.SimplifiedStatus.COMPLETE,
-              mac: Registry.SimplifiedStatus.COMPLETE,
-              webgl: Registry.SimplifiedStatus.COMPLETE
+              mac: Registry.SimplifiedStatus.COMPLETE
             },
             lods: {
               windows: Registry.SimplifiedStatus.COMPLETE,
-              mac: Registry.SimplifiedStatus.COMPLETE,
-              webgl: Registry.SimplifiedStatus.COMPLETE
+              mac: Registry.SimplifiedStatus.COMPLETE
             }
           },
           versions: {
             assets: {
               windows: { version: 'v1', buildDate: '' },
-              mac: { version: 'v1', buildDate: '' },
-              webgl: { version: 'v1', buildDate: '' }
+              mac: { version: 'v1', buildDate: '' }
             }
           }
         }
@@ -180,20 +177,17 @@ describe('when handling deployment events', () => {
             bundles: {
               assets: {
                 windows: Registry.SimplifiedStatus.PENDING,
-                mac: Registry.SimplifiedStatus.PENDING,
-                webgl: Registry.SimplifiedStatus.PENDING
+                mac: Registry.SimplifiedStatus.PENDING
               },
               lods: {
                 windows: Registry.SimplifiedStatus.PENDING,
-                mac: Registry.SimplifiedStatus.PENDING,
-                webgl: Registry.SimplifiedStatus.PENDING
+                mac: Registry.SimplifiedStatus.PENDING
               }
             },
             versions: {
               assets: {
                 windows: { version: '', buildDate: '' },
-                mac: { version: '', buildDate: '' },
-                webgl: { version: '', buildDate: '' }
+                mac: { version: '', buildDate: '' }
               }
             }
           })
@@ -262,13 +256,11 @@ describe('when handling deployment events', () => {
             bundles: {
               assets: {
                 windows: Registry.SimplifiedStatus.PENDING,
-                mac: Registry.SimplifiedStatus.PENDING,
-                webgl: Registry.SimplifiedStatus.PENDING
+                mac: Registry.SimplifiedStatus.PENDING
               },
               lods: {
                 windows: Registry.SimplifiedStatus.PENDING,
-                mac: Registry.SimplifiedStatus.PENDING,
-                webgl: Registry.SimplifiedStatus.PENDING
+                mac: Registry.SimplifiedStatus.PENDING
               }
             }
           })

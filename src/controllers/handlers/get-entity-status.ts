@@ -105,20 +105,18 @@ export async function getQueuesStatuses(context: HandlerContextWithPath<'queuesS
     components: { queuesStatusManager }
   } = context
 
-  async function getEntitiesIdsOfPendingJobs(platform: 'windows' | 'mac' | 'webgl') {
+  async function getEntitiesIdsOfPendingJobs(platform: 'windows' | 'mac') {
     return (await queuesStatusManager.getAllPendingEntities(platform)).map((pendingJob) => pendingJob.entityId)
   }
 
   const windowsPendingJobs = await getEntitiesIdsOfPendingJobs('windows')
   const macPendingJobs = await getEntitiesIdsOfPendingJobs('mac')
-  const webglPendingJobs = await getEntitiesIdsOfPendingJobs('webgl')
 
   return {
     status: 200,
     body: {
       windowsPendingJobs,
-      macPendingJobs,
-      webglPendingJobs
+      macPendingJobs
     },
     headers: {
       'Content-Type': 'application/json'

@@ -51,21 +51,18 @@ export const createDeploymentEventHandler = ({
         const defaultBundles: Registry.Bundles = {
           assets: {
             windows: Registry.SimplifiedStatus.PENDING,
-            mac: Registry.SimplifiedStatus.PENDING,
-            webgl: Registry.SimplifiedStatus.PENDING
+            mac: Registry.SimplifiedStatus.PENDING
           },
           lods: {
             windows: Registry.SimplifiedStatus.PENDING,
-            mac: Registry.SimplifiedStatus.PENDING,
-            webgl: Registry.SimplifiedStatus.PENDING
+            mac: Registry.SimplifiedStatus.PENDING
           }
         }
 
         const defaultVersions: Registry.Versions = {
           assets: {
             windows: { version: '', buildDate: '' },
-            mac: { version: '', buildDate: '' },
-            webgl: { version: '', buildDate: '' }
+            mac: { version: '', buildDate: '' }
           }
         }
 
