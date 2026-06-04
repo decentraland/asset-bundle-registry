@@ -17,6 +17,7 @@ import { createSnapshotContentStorageMockComponent } from '../../mocks/snapshot-
 import { createSnapshotsHandlerComponent } from '../../../../src/logic/sync/snapshots-handler'
 import { createSnapshotMetadata } from '../../mocks/data/snapshots'
 import { parseToEntity } from '../../mocks/data/pointer-changes'
+import { createEntityValidatorMockComponent } from '../../mocks/entity-validator'
 
 jest.mock('@dcl/snapshots-fetcher', () => ({
   getDeployedEntitiesStreamFromSnapshot: jest.fn()
@@ -33,6 +34,7 @@ describe('snapshots-handler', () => {
   let mockProfileSanitizer: IProfileSanitizerComponent
   let mockEntityPersister: IEntityPersisterComponent
   let mockSnapshotContentStorage: IContentStorageComponent
+  let mockEntityValidator: ReturnType<typeof createEntityValidatorMockComponent>
   let component: IProfilesSynchronizerComponent
 
   beforeEach(async () => {
@@ -44,6 +46,7 @@ describe('snapshots-handler', () => {
     mockProfileSanitizer = createProfileSanitizerMockComponent()
     mockEntityPersister = createEntityPersisterMockComponent()
     mockSnapshotContentStorage = createSnapshotContentStorageMockComponent()
+    mockEntityValidator = createEntityValidatorMockComponent()
 
     component = await createSnapshotsHandlerComponent({
       config: mockConfig,
@@ -52,7 +55,8 @@ describe('snapshots-handler', () => {
       db: mockDb,
       profileSanitizer: mockProfileSanitizer,
       entityPersister: mockEntityPersister,
-      snapshotContentStorage: mockSnapshotContentStorage
+      snapshotContentStorage: mockSnapshotContentStorage,
+      entityValidator: mockEntityValidator
     })
   })
 

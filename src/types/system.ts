@@ -28,6 +28,7 @@ import {
   IProfilesSynchronizerComponent,
   ISynchronizerComponent,
   IRefreshableFeaturesComponent
+  IEntityValidatorComponent
 } from './service'
 import { metricDeclarations } from '../metrics'
 import { IContentStorageComponent } from '@dcl/catalyst-storage'
@@ -56,6 +57,7 @@ export type BaseComponents = {
   coordinates: ICoordinatesComponent
   features: IFeaturesComponent
   refreshableFeatures: IRefreshableFeaturesComponent
+  entityValidator: IEntityValidatorComponent
 }
 
 // components used in runtime

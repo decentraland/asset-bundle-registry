@@ -8,10 +8,11 @@ export const createDeploymentEventHandler = ({
   catalyst,
   worlds,
   db,
-  logs
+  logs,
+  entityValidator
 }: Pick<
   AppComponents,
-  'catalyst' | 'worlds' | 'db' | 'logs' | 'registry'
+  'catalyst' | 'worlds' | 'db' | 'logs' | 'registry' | 'entityValidator'
 >): IEventHandlerComponent<DeploymentToSqs> => {
   const HANDLER_NAME = EventHandlerName.DEPLOYMENT
   const logger = logs.getLogger('deployment-handler')
@@ -44,6 +45,15 @@ export const createDeploymentEventHandler = ({
           return {
             ok: false,
             errors: [`Entity with id ${event.entity.entityId} was not found`],
+            handlerName: HANDLER_NAME
+          }
+        }
+
+        const validationResult = entityValidator.validate(entity)
+        if (!validationResult.ok) {
+          return {
+            ok: false,
+            errors: validationResult.errors,
             handlerName: HANDLER_NAME
           }
         }

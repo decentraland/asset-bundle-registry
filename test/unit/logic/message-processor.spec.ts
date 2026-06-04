@@ -10,6 +10,7 @@ import { createCatalystMockComponent } from '../mocks/catalyst'
 import { createWorldsMockComponent } from '../mocks/worlds'
 import { createRegistryMockComponent } from '../mocks/registry'
 import { createCoordinatesMockComponent } from '../mocks/coordinates'
+import { createEntityValidatorMockComponent } from '../mocks/entity-validator'
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
 import { AssetBundleConversionFinishedEvent, AssetBundleConversionManuallyQueuedEvent } from '@dcl/schemas'
 
@@ -48,7 +49,7 @@ describe('message processor', () => {
 
   const mockComponents: Pick<
     AppComponents,
-    'catalyst' | 'worlds' | 'registry' | 'queuesStatusManager' | 'db' | 'logs' | 'config'
+    'catalyst' | 'worlds' | 'registry' | 'queuesStatusManager' | 'db' | 'logs' | 'config' | 'entityValidator'
   > & { coordinates: ReturnType<typeof createCoordinatesMockComponent> } = {
     catalyst: createCatalystMockComponent(),
     worlds: createWorldsMockComponent(),
@@ -61,7 +62,8 @@ describe('message processor', () => {
     },
     db: createDbMockComponent(),
     logs,
-    config
+    config,
+    entityValidator: createEntityValidatorMockComponent()
   }
 
   beforeEach(() => {

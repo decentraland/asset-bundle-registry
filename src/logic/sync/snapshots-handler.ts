@@ -11,10 +11,18 @@ export async function createSnapshotsHandlerComponent({
   db,
   profileSanitizer,
   entityPersister,
-  snapshotContentStorage
+  snapshotContentStorage,
+  entityValidator
 }: Pick<
   AppComponents,
-  'config' | 'logs' | 'fetch' | 'db' | 'profileSanitizer' | 'entityPersister' | 'snapshotContentStorage'
+  | 'config'
+  | 'logs'
+  | 'fetch'
+  | 'db'
+  | 'profileSanitizer'
+  | 'entityPersister'
+  | 'snapshotContentStorage'
+  | 'entityValidator'
 >): Promise<IProfilesSynchronizerComponent> {
   const CATALYST_LOAD_BALANCER = await config.requireString('CATALYST_LOADBALANCER_HOST')
   const logger = logs.getLogger('snapshots-handler')
@@ -119,7 +127,17 @@ export async function createSnapshotsHandlerComponent({
             errorMessage: 'Profile not found in Catalyst response'
           })
         })
-        await Promise.all(profilesFetched.map((p) => entityPersister.persistEntity(p)))
+        const validProfiles = profilesFetched.filter((p) => {
+          const result = entityValidator.validate(p)
+          if (!result.ok) {
+            logger.warn('Skipping invalid profile from snapshot', {
+              entityId: p.id,
+              errors: JSON.stringify(result.errors)
+            })
+          }
+          return result.ok
+        })
+        await Promise.all(validProfiles.map((p) => entityPersister.persistEntity(p)))
       }
       await db.markSnapshotProcessed(snapshot.hash)
       lastProcessedTimestamp = Math.max(lastProcessedTimestamp, snapshot.timeRange.endTimestamp)
