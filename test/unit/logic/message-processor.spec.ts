@@ -22,6 +22,7 @@ describe('message processor', () => {
   const logs = createLogMockComponent()
   const config = createConfigMockComponent()
   ;(config.getNumber as jest.Mock).mockResolvedValue(3) // MAX_RETRIES = 3
+  ;(config.requireString as jest.Mock).mockResolvedValue('peer.decentraland.org') // ALLOWED_CONTENT_SERVER_HOSTS
 
   // Create mock handlers
   const deploymentHandler: IEventHandlerComponent<DeploymentToSqs> = {
@@ -245,6 +246,24 @@ describe('message processor', () => {
         expect(texturesHandler.handle).not.toHaveBeenCalled()
         expect(statusHandler.handle).not.toHaveBeenCalled()
       })
+    })
+  })
+
+  describe('when the message is a deployment with an off-allowlist content-server host', () => {
+    it('should drop the message before any handler runs, so no handler creates an orphaned entry', async () => {
+      const message = {
+        entity: { entityId: '123', authChain: [] },
+        contentServerUrls: ['https://evil.internal/ssrf']
+      }
+
+      const processor = await createMessageProcessorComponent(mockComponents)
+
+      const result = await processor.process(message)
+
+      expect(result.ok).toBe(true)
+      expect(deploymentHandler.handle).not.toHaveBeenCalled()
+      expect(texturesHandler.handle).not.toHaveBeenCalled()
+      expect(statusHandler.handle).not.toHaveBeenCalled()
     })
   })
 })

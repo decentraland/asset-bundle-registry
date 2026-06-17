@@ -2,6 +2,7 @@ import { Entity, EntityType } from '@dcl/schemas'
 import { AuthLinkType } from '@dcl/crypto'
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
 import { createDeploymentEventHandler } from '../../../../src/logic/handlers/deployment-handler'
+import { parseAllowedContentServerHosts } from '../../../../src/logic/validation'
 import { EventHandlerName, Registry } from '../../../../src/types'
 import { createDbMockComponent } from '../../mocks/db'
 import { createLogMockComponent } from '../../mocks/logs'
@@ -10,6 +11,10 @@ import { createWorldsMockComponent } from '../../mocks/worlds'
 import { createRegistryMockComponent } from '../../mocks/registry'
 
 describe('when handling deployment events', () => {
+  const allowedContentServerHosts = parseAllowedContentServerHosts(
+    'peer.decentraland.org, worlds-content-server.decentraland.org'
+  )
+
   const createDeploymentEvent = (entityId: string, contentServerUrls?: string[]): DeploymentToSqs => ({
     entity: {
       entityId,
@@ -49,7 +54,7 @@ describe('when handling deployment events', () => {
       catalyst = createCatalystMockComponent()
       worlds = createWorldsMockComponent()
       registry = createRegistryMockComponent()
-      handler = createDeploymentEventHandler({ logs, db, catalyst, worlds, registry })
+      handler = createDeploymentEventHandler({ logs, db, catalyst, worlds, registry }, allowedContentServerHosts)
     })
 
     afterEach(() => {
@@ -95,7 +100,7 @@ describe('when handling deployment events', () => {
       catalyst = createCatalystMockComponent()
       worlds = createWorldsMockComponent()
       registry = createRegistryMockComponent()
-      handler = createDeploymentEventHandler({ logs, db, catalyst, worlds, registry })
+      handler = createDeploymentEventHandler({ logs, db, catalyst, worlds, registry }, allowedContentServerHosts)
     })
 
     afterEach(() => {
@@ -208,6 +213,28 @@ describe('when handling deployment events', () => {
       })
     })
 
+    describe('and the deployment has an empty contentServerUrls array', () => {
+      let event: DeploymentToSqs
+      let entity: Entity
+
+      beforeEach(() => {
+        event = createDeploymentEvent('genesis-entity-id', [])
+        entity = createEntity({ id: 'genesis-entity-id', pointers: ['0,0'] })
+        db.getRegistryById.mockResolvedValue(null)
+        worlds.isWorldDeployment.mockReturnValue(false)
+        catalyst.getEntityById.mockResolvedValue(entity)
+        registry.persistAndRotateStates.mockResolvedValue(undefined as any)
+      })
+
+      it('should not reject it and should fetch from the default catalyst with no override', async () => {
+        await handler.handle(event)
+
+        expect(catalyst.getEntityById).toHaveBeenCalledWith('genesis-entity-id', {
+          overrideContentServerUrl: undefined
+        })
+      })
+    })
+
     describe('and the deployment is a Genesis City scene with a content server URL', () => {
       let event: DeploymentToSqs
       let entity: Entity
@@ -280,6 +307,47 @@ describe('when handling deployment events', () => {
 
         expect(result.ok).toBe(true)
         expect(result.handlerName).toBe(EventHandlerName.DEPLOYMENT)
+      })
+    })
+
+    describe('and the deployment points at a content server that is not an allowed catalyst', () => {
+      let event: DeploymentToSqs
+
+      beforeEach(() => {
+        event = createDeploymentEvent('genesis-entity-id', ['https://169.254.169.254/latest/meta-data/'])
+        db.getRegistryById.mockResolvedValue(null)
+        worlds.isWorldDeployment.mockReturnValue(false)
+      })
+
+      it('should skip the event without fetching the entity (SSRF guard)', async () => {
+        const result = await handler.handle(event)
+
+        expect(result.ok).toBe(true)
+        expect(result.handlerName).toBe(EventHandlerName.DEPLOYMENT)
+        expect(catalyst.getEntityById).not.toHaveBeenCalled()
+        expect(registry.persistAndRotateStates).not.toHaveBeenCalled()
+      })
+    })
+
+    describe('and a later contentServerUrl entry is not an allowed catalyst', () => {
+      let event: DeploymentToSqs
+
+      beforeEach(() => {
+        // First entry is allowlisted, second is not — every entry must be checked.
+        event = createDeploymentEvent('genesis-entity-id', [
+          'https://peer.decentraland.org/content',
+          'https://evil.internal/ssrf'
+        ])
+        db.getRegistryById.mockResolvedValue(null)
+        worlds.isWorldDeployment.mockReturnValue(false)
+      })
+
+      it('should skip the event even though the first URL is allowlisted', async () => {
+        const result = await handler.handle(event)
+
+        expect(result.ok).toBe(true)
+        expect(catalyst.getEntityById).not.toHaveBeenCalled()
+        expect(registry.persistAndRotateStates).not.toHaveBeenCalled()
       })
     })
 
