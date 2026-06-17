@@ -21,6 +21,7 @@ import { createUndeploymentEventHandler } from './handlers/undeployment-handler'
 import { createWorldUndeploymentEventHandler } from './handlers/world-undeployment-handler'
 import { createSpawnCoordinateEventHandler } from './handlers/spawn-coordinate-handler'
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
+import { isAllowedContentServerUrl, parseAllowedContentServerHosts } from './validation'
 
 export async function createMessageProcessorComponent({
   catalyst,
@@ -37,6 +38,16 @@ export async function createMessageProcessorComponent({
 >): Promise<IMessageProcessorComponent> {
   const MAX_RETRIES: number = (await config.getNumber('MAX_RETRIES')) || 3
   const log = logs.getLogger('message-processor')
+
+  // Strict host allowlist for the (attacker-influenced) deployment content-server
+  // URL (issue #306). Sourced entirely from ALLOWED_CONTENT_SERVER_HOSTS (set per-env in the
+  // definitions repo) — required, with no built-in fallback list.
+  const allowedContentServerHosts = parseAllowedContentServerHosts(
+    await config.requireString('ALLOWED_CONTENT_SERVER_HOSTS')
+  )
+  if (allowedContentServerHosts.size === 0) {
+    throw new Error('ALLOWED_CONTENT_SERVER_HOSTS is set but contains no valid catalyst hosts')
+  }
   const processors: IEventHandlerComponent<
     | DeploymentToSqs
     | AssetBundleConversionManuallyQueuedEvent
@@ -45,7 +56,7 @@ export async function createMessageProcessorComponent({
     | WorldUndeploymentEvent
     | WorldSpawnCoordinateSetEvent
   >[] = [
-    createDeploymentEventHandler({ catalyst, worlds, registry, db, logs }),
+    createDeploymentEventHandler({ catalyst, worlds, registry, db, logs }, allowedContentServerHosts),
     createTexturesEventHandler({
       db,
       logs,
@@ -69,6 +80,25 @@ export async function createMessageProcessorComponent({
 
     if (retryData.attempt >= MAX_RETRIES) {
       log.warn('Max retries reached for the message, will not retry', { message })
+      return {
+        ok: true,
+        failedHandlers: []
+      }
+    }
+
+    // SSRF / poisoned-message guard at the dispatch level (issue #306): a
+    // deployment carrying an off-allowlist content-server host is dropped before
+    // ANY handler runs. The deployment handler already skips it, but other
+    // handlers (e.g. status) would otherwise still act on it and leave an
+    // orphaned queue-status entry. Drop it (ok, no retry) — it's deterministic.
+    const disallowedContentServerUrl = Array.isArray(message?.contentServerUrls)
+      ? message.contentServerUrls.find((url: string) => !isAllowedContentServerUrl(url, allowedContentServerHosts))
+      : undefined
+    if (disallowedContentServerUrl) {
+      log.warn('Dropping message: a contentServerUrl is not an allowed content server (SSRF/allowlist guard)', {
+        entityId: message?.entity?.entityId,
+        contentServerUrl: String(disallowedContentServerUrl).slice(0, 120)
+      })
       return {
         ok: true,
         failedHandlers: []

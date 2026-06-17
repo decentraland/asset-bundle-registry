@@ -1,4 +1,5 @@
 import { Entity, EntityType } from '@dcl/schemas'
+import { IFetchComponent, RequestOptions } from '@well-known-components/interfaces'
 import { ContentClient, createContentClient, createLambdasClient } from 'dcl-catalyst-client'
 import { Profile } from 'dcl-catalyst-client/dist/client/specs/lambdas-client'
 
@@ -13,8 +14,18 @@ export async function createCatalystAdapter({
 }: Pick<AppComponents, 'config' | 'logs' | 'fetch'>): Promise<ICatalystComponent> {
   const logger = logs.getLogger('catalyst-client')
 
+  // Defense-in-depth (issue #306): content fetches must NOT follow redirects — an
+  // allowlisted host could otherwise 30x to an internal resource. Treat a redirect
+  // as a hard error instead of silently following it.
+  const contentFetcher: IFetchComponent = {
+    fetch: (url, init?: RequestOptions) => fetch.fetch(url, { ...init, redirect: 'error' })
+  }
+
   const catalystLoadBalancer = await config.requireString('CATALYST_LOADBALANCER_HOST')
-  const defaultContentClient = createContentClient({ fetcher: fetch, url: ensureContentUrl(catalystLoadBalancer) })
+  const defaultContentClient = createContentClient({
+    fetcher: contentFetcher,
+    url: ensureContentUrl(catalystLoadBalancer)
+  })
 
   // We use a historical catalyst (instead of the load balancer) because some official nodes
   // have garbage-collected old profiles. The historical catalyst retains all profile data
@@ -90,7 +101,7 @@ export async function createCatalystAdapter({
   function getContentClientOrDefault(contentServerUrl?: string): ContentClient {
     const contentClientToReturn = contentServerUrl
       ? createContentClient({
-          fetcher: fetch,
+          fetcher: contentFetcher,
           url: ensureContentUrl(contentServerUrl)
         })
       : defaultContentClient

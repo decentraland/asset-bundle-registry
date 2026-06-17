@@ -27,7 +27,9 @@ export async function createWorldsAdapter({
   ): Promise<Entity | null> {
     try {
       const url = `${contentServerUrl}/contents/${entityId}`
-      const response = await fetch.fetch(url)
+      // Defense-in-depth (issue #306): do not follow redirects — an allowlisted
+      // world content server could otherwise 30x to an internal resource.
+      const response = await fetch.fetch(url, { redirect: 'error' })
 
       if (!response.ok) {
         return null

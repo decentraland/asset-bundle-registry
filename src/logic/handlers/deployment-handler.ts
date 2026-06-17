@@ -2,17 +2,12 @@ import { Entity } from '@dcl/schemas'
 import { AppComponents, IEventHandlerComponent, EventHandlerName, EventHandlerResult, Registry } from '../../types'
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
 import { Authenticator } from '@dcl/crypto'
+import { isAllowedContentServerUrl } from '../validation'
 
-export const createDeploymentEventHandler = ({
-  registry,
-  catalyst,
-  worlds,
-  db,
-  logs
-}: Pick<
-  AppComponents,
-  'catalyst' | 'worlds' | 'db' | 'logs' | 'registry'
->): IEventHandlerComponent<DeploymentToSqs> => {
+export const createDeploymentEventHandler = (
+  { registry, catalyst, worlds, db, logs }: Pick<AppComponents, 'catalyst' | 'worlds' | 'db' | 'logs' | 'registry'>,
+  allowedContentServerHosts: Set<string>
+): IEventHandlerComponent<DeploymentToSqs> => {
   const HANDLER_NAME = EventHandlerName.DEPLOYMENT
   const logger = logs.getLogger('deployment-handler')
 
@@ -20,6 +15,23 @@ export const createDeploymentEventHandler = ({
     handle: async (event: DeploymentToSqs): Promise<EventHandlerResult> => {
       let entity: Entity | null
       try {
+        // SSRF guard (issue #306): contentServerUrls rides in the SQS payload and
+        // the entity is fetched from it (catalyst / worlds), so reject any
+        // off-allowlist host and skip the event (ok: true — deterministic, so
+        // retrying wouldn't help). Validate EVERY entry, not just [0]: the whole
+        // array is preserved in the message. entityId isn't gated here: it only
+        // reaches parameterized SQL / cache keys, not a filesystem path or S3 key.
+        const disallowedContentServerUrl = event.contentServerUrls?.find(
+          (url) => !isAllowedContentServerUrl(url, allowedContentServerHosts)
+        )
+        if (disallowedContentServerUrl) {
+          logger.warn('Skipping deployment: a contentServerUrl is not an allowed content server (SSRF guard)', {
+            entityId: event.entity.entityId,
+            contentServerUrl: String(disallowedContentServerUrl).slice(0, 120)
+          })
+          return { ok: true, handlerName: HANDLER_NAME }
+        }
+
         const registryAlreadyExists = await db.getRegistryById(event.entity.entityId)
 
         if (registryAlreadyExists) {
