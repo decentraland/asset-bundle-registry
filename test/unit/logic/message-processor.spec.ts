@@ -58,6 +58,9 @@ describe('message processor', () => {
     queuesStatusManager: {
       markAsQueued: jest.fn(),
       markAsFinished: jest.fn(),
+      markAsManuallyQueued: jest.fn(),
+      isManuallyQueued: jest.fn(),
+      clearManualQueue: jest.fn(),
       getAllPendingEntities: jest.fn()
     },
     db: createDbMockComponent(),

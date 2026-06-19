@@ -141,4 +141,38 @@ describe('queues status manager', () => {
       expect(result).toContainEqual({ entityId, platform, status: EntityQueueStatusValue.BUNDLE_PENDING })
     })
   })
+
+  describe('manual re-queue tracking', () => {
+    afterEach(async () => {
+      await memoryStorage.purge(`manual-jobs:${platform}:${entityId}`)
+      await memoryStorage.purge(`manual-jobs:mac:${entityId}`)
+      await memoryStorage.purge(`manual-jobs:webgl:${entityId}`)
+    })
+
+    it('should return false from isManuallyQueued when no manual re-queue is tracked', async () => {
+      expect(await queuesStatusManager.isManuallyQueued(platform, entityId)).toBe(false)
+    })
+
+    it('should return true from isManuallyQueued after markAsManuallyQueued', async () => {
+      await queuesStatusManager.markAsManuallyQueued(platform, entityId)
+      expect(await queuesStatusManager.isManuallyQueued(platform, entityId)).toBe(true)
+    })
+
+    it('should not flip isManuallyQueued when only markAsQueued is called', async () => {
+      await queuesStatusManager.markAsQueued(platform, entityId)
+      expect(await queuesStatusManager.isManuallyQueued(platform, entityId)).toBe(false)
+    })
+
+    it('should return false from isManuallyQueued after clearManualQueue', async () => {
+      await queuesStatusManager.markAsManuallyQueued(platform, entityId)
+      await queuesStatusManager.clearManualQueue(platform, entityId)
+      expect(await queuesStatusManager.isManuallyQueued(platform, entityId)).toBe(false)
+    })
+
+    it('should be platform-scoped', async () => {
+      await queuesStatusManager.markAsManuallyQueued(platform, entityId)
+      expect(await queuesStatusManager.isManuallyQueued('mac', entityId)).toBe(false)
+      expect(await queuesStatusManager.isManuallyQueued(platform, entityId)).toBe(true)
+    })
+  })
 })

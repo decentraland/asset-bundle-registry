@@ -92,6 +92,7 @@ async function initComponents(): Promise<TestComponents> {
     localFetch: await createLocalFetchCompoment(config),
     messageConsumer,
     messageProcessor,
+    queuesStatusManager,
     extendedDb: extendDbComponent({ db, pg }),
     refreshableFeatures: createRefreshableFeaturesMockComponent()
   }

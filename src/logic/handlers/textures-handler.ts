@@ -29,63 +29,94 @@ export const createTexturesEventHandler = ({
         if (!entity) {
           const historicalEntity = await db.getHistoricalRegistryById(eventMetadata.entityId)
           if (historicalEntity) {
-            logger.info('Entity was previously purged, skipping stale texture event', {
-              entityId: eventMetadata.entityId
+            const isManualRequeue = await queuesStatusManager.isManuallyQueued(
+              eventMetadata.platform,
+              eventMetadata.entityId
+            )
+
+            if (!isManualRequeue) {
+              logger.info('Entity was previously purged, skipping stale texture event', {
+                entityId: eventMetadata.entityId
+              })
+              if (!eventMetadata.isLods) {
+                await queuesStatusManager.markAsFinished(eventMetadata.platform, eventMetadata.entityId)
+              }
+              return { ok: true, handlerName: HANDLER_NAME }
+            }
+
+            logger.info('Entity was previously purged but is manually re-queued, restoring it', {
+              entityId: eventMetadata.entityId,
+              platform: eventMetadata.platform
             })
-            if (!eventMetadata.isLods) {
-              await queuesStatusManager.markAsFinished(eventMetadata.platform, eventMetadata.entityId)
+
+            entity = await db.restoreFromHistoricalRegistry(eventMetadata.entityId)
+
+            if (!entity) {
+              logger.error('Failed to restore entity from historical registry', {
+                entityId: eventMetadata.entityId
+              })
+              await queuesStatusManager.clearManualQueue(eventMetadata.platform, eventMetadata.entityId)
+              if (!eventMetadata.isLods) {
+                await queuesStatusManager.markAsFinished(eventMetadata.platform, eventMetadata.entityId)
+              }
+              return {
+                ok: false,
+                errors: [`Failed to restore entity ${eventMetadata.entityId} from historical registry`],
+                handlerName: HANDLER_NAME
+              }
             }
-            return { ok: true, handlerName: HANDLER_NAME }
-          }
 
-          logger.info('Entity not found in the database, will create it', { entityId: eventMetadata.entityId })
-          let fetchedEntity: Entity | null
-
-          if (event.metadata.isWorld) {
-            fetchedEntity = await worlds.getWorld(event.metadata.entityId)
+            await queuesStatusManager.clearManualQueue(eventMetadata.platform, eventMetadata.entityId)
           } else {
-            fetchedEntity = await catalyst.getEntityById(event.metadata.entityId)
-          }
+            logger.info('Entity not found in the database, will create it', { entityId: eventMetadata.entityId })
+            let fetchedEntity: Entity | null
 
-          if (!fetchedEntity) {
-            logger.error('Entity not found', { event: JSON.stringify(event) })
-            if (!eventMetadata.isLods) {
-              await queuesStatusManager.markAsFinished(eventMetadata.platform, eventMetadata.entityId)
+            if (event.metadata.isWorld) {
+              fetchedEntity = await worlds.getWorld(event.metadata.entityId)
+            } else {
+              fetchedEntity = await catalyst.getEntityById(event.metadata.entityId)
             }
-            return {
-              ok: false,
-              errors: [`Entity with id ${eventMetadata.entityId} was not found`],
-              handlerName: HANDLER_NAME
-            }
-          }
 
-          const defaultBundles: Registry.Bundles = {
-            assets: {
-              windows: Registry.SimplifiedStatus.PENDING,
-              mac: Registry.SimplifiedStatus.PENDING,
-              webgl: Registry.SimplifiedStatus.PENDING
-            },
-            lods: {
-              windows: Registry.SimplifiedStatus.PENDING,
-              mac: Registry.SimplifiedStatus.PENDING,
-              webgl: Registry.SimplifiedStatus.PENDING
+            if (!fetchedEntity) {
+              logger.error('Entity not found', { event: JSON.stringify(event) })
+              if (!eventMetadata.isLods) {
+                await queuesStatusManager.markAsFinished(eventMetadata.platform, eventMetadata.entityId)
+              }
+              return {
+                ok: false,
+                errors: [`Entity with id ${eventMetadata.entityId} was not found`],
+                handlerName: HANDLER_NAME
+              }
             }
-          }
 
-          const defaultVersions: Registry.Versions = {
-            assets: {
-              windows: { version: '', buildDate: '' },
-              mac: { version: '', buildDate: '' },
-              webgl: { version: '', buildDate: '' }
+            const defaultBundles: Registry.Bundles = {
+              assets: {
+                windows: Registry.SimplifiedStatus.PENDING,
+                mac: Registry.SimplifiedStatus.PENDING,
+                webgl: Registry.SimplifiedStatus.PENDING
+              },
+              lods: {
+                windows: Registry.SimplifiedStatus.PENDING,
+                mac: Registry.SimplifiedStatus.PENDING,
+                webgl: Registry.SimplifiedStatus.PENDING
+              }
             }
-          }
 
-          entity = await registry.persistAndRotateStates({
-            ...fetchedEntity,
-            deployer: '', // cannot infer from textures event
-            bundles: defaultBundles,
-            versions: defaultVersions
-          })
+            const defaultVersions: Registry.Versions = {
+              assets: {
+                windows: { version: '', buildDate: '' },
+                mac: { version: '', buildDate: '' },
+                webgl: { version: '', buildDate: '' }
+              }
+            }
+
+            entity = await registry.persistAndRotateStates({
+              ...fetchedEntity,
+              deployer: '', // cannot infer from textures event
+              bundles: defaultBundles,
+              versions: defaultVersions
+            })
+          }
         }
 
         if (!eventMetadata.isLods) {

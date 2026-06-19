@@ -121,6 +121,7 @@ export interface IDbComponent {
   insertHistoricalRegistry(registry: Registry.DbEntity): Promise<Registry.DbEntity>
   getSortedHistoricalRegistriesByOwner(owner: EthAddress): Promise<Registry.DbEntity[]>
   getHistoricalRegistryById(id: string): Promise<Registry.DbEntity | null>
+  restoreFromHistoricalRegistry(id: string): Promise<Registry.DbEntity | null>
   // profiles
   upsertProfileIfNewer(profile: Sync.ProfileDbEntity): Promise<boolean>
   bulkUpsertProfilesIfNewer(profiles: Sync.ProfileDbEntity[]): Promise<string[]>
@@ -240,6 +241,9 @@ export interface ICacheStorage extends IBaseComponent {
 export interface IQueuesStatusManagerComponent {
   markAsQueued(platform: 'windows' | 'mac' | 'webgl', entityId: string): Promise<void>
   markAsFinished(platform: 'windows' | 'mac' | 'webgl', entityId: string): Promise<void>
+  markAsManuallyQueued(platform: 'windows' | 'mac' | 'webgl', entityId: string): Promise<void>
+  isManuallyQueued(platform: 'windows' | 'mac' | 'webgl', entityId: string): Promise<boolean>
+  clearManualQueue(platform: 'windows' | 'mac' | 'webgl', entityId: string): Promise<void>
   getAllPendingEntities(platform: 'windows' | 'mac' | 'webgl'): Promise<EntityStatusInQueue[]>
 }
 

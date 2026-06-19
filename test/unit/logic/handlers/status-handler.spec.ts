@@ -30,19 +30,34 @@ describe('status processor', () => {
 
   it('should handle deployment event and mark all platforms as pending', async () => {
     jest.spyOn(queuesStatusManager, 'markAsQueued')
+    jest.spyOn(queuesStatusManager, 'markAsManuallyQueued')
     const event = createDeploymentEvent('baf1')
     const result = await statusProcessor.handle(event)
     expect(result.ok).toBe(true)
     expect(queuesStatusManager.markAsQueued).toHaveBeenCalledTimes(3)
+    expect(queuesStatusManager.markAsManuallyQueued).not.toHaveBeenCalled()
   })
 
-  it('should handle asset bundle conversion manually queued event and mark the specific platform as pending', async () => {
+  it('should handle asset bundle conversion manually queued event and mark the specific platform as pending and manually queued', async () => {
     jest.spyOn(queuesStatusManager, 'markAsQueued')
+    jest.spyOn(queuesStatusManager, 'markAsManuallyQueued')
     const event = createAssetBundleConversionManuallyQueuedEvent('baf1', 'windows')
     const result = await statusProcessor.handle(event)
     expect(result.ok).toBe(true)
     expect(queuesStatusManager.markAsQueued).toHaveBeenCalledTimes(1)
     expect(queuesStatusManager.markAsQueued).toHaveBeenCalledWith('windows', 'baf1')
+    expect(queuesStatusManager.markAsManuallyQueued).toHaveBeenCalledTimes(1)
+    expect(queuesStatusManager.markAsManuallyQueued).toHaveBeenCalledWith('windows', 'baf1')
+  })
+
+  it('should not set any marker when the manually queued event is for LODs', async () => {
+    jest.spyOn(queuesStatusManager, 'markAsQueued')
+    jest.spyOn(queuesStatusManager, 'markAsManuallyQueued')
+    const event = createAssetBundleConversionManuallyQueuedEvent('baf1', 'windows', true)
+    const result = await statusProcessor.handle(event)
+    expect(result.ok).toBe(true)
+    expect(queuesStatusManager.markAsQueued).not.toHaveBeenCalled()
+    expect(queuesStatusManager.markAsManuallyQueued).not.toHaveBeenCalled()
   })
 })
 
@@ -63,7 +78,8 @@ function createDeploymentEvent(entityId: string): DeploymentToSqs {
 
 function createAssetBundleConversionManuallyQueuedEvent(
   entityId: string,
-  platform: 'windows' | 'mac' | 'webgl'
+  platform: 'windows' | 'mac' | 'webgl',
+  isLods: boolean = false
 ): AssetBundleConversionManuallyQueuedEvent {
   return {
     type: Events.Type.ASSET_BUNDLE,
@@ -73,7 +89,7 @@ function createAssetBundleConversionManuallyQueuedEvent(
     metadata: {
       entityId,
       platform,
-      isLods: false,
+      isLods,
       isPriority: false,
       version: 'v1'
     }

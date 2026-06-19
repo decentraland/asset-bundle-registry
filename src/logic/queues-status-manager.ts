@@ -1,10 +1,14 @@
-import { AppComponents, EntityStatusInQueue, IQueuesStatusManagerComponent } from '../types'
+import { AppComponents, EntityStatusInQueue, IQueuesStatusManagerComponent, ManualQueueMarker } from '../types'
 
 export function createQueuesStatusManagerComponent({
   memoryStorage
 }: Pick<AppComponents, 'memoryStorage'>): IQueuesStatusManagerComponent {
   function generateCacheKey(platform: 'windows' | 'mac' | 'webgl', entityId: string): string {
     return `jobs:${platform}:${entityId}`
+  }
+
+  function generateManualQueueKey(platform: 'windows' | 'mac' | 'webgl', entityId: string): string {
+    return `manual-jobs:${platform}:${entityId}`
   }
 
   async function getStatus(key: string): Promise<EntityStatusInQueue | undefined> {
@@ -54,9 +58,25 @@ export function createQueuesStatusManagerComponent({
       }))
   }
 
+  async function markAsManuallyQueued(platform: 'windows' | 'mac' | 'webgl', entityId: string): Promise<void> {
+    await memoryStorage.set<ManualQueueMarker>(generateManualQueueKey(platform, entityId), { entityId, platform })
+  }
+
+  async function isManuallyQueued(platform: 'windows' | 'mac' | 'webgl', entityId: string): Promise<boolean> {
+    const entries = await memoryStorage.get<ManualQueueMarker>(generateManualQueueKey(platform, entityId))
+    return entries.length > 0
+  }
+
+  async function clearManualQueue(platform: 'windows' | 'mac' | 'webgl', entityId: string): Promise<void> {
+    await memoryStorage.purge(generateManualQueueKey(platform, entityId))
+  }
+
   return {
     markAsQueued,
     markAsFinished,
+    markAsManuallyQueued,
+    isManuallyQueued,
+    clearManualQueue,
     getAllPendingEntities
   }
 }
