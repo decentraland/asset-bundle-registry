@@ -247,6 +247,87 @@ test('POST /entities endpoints', async function ({ components }) {
           })
         })
 
+        describe('and the most recent genesis city scene is FAILED with an older FALLBACK scene', () => {
+          let failedRegistry: Registry.DbEntity
+          let fallbackRegistry: Registry.DbEntity
+
+          beforeEach(async () => {
+            fallbackRegistry = createRegistryEntity(
+              identity.realAccount.address,
+              Registry.Status.FALLBACK,
+              Registry.SimplifiedStatus.COMPLETE,
+              { id: 'fallback-genesis-scene', pointers: ['2000,2000'], timestamp: 1000 }
+            )
+            failedRegistry = createRegistryEntity(
+              identity.realAccount.address,
+              Registry.Status.FAILED,
+              Registry.SimplifiedStatus.FAILED,
+              { id: 'failed-genesis-scene', pointers: ['2000,2000'], timestamp: 2000 }
+            )
+            await createRegistryOnDatabase(fallbackRegistry)
+            await createRegistryOnDatabase(failedRegistry)
+          })
+
+          it('should return the fallback scene and not the failed one', async () => {
+            const response = await fetchLocally('POST', path, undefined, {
+              pointers: ['2000,2000']
+            })
+            const parsedResponse = await response.json()
+
+            expect(parsedResponse).toEqual(parseResponse([fallbackRegistry]))
+          })
+        })
+
+        describe('and the most recent world scene is FAILED with an older FALLBACK scene', () => {
+          let failedRegistry: Registry.DbEntity
+          let fallbackRegistry: Registry.DbEntity
+
+          beforeEach(async () => {
+            fallbackRegistry = createRegistryEntity(
+              identity.realAccount.address,
+              Registry.Status.FALLBACK,
+              Registry.SimplifiedStatus.COMPLETE,
+              {
+                id: 'fallback-world-scene',
+                type: 'world',
+                pointers: ['3000,3000'],
+                timestamp: 1000,
+                metadata: { worldConfiguration: { name: 'failed-test-world.dcl.eth' } }
+              }
+            )
+            failedRegistry = createRegistryEntity(
+              identity.realAccount.address,
+              Registry.Status.FAILED,
+              Registry.SimplifiedStatus.FAILED,
+              {
+                id: 'failed-world-scene',
+                type: 'world',
+                pointers: ['3000,3000'],
+                timestamp: 2000,
+                metadata: { worldConfiguration: { name: 'failed-test-world.dcl.eth' } }
+              }
+            )
+            await createRegistryOnDatabase(fallbackRegistry)
+            await createRegistryOnDatabase(failedRegistry)
+          })
+
+          it('should return the fallback scene and not the failed one', async () => {
+            const response = await fetchLocally(
+              'POST',
+              path,
+              undefined,
+              {
+                pointers: ['3000,3000']
+              },
+              {},
+              { world_name: 'failed-test-world.dcl.eth' }
+            )
+            const parsedResponse = await response.json()
+
+            expect(parsedResponse).toEqual(parseResponse([fallbackRegistry]))
+          })
+        })
+
         describe('and some pointers exist and others do not', () => {
           let registry: Registry.DbEntity
 

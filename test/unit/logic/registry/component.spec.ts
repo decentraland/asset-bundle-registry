@@ -331,6 +331,61 @@ describe('when using the registry component', () => {
         expect(db.updateRegistriesStatus).toHaveBeenCalledWith([olderCompleteRegistry.id], Registry.Status.FALLBACK)
       })
     })
+
+    describe('when there is an older complete genesis city scene and the newer one fails one platform', () => {
+      let registry: Registry.DbEntity
+      let olderCompleteRegistry: Registry.DbEntity
+
+      beforeEach(() => {
+        olderCompleteRegistry = createRelativeRegistry(-1000, Registry.Status.COMPLETE, 'older-complete')
+        db.getRelatedRegistries.mockResolvedValue([olderCompleteRegistry])
+        registry = withAssetStatus(
+          createRegistry(),
+          Registry.SimplifiedStatus.COMPLETE,
+          Registry.SimplifiedStatus.FAILED
+        )
+      })
+
+      it('should mark the registry as failed', async () => {
+        await component.persistAndRotateStates(registry)
+
+        expect(db.insertRegistry).toHaveBeenCalledWith({ ...registry, status: Registry.Status.FAILED })
+      })
+
+      it('should mark the older complete registry as fallback', async () => {
+        await component.persistAndRotateStates(registry)
+
+        expect(db.updateRegistriesStatus).toHaveBeenCalledWith([olderCompleteRegistry.id], Registry.Status.FALLBACK)
+      })
+    })
+
+    describe('when there is an older complete world scene and the newer one fails one platform', () => {
+      let registry: Registry.DbEntity
+      let olderCompleteRegistry: Registry.DbEntity
+
+      beforeEach(() => {
+        olderCompleteRegistry = createRelativeRegistry(-1000, Registry.Status.COMPLETE, 'older-complete')
+        olderCompleteRegistry.metadata = { worldConfiguration: { name: 'test-world.dcl.eth' } }
+        db.getRelatedRegistries.mockResolvedValue([olderCompleteRegistry])
+        registry = withAssetStatus(
+          createRegistry({ metadata: { worldConfiguration: { name: 'test-world.dcl.eth' } } }),
+          Registry.SimplifiedStatus.COMPLETE,
+          Registry.SimplifiedStatus.FAILED
+        )
+      })
+
+      it('should mark the registry as failed', async () => {
+        await component.persistAndRotateStates(registry)
+
+        expect(db.insertRegistry).toHaveBeenCalledWith({ ...registry, status: Registry.Status.FAILED })
+      })
+
+      it('should mark the older complete world scene as fallback', async () => {
+        await component.persistAndRotateStates(registry)
+
+        expect(db.updateRegistriesStatus).toHaveBeenCalledWith([olderCompleteRegistry.id], Registry.Status.FALLBACK)
+      })
+    })
   })
 
   describe('when a world scene overlaps an existing one and the new scene fails conversion', () => {
