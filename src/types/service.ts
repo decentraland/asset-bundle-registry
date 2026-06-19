@@ -238,9 +238,9 @@ export interface ICacheStorage extends IBaseComponent {
 }
 
 export interface IQueuesStatusManagerComponent {
-  markAsQueued(platform: 'windows' | 'mac' | 'webgl', entityId: string): Promise<void>
-  markAsFinished(platform: 'windows' | 'mac' | 'webgl', entityId: string): Promise<void>
-  getAllPendingEntities(platform: 'windows' | 'mac' | 'webgl'): Promise<EntityStatusInQueue[]>
+  markAsQueued(platform: 'windows' | 'mac', entityId: string): Promise<void>
+  markAsFinished(platform: 'windows' | 'mac', entityId: string): Promise<void>
+  getAllPendingEntities(platform: 'windows' | 'mac'): Promise<EntityStatusInQueue[]>
 }
 
 export interface IProfilesCacheComponent {

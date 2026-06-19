@@ -14,19 +14,20 @@ export const createStatusEventHandler = ({
   function getEventProperties(event: any) {
     let entityId: string = ''
     let isLods: boolean = false
-    const platforms: ('webgl' | 'windows' | 'mac')[] = []
+    const platforms: ('windows' | 'mac')[] = []
 
     if (event.type === Events.Type.ASSET_BUNDLE && event.subType === Events.SubType.AssetBundle.MANUALLY_QUEUED) {
       const { metadata } = event as AssetBundleConversionManuallyQueuedEvent
 
       entityId = metadata.entityId
-      platforms.push(metadata.platform)
+      if (metadata.platform !== 'webgl') {
+        platforms.push(metadata.platform as 'windows' | 'mac')
+      }
       isLods = metadata.isLods
     } else {
       const deploymentEvent = event as DeploymentToSqs
 
       entityId = deploymentEvent.entity.entityId
-      platforms.push('webgl')
       platforms.push('windows')
       platforms.push('mac')
     }

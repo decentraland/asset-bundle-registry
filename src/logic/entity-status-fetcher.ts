@@ -42,8 +42,7 @@ export async function createEntityStatusFetcherComponent({
   ): Promise<{ status: Registry.SimplifiedStatus; version: string; buildDate: string }> {
     return withRetry(
       async () => {
-        const manifestName = platform !== 'webgl' ? `${entityId}_${platform}` : entityId
-        const manifestUrl = `${ASSET_BUNDLE_CDN_URL}manifest/${manifestName}.json`
+        const manifestUrl = `${ASSET_BUNDLE_CDN_URL}manifest/${entityId}_${platform}.json`
 
         const response = await fetch.fetch(manifestUrl)
 
@@ -84,9 +83,8 @@ export async function createEntityStatusFetcherComponent({
     return withRetry(
       async () => {
         const lodsBaseUrl = `${ASSET_BUNDLE_CDN_URL}LOD`
-        const urlPlatformSuffix = platform === 'webgl' ? '' : `_${platform}`
         const allUrls = LEVEL_OF_DETAILS.map(
-          (levelOfDetail: string) => `${lodsBaseUrl}/${levelOfDetail}/${entityId}_${levelOfDetail}${urlPlatformSuffix}`
+          (levelOfDetail: string) => `${lodsBaseUrl}/${levelOfDetail}/${entityId}_${levelOfDetail}_${platform}`
         )
 
         const allResponses = await Promise.all(allUrls.map((url) => fetch.fetch(url, { method: 'HEAD' })))

@@ -62,20 +62,17 @@ describe('textures-handler', () => {
     bundles: {
       assets: {
         windows: Registry.SimplifiedStatus.PENDING,
-        mac: Registry.SimplifiedStatus.PENDING,
-        webgl: Registry.SimplifiedStatus.PENDING
+        mac: Registry.SimplifiedStatus.PENDING
       },
       lods: {
         windows: Registry.SimplifiedStatus.PENDING,
-        mac: Registry.SimplifiedStatus.PENDING,
-        webgl: Registry.SimplifiedStatus.PENDING
+        mac: Registry.SimplifiedStatus.PENDING
       }
     },
     versions: {
       assets: {
         windows: { version: '', buildDate: '' },
-        mac: { version: '', buildDate: '' },
-        webgl: { version: '', buildDate: '' }
+        mac: { version: '', buildDate: '' }
       }
     }
   })
@@ -208,6 +205,52 @@ describe('textures-handler', () => {
         const event = createEvent({
           metadata: {
             entityId: 'missing-1',
+            platform: 'windows',
+            statusCode: ManifestStatusCode.SUCCESS,
+            isLods: false,
+            isWorld: false,
+            version: 'v1'
+          }
+        })
+
+        await queuesStatusManager.markAsQueued('windows', 'missing-1')
+        db.getRegistryById = jest.fn().mockResolvedValue(null)
+        db.getHistoricalRegistryById = jest.fn().mockResolvedValue(null)
+        catalyst.getEntityById = jest.fn().mockResolvedValue(null)
+
+        await handler.handle(event)
+
+        const pending = await queuesStatusManager.getAllPendingEntities('windows')
+        expect(pending.find((e: any) => e.entityId === 'missing-1')).toBeUndefined()
+      })
+
+      it('should not clear the pending queue counter for lod events when entity not found', async () => {
+        const event = createEvent({
+          metadata: {
+            entityId: 'missing-2',
+            platform: 'windows',
+            statusCode: ManifestStatusCode.SUCCESS,
+            isLods: true,
+            isWorld: false,
+            version: 'v1'
+          }
+        })
+
+        await queuesStatusManager.markAsQueued('windows', 'missing-2')
+        db.getRegistryById = jest.fn().mockResolvedValue(null)
+        db.getHistoricalRegistryById = jest.fn().mockResolvedValue(null)
+        catalyst.getEntityById = jest.fn().mockResolvedValue(null)
+
+        await handler.handle(event)
+
+        const pending = await queuesStatusManager.getAllPendingEntities('windows')
+        expect(pending.find((e: any) => e.entityId === 'missing-2')).toBeDefined()
+      })
+
+      it('should skip processing webgl asset bundle events', async () => {
+        const event = createEvent({
+          metadata: {
+            entityId: '123',
             platform: 'webgl',
             statusCode: ManifestStatusCode.SUCCESS,
             isLods: false,
@@ -216,38 +259,11 @@ describe('textures-handler', () => {
           }
         })
 
-        await queuesStatusManager.markAsQueued('webgl', 'missing-1')
-        db.getRegistryById = jest.fn().mockResolvedValue(null)
-        db.getHistoricalRegistryById = jest.fn().mockResolvedValue(null)
-        catalyst.getEntityById = jest.fn().mockResolvedValue(null)
+        const result = await handler.handle(event)
 
-        await handler.handle(event)
-
-        const pending = await queuesStatusManager.getAllPendingEntities('webgl')
-        expect(pending.find((e: any) => e.entityId === 'missing-1')).toBeUndefined()
-      })
-
-      it('should not clear the pending queue counter for lod events when entity not found', async () => {
-        const event = createEvent({
-          metadata: {
-            entityId: 'missing-2',
-            platform: 'webgl',
-            statusCode: ManifestStatusCode.SUCCESS,
-            isLods: true,
-            isWorld: false,
-            version: 'v1'
-          }
-        })
-
-        await queuesStatusManager.markAsQueued('webgl', 'missing-2')
-        db.getRegistryById = jest.fn().mockResolvedValue(null)
-        db.getHistoricalRegistryById = jest.fn().mockResolvedValue(null)
-        catalyst.getEntityById = jest.fn().mockResolvedValue(null)
-
-        await handler.handle(event)
-
-        const pending = await queuesStatusManager.getAllPendingEntities('webgl')
-        expect(pending.find((e: any) => e.entityId === 'missing-2')).toBeDefined()
+        expect(result.ok).toBe(true)
+        expect(db.getRegistryById).not.toHaveBeenCalled()
+        expect(registry.updateBundleAndRotateStates).not.toHaveBeenCalled()
       })
 
       describe('and the entity was previously purged', () => {
@@ -401,41 +417,6 @@ describe('textures-handler', () => {
         })
       })
 
-      it('should update bundle status for webgl platform with already converted status', async () => {
-        const event = createEvent({
-          metadata: {
-            entityId: '123',
-            platform: 'webgl',
-            statusCode: ManifestStatusCode.ALREADY_CONVERTED,
-            isLods: false,
-            isWorld: false,
-            version: 'v1'
-          }
-        })
-        const entity = createEntity()
-        const dbEntity = createDbEntity(entity)
-        db.getRegistryById = jest.fn().mockResolvedValue(dbEntity)
-        registry.updateBundleAndRotateStates = jest.fn().mockResolvedValue(dbEntity)
-
-        const result = await handler.handle(event)
-
-        expect(result.ok).toBe(true)
-        expect(registry.updateBundleAndRotateStates).toHaveBeenCalledWith({
-          bundleUpdate: {
-            entityId: '123',
-            platform: 'webgl',
-            isLods: false,
-            status: Registry.SimplifiedStatus.COMPLETE
-          },
-          versionUpdate: {
-            entityId: '123',
-            platform: 'webgl',
-            version: 'v1',
-            buildDate: new Date(event.timestamp).toISOString()
-          }
-        })
-      })
-
       it('should mark bundle as failed when conversion fails and entity had PENDING status', async () => {
         const event = createEvent({
           metadata: {
@@ -494,20 +475,17 @@ describe('textures-handler', () => {
               bundles: {
                 assets: {
                   windows: Registry.SimplifiedStatus.COMPLETE,
-                  mac: Registry.SimplifiedStatus.COMPLETE,
-                  webgl: Registry.SimplifiedStatus.PENDING
+                  mac: Registry.SimplifiedStatus.COMPLETE
                 },
                 lods: {
                   windows: Registry.SimplifiedStatus.PENDING,
-                  mac: Registry.SimplifiedStatus.PENDING,
-                  webgl: Registry.SimplifiedStatus.PENDING
+                  mac: Registry.SimplifiedStatus.PENDING
                 }
               },
               versions: {
                 assets: {
                   windows: { version: 'v1', buildDate: '2024-01-01' },
-                  mac: { version: 'v1', buildDate: '2024-01-01' },
-                  webgl: { version: '', buildDate: '' }
+                  mac: { version: 'v1', buildDate: '2024-01-01' }
                 }
               }
             }
@@ -564,13 +542,11 @@ describe('textures-handler', () => {
               bundles: {
                 assets: {
                   windows: Registry.SimplifiedStatus.COMPLETE,
-                  mac: Registry.SimplifiedStatus.COMPLETE,
-                  webgl: Registry.SimplifiedStatus.PENDING
+                  mac: Registry.SimplifiedStatus.COMPLETE
                 },
                 lods: {
                   windows: Registry.SimplifiedStatus.COMPLETE,
-                  mac: Registry.SimplifiedStatus.COMPLETE,
-                  webgl: Registry.SimplifiedStatus.PENDING
+                  mac: Registry.SimplifiedStatus.COMPLETE
                 }
               }
             }
@@ -626,20 +602,17 @@ describe('textures-handler', () => {
               bundles: {
                 assets: {
                   windows: Registry.SimplifiedStatus.COMPLETE,
-                  mac: Registry.SimplifiedStatus.COMPLETE,
-                  webgl: Registry.SimplifiedStatus.PENDING
+                  mac: Registry.SimplifiedStatus.COMPLETE
                 },
                 lods: {
                   windows: Registry.SimplifiedStatus.PENDING,
-                  mac: Registry.SimplifiedStatus.PENDING,
-                  webgl: Registry.SimplifiedStatus.PENDING
+                  mac: Registry.SimplifiedStatus.PENDING
                 }
               },
               versions: {
                 assets: {
                   windows: { version: 'v1', buildDate: '2024-01-01' },
-                  mac: { version: 'v1', buildDate: '2024-01-01' },
-                  webgl: { version: '', buildDate: '' }
+                  mac: { version: 'v1', buildDate: '2024-01-01' }
                 }
               }
             }
@@ -648,8 +621,7 @@ describe('textures-handler', () => {
               versions: {
                 assets: {
                   windows: { version: 'v2', buildDate: '2024-01-02' },
-                  mac: { version: 'v1', buildDate: '2024-01-01' },
-                  webgl: { version: '', buildDate: '' }
+                  mac: { version: 'v1', buildDate: '2024-01-01' }
                 }
               }
             }
@@ -784,13 +756,11 @@ describe('textures-handler', () => {
             bundles: {
               assets: {
                 windows: Registry.SimplifiedStatus.COMPLETE,
-                mac: Registry.SimplifiedStatus.COMPLETE,
-                webgl: Registry.SimplifiedStatus.PENDING
+                mac: Registry.SimplifiedStatus.COMPLETE
               },
               lods: {
                 windows: Registry.SimplifiedStatus.PENDING,
-                mac: Registry.SimplifiedStatus.PENDING,
-                webgl: Registry.SimplifiedStatus.PENDING
+                mac: Registry.SimplifiedStatus.PENDING
               }
             }
           }
@@ -799,8 +769,7 @@ describe('textures-handler', () => {
             versions: {
               assets: {
                 windows: { version: 'v2', buildDate: '2024-01-02' },
-                mac: { version: 'v1', buildDate: '2024-01-01' },
-                webgl: { version: '', buildDate: '' }
+                mac: { version: 'v1', buildDate: '2024-01-01' }
               }
             }
           }

@@ -52,13 +52,13 @@ export namespace Registry {
     assets: {
       windows: SimplifiedStatus
       mac: SimplifiedStatus
-      webgl: SimplifiedStatus
+      webgl?: SimplifiedStatus
     }
     // LODs are optional - worlds don't support LODs
     lods?: {
       windows: SimplifiedStatus
       mac: SimplifiedStatus
-      webgl: SimplifiedStatus
+      webgl?: SimplifiedStatus
     }
   }
 
@@ -66,7 +66,7 @@ export namespace Registry {
     assets: {
       windows: { version: string; buildDate: string }
       mac: { version: string; buildDate: string }
-      webgl: { version: string; buildDate: string }
+      webgl?: { version: string; buildDate: string }
     }
   }
 
@@ -109,7 +109,7 @@ export enum EntityQueueStatusValue {
 
 export type EntityStatusInQueue = {
   entityId: string
-  platform: 'windows' | 'mac' | 'webgl'
+  platform: 'windows' | 'mac'
   status: EntityQueueStatusValue
 }
 

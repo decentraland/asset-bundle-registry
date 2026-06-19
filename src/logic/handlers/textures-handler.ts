@@ -21,6 +21,12 @@ export const createTexturesEventHandler = ({
     handle: async (event: AssetBundleConversionFinishedEvent): Promise<EventHandlerResult> => {
       try {
         const eventMetadata = event.metadata
+
+        if (eventMetadata.platform === 'webgl') {
+          logger.info('Skipping webgl asset bundle event', { entityId: eventMetadata.entityId })
+          return { ok: true, handlerName: HANDLER_NAME }
+        }
+
         let entity: Registry.DbEntity | null = await db.getRegistryById(eventMetadata.entityId)
 
         // Track if the entity was originally OBSOLETE to preserve its status later
@@ -62,21 +68,18 @@ export const createTexturesEventHandler = ({
           const defaultBundles: Registry.Bundles = {
             assets: {
               windows: Registry.SimplifiedStatus.PENDING,
-              mac: Registry.SimplifiedStatus.PENDING,
-              webgl: Registry.SimplifiedStatus.PENDING
+              mac: Registry.SimplifiedStatus.PENDING
             },
             lods: {
               windows: Registry.SimplifiedStatus.PENDING,
-              mac: Registry.SimplifiedStatus.PENDING,
-              webgl: Registry.SimplifiedStatus.PENDING
+              mac: Registry.SimplifiedStatus.PENDING
             }
           }
 
           const defaultVersions: Registry.Versions = {
             assets: {
               windows: { version: '', buildDate: '' },
-              mac: { version: '', buildDate: '' },
-              webgl: { version: '', buildDate: '' }
+              mac: { version: '', buildDate: '' }
             }
           }
 
