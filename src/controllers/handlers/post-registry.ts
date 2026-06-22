@@ -1,4 +1,4 @@
-import { DecentralandSignatureContext } from '@dcl/platform-crypto-middleware'
+import { DecentralandSignatureContext } from '@dcl/crypto-middleware'
 import { HandlerContextWithPath, Registry } from '../../types'
 import { Entity } from '@dcl/schemas'
 

@@ -1,5 +1,5 @@
 import { EthAddress } from '@dcl/schemas/dist/misc'
-import { ApplicationName } from '@well-known-components/features-component'
+import { ApplicationName } from '@dcl/features-component'
 import { STOP_COMPONENT, START_COMPONENT } from '@well-known-components/interfaces'
 
 import { AppComponents } from '../../types'

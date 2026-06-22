@@ -5,9 +5,9 @@ import {
   instrumentHttpServerWithPromClientRegistry
 } from '@dcl/http-server'
 import { createLogComponent } from '@well-known-components/logger'
-import { createFetchComponent } from '@well-known-components/fetch-component'
-import { createMetricsComponent } from '@well-known-components/metrics'
-import { createFeaturesComponent } from '@well-known-components/features-component'
+import { createFetchComponent } from '@dcl/fetch-component'
+import { createMetricsComponent } from '@dcl/metrics'
+import { createFeaturesComponent } from '@dcl/features-component'
 import { createRefreshableFeaturesComponent } from './logic/refreshable-features'
 import { metricDeclarations } from './metrics'
 import { AppComponents, GlobalContext, Sync } from './types'
