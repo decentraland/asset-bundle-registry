@@ -15,7 +15,7 @@ import { createProfilesCacheMockComponent } from '../mocks/profiles-cache'
 import { createProfileDbEntity, createProfileEntity, createFullAvatar } from '../mocks/data/profiles'
 import { Entity } from '@dcl/schemas'
 import { createEntityPersisterMockComponent } from '../mocks/entity-persister'
-import { createTestMetricsComponent } from '@well-known-components/metrics'
+import { createTestMetricsComponent } from '@dcl/metrics'
 import { metricDeclarations } from '../../../src/metrics'
 import { Profile } from 'dcl-catalyst-client/dist/client/specs/lambdas-client'
 

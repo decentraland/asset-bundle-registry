@@ -1,7 +1,7 @@
-import { validateMetricsDeclaration } from '@well-known-components/metrics'
 import { metricDeclarations as logMetricDeclarations } from '@well-known-components/logger'
 import { metricDeclarations as pgMetricDeclarations } from '@dcl/pg-component'
 import { getDefaultHttpMetrics } from '@dcl/http-server'
+import { validateMetricsDeclaration } from '@dcl/metrics'
 import { IMetricsComponent } from '@well-known-components/interfaces'
 
 export const metricDeclarations = {

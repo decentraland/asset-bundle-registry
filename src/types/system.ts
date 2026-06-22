@@ -1,12 +1,11 @@
 import type {
   IBaseComponent,
   IConfigComponent,
-  IFetchComponent,
-  IHttpServerComponent,
   ILoggerComponent,
   IMetricsComponent
 } from '@well-known-components/interfaces'
-import type { IFeaturesComponent } from '@well-known-components/features-component'
+import type { IFetchComponent, IHttpServerComponent } from '@dcl/core-commons'
+import type { IFeaturesComponent } from '@dcl/features-component'
 import { IPgComponent } from '@dcl/pg-component'
 import {
   ICatalystComponent,
