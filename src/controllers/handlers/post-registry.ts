@@ -41,11 +41,11 @@ export async function createRegistryHandler(
         continue
       }
 
-      const [macAssets, windowsAssets, webglAssets] = await Promise.all(
-        ['mac', 'windows', 'webgl'].map((platform) => entityStatusFetcher.fetchBundleManifestData(entityId, platform))
+      const [macAssets, windowsAssets] = await Promise.all(
+        ['mac', 'windows'].map((platform) => entityStatusFetcher.fetchBundleManifestData(entityId, platform))
       )
-      const [macLodsStatus, windowsLodsStatus, webglLodsStatus] = await Promise.all(
-        ['mac', 'windows', 'webgl'].map((platform) => entityStatusFetcher.fetchLODsStatus(entityId, platform))
+      const [macLodsStatus, windowsLodsStatus] = await Promise.all(
+        ['mac', 'windows'].map((platform) => entityStatusFetcher.fetchLODsStatus(entityId, platform))
       )
 
       const { status: macAssetsStatus, version: macAssetsVersion, buildDate: macAssetsBuildDate } = macAssets
@@ -54,26 +54,22 @@ export async function createRegistryHandler(
         version: windowsAssetsVersion,
         buildDate: windowsAssetsBuildDate
       } = windowsAssets
-      const { status: webglAssetsStatus, version: webglAssetsVersion, buildDate: webglAssetsBuildDate } = webglAssets
 
       const bundles: Registry.Bundles = {
         assets: {
           mac: macAssetsStatus,
-          windows: windowsAssetsStatus,
-          webgl: webglAssetsStatus
+          windows: windowsAssetsStatus
         },
         lods: {
           mac: macLodsStatus,
-          windows: windowsLodsStatus,
-          webgl: webglLodsStatus
+          windows: windowsLodsStatus
         }
       }
 
       const versions: Registry.Versions = {
         assets: {
           windows: { version: windowsAssetsVersion, buildDate: windowsAssetsBuildDate },
-          mac: { version: macAssetsVersion, buildDate: macAssetsBuildDate },
-          webgl: { version: webglAssetsVersion, buildDate: webglAssetsBuildDate }
+          mac: { version: macAssetsVersion, buildDate: macAssetsBuildDate }
         }
       }
 

@@ -33,7 +33,7 @@ describe('status processor', () => {
     const event = createDeploymentEvent('baf1')
     const result = await statusProcessor.handle(event)
     expect(result.ok).toBe(true)
-    expect(queuesStatusManager.markAsQueued).toHaveBeenCalledTimes(3)
+    expect(queuesStatusManager.markAsQueued).toHaveBeenCalledTimes(2)
   })
 
   it('should handle asset bundle conversion manually queued event and mark the specific platform as pending', async () => {
@@ -63,7 +63,7 @@ function createDeploymentEvent(entityId: string): DeploymentToSqs {
 
 function createAssetBundleConversionManuallyQueuedEvent(
   entityId: string,
-  platform: 'windows' | 'mac' | 'webgl'
+  platform: 'windows' | 'mac'
 ): AssetBundleConversionManuallyQueuedEvent {
   return {
     type: Events.Type.ASSET_BUNDLE,

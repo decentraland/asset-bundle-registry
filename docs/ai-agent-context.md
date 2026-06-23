@@ -4,7 +4,7 @@
 
 **Key Capabilities:**
 
-- Tracks optimization status (pending/complete/failed) for Asset Bundles and LODs across platforms (Windows, Mac, WebGL)
+- Tracks optimization status (pending/complete/failed) for Asset Bundles and LODs across platforms (Windows, Mac)
 - Manages entity registry with deployer ownership, pointers, and optimization state transitions
 - Listens to SQS messages for deployment events and `AssetBundleConversionFinished` events
 - Provides REST API for querying entity optimization status by owner or entity ID

@@ -112,13 +112,11 @@ export function createRegistryEntity(
     bundles: {
       assets: {
         windows: bundlesStatus,
-        mac: bundlesStatus,
-        webgl: bundlesStatus
+        mac: bundlesStatus
       },
       lods: {
         windows: bundlesStatus,
-        mac: bundlesStatus,
-        webgl: bundlesStatus
+        mac: bundlesStatus
       }
     },
     pointers: ['1000,1000'], // out of scope pointer to avoid conflicts with entities
@@ -174,8 +172,7 @@ export function createRegistryEntity(
     versions: {
       assets: {
         windows: { version: '', buildDate: '' },
-        mac: { version: '', buildDate: '' },
-        webgl: { version: '', buildDate: '' }
+        mac: { version: '', buildDate: '' }
       }
     },
     ...overrideProperties
