@@ -1,5 +1,5 @@
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
-import { AppComponents, IEventHandlerComponent, EventHandlerName, EventHandlerResult } from '../../types'
+import { AppComponents, IEventHandlerComponent, EventHandlerName, EventHandlerResult, isSupportedPlatform } from '../../types'
 import { AssetBundleConversionManuallyQueuedEvent, Events } from '@dcl/schemas'
 
 export const createStatusEventHandler = ({
@@ -19,8 +19,12 @@ export const createStatusEventHandler = ({
     if (event.type === Events.Type.ASSET_BUNDLE && event.subType === Events.SubType.AssetBundle.MANUALLY_QUEUED) {
       const { metadata } = event as AssetBundleConversionManuallyQueuedEvent
 
+      if (!isSupportedPlatform(metadata.platform)) {
+        return { entityId: '', platforms: [], isLods: false }
+      }
+
       entityId = metadata.entityId
-      platforms.push(metadata.platform as 'windows' | 'mac')
+      platforms.push(metadata.platform)
       isLods = metadata.isLods
     } else {
       const deploymentEvent = event as DeploymentToSqs
@@ -41,6 +45,11 @@ export const createStatusEventHandler = ({
     handle: async (event: DeploymentToSqs | AssetBundleConversionManuallyQueuedEvent): Promise<EventHandlerResult> => {
       try {
         const { entityId, platforms, isLods } = getEventProperties(event)
+
+        if (platforms.length === 0) {
+          logger.warn('Ignoring event for unsupported platform')
+          return { ok: true, handlerName: HANDLER_NAME }
+        }
 
         if (isLods) {
           logger.info('Skipping processing status for LODs', { entityId, platforms: platforms.join(', ') })

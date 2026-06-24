@@ -660,7 +660,10 @@ components:
         - assetBundles
     PlatformStatus:
       type: object
-      description: Conversion status per platform (Windows and Mac)
+      description: |
+        Conversion status per platform (Windows and Mac).
+        Note: WebGL platform support was removed as part of the WebGL asset bundle decommission.
+        Only Windows and Mac platforms are supported going forward.
       properties:
         mac:
           type: string
@@ -754,7 +757,9 @@ components:
         - lods
     BundlePlatformStatus:
       type: object
-      description: Conversion status for each platform
+      description: |
+        Conversion status for each platform.
+        Note: WebGL platform was removed as part of the WebGL asset bundle decommission.
       properties:
         windows:
           type: string

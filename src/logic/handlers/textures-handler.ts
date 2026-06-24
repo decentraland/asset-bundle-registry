@@ -1,5 +1,5 @@
 import { AssetBundleConversionFinishedEvent, Entity } from '@dcl/schemas'
-import { AppComponents, IEventHandlerComponent, EventHandlerName, EventHandlerResult, Registry } from '../../types'
+import { AppComponents, IEventHandlerComponent, EventHandlerName, EventHandlerResult, Registry, isSupportedPlatform } from '../../types'
 import { ManifestStatusCode } from '../entity-status-fetcher'
 
 export const createTexturesEventHandler = ({
@@ -21,6 +21,15 @@ export const createTexturesEventHandler = ({
     handle: async (event: AssetBundleConversionFinishedEvent): Promise<EventHandlerResult> => {
       try {
         const eventMetadata = event.metadata
+
+        if (!isSupportedPlatform(eventMetadata.platform)) {
+          logger.warn('Ignoring event for unsupported platform', {
+            entityId: eventMetadata.entityId,
+            platform: eventMetadata.platform
+          })
+          return { ok: true, handlerName: HANDLER_NAME }
+        }
+
         let entity: Registry.DbEntity | null = await db.getRegistryById(eventMetadata.entityId)
 
         // Track if the entity was originally OBSOLETE to preserve its status later

@@ -151,3 +151,15 @@ export type MessageProcessorResult = {
   ok: boolean
   failedHandlers: EventHandlerName[]
 }
+
+/**
+ * Platforms supported for asset bundle conversion.
+ * WebGL was decommissioned — stale events with platform 'webgl' must be
+ * filtered out at the handler entry point.
+ */
+export const SUPPORTED_PLATFORMS = ['windows', 'mac'] as const
+export type SupportedPlatform = (typeof SUPPORTED_PLATFORMS)[number]
+
+export function isSupportedPlatform(p: string): p is SupportedPlatform {
+  return (SUPPORTED_PLATFORMS as readonly string[]).includes(p)
+}
