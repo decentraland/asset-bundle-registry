@@ -1,5 +1,11 @@
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
-import { AppComponents, IEventHandlerComponent, EventHandlerName, EventHandlerResult, isSupportedPlatform } from '../../types'
+import {
+  AppComponents,
+  IEventHandlerComponent,
+  EventHandlerName,
+  EventHandlerResult,
+  isSupportedPlatform
+} from '../../types'
 import { AssetBundleConversionManuallyQueuedEvent, Events } from '@dcl/schemas'
 
 export const createStatusEventHandler = ({

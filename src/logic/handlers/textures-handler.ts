@@ -1,5 +1,12 @@
 import { AssetBundleConversionFinishedEvent, Entity } from '@dcl/schemas'
-import { AppComponents, IEventHandlerComponent, EventHandlerName, EventHandlerResult, Registry, isSupportedPlatform } from '../../types'
+import {
+  AppComponents,
+  IEventHandlerComponent,
+  EventHandlerName,
+  EventHandlerResult,
+  Registry,
+  isSupportedPlatform
+} from '../../types'
 import { ManifestStatusCode } from '../entity-status-fetcher'
 
 export const createTexturesEventHandler = ({
