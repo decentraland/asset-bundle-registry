@@ -10,7 +10,8 @@ import {
   Registry,
   Sync,
   ProfileMetadataDTO,
-  ProfileDTO
+  ProfileDTO,
+  SupportedPlatform
 } from './types'
 import { Entity, EthAddress } from '@dcl/schemas'
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
@@ -98,13 +99,13 @@ export interface IDbComponent {
   updateRegistriesStatus(ids: string[], status: Registry.Status): Promise<Registry.DbEntity[]>
   upsertRegistryBundle(
     id: string,
-    platform: string,
+    platform: SupportedPlatform,
     lods: boolean,
     status: Registry.SimplifiedStatus
   ): Promise<Registry.DbEntity | null>
   updateRegistryVersionWithBuildDate(
     id: string,
-    platform: string,
+    platform: SupportedPlatform,
     version: string,
     buildDate: string
   ): Promise<Registry.DbEntity | null>
@@ -174,8 +175,8 @@ export interface IDbComponent {
    * with stale PENDING data.
    */
   persistRegistryInTransaction(params: {
-    bundleUpdate: { entityId: string; platform: string; isLods: boolean; status: Registry.SimplifiedStatus }
-    versionUpdate?: { entityId: string; platform: string; version: string; buildDate: string }
+    bundleUpdate: { entityId: string; platform: SupportedPlatform; isLods: boolean; status: Registry.SimplifiedStatus }
+    versionUpdate?: { entityId: string; platform: SupportedPlatform; version: string; buildDate: string }
     determineStatusAndRotate: (
       currentEntity: Registry.DbEntity,
       relatedRegistries: Registry.PartialDbEntity[]
@@ -218,9 +219,9 @@ export interface IEventHandlerComponent<T> {
 export interface IEntityStatusFetcherComponent {
   fetchBundleManifestData(
     entityId: string,
-    platform: string
+    platform: SupportedPlatform
   ): Promise<{ status: Registry.SimplifiedStatus; version: string; buildDate: string }>
-  fetchLODsStatus(entityId: string, platform: string): Promise<Registry.SimplifiedStatus>
+  fetchLODsStatus(entityId: string, platform: SupportedPlatform): Promise<Registry.SimplifiedStatus>
 }
 
 export interface IRegistryOrchestratorComponent {
@@ -238,9 +239,9 @@ export interface ICacheStorage extends IBaseComponent {
 }
 
 export interface IQueuesStatusManagerComponent {
-  markAsQueued(platform: 'windows' | 'mac', entityId: string): Promise<void>
-  markAsFinished(platform: 'windows' | 'mac', entityId: string): Promise<void>
-  getAllPendingEntities(platform: 'windows' | 'mac'): Promise<EntityStatusInQueue[]>
+  markAsQueued(platform: SupportedPlatform, entityId: string): Promise<void>
+  markAsFinished(platform: SupportedPlatform, entityId: string): Promise<void>
+  getAllPendingEntities(platform: SupportedPlatform): Promise<EntityStatusInQueue[]>
 }
 
 export interface IProfilesCacheComponent {

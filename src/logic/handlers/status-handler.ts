@@ -4,7 +4,8 @@ import {
   IEventHandlerComponent,
   EventHandlerName,
   EventHandlerResult,
-  isSupportedPlatform
+  isSupportedPlatform,
+  SupportedPlatform
 } from '../../types'
 import { AssetBundleConversionManuallyQueuedEvent, Events } from '@dcl/schemas'
 
@@ -20,7 +21,7 @@ export const createStatusEventHandler = ({
   function getEventProperties(event: any) {
     let entityId: string = ''
     let isLods: boolean = false
-    const platforms: ('windows' | 'mac')[] = []
+    const platforms: SupportedPlatform[] = []
 
     if (event.type === Events.Type.ASSET_BUNDLE && event.subType === Events.SubType.AssetBundle.MANUALLY_QUEUED) {
       const { metadata } = event as AssetBundleConversionManuallyQueuedEvent

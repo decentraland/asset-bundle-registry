@@ -106,7 +106,7 @@ export enum EntityQueueStatusValue {
 
 export type EntityStatusInQueue = {
   entityId: string
-  platform: 'windows' | 'mac'
+  platform: SupportedPlatform
   status: EntityQueueStatusValue
 }
 

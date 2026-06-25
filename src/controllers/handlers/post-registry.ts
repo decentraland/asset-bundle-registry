@@ -1,5 +1,5 @@
 import { DecentralandSignatureContext } from '@dcl/platform-crypto-middleware'
-import { HandlerContextWithPath, Registry } from '../../types'
+import { HandlerContextWithPath, Registry, SupportedPlatform } from '../../types'
 import { Entity } from '@dcl/schemas'
 
 export async function createRegistryHandler(
@@ -41,11 +41,12 @@ export async function createRegistryHandler(
         continue
       }
 
+      const platforms: SupportedPlatform[] = ['mac', 'windows']
       const [macAssets, windowsAssets] = await Promise.all(
-        ['mac', 'windows'].map((platform) => entityStatusFetcher.fetchBundleManifestData(entityId, platform))
+        platforms.map((platform) => entityStatusFetcher.fetchBundleManifestData(entityId, platform))
       )
       const [macLodsStatus, windowsLodsStatus] = await Promise.all(
-        ['mac', 'windows'].map((platform) => entityStatusFetcher.fetchLODsStatus(entityId, platform))
+        platforms.map((platform) => entityStatusFetcher.fetchLODsStatus(entityId, platform))
       )
 
       const { status: macAssetsStatus, version: macAssetsVersion, buildDate: macAssetsBuildDate } = macAssets

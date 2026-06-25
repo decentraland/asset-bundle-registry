@@ -1,9 +1,9 @@
-import { AppComponents, EntityStatusInQueue, IQueuesStatusManagerComponent } from '../types'
+import { AppComponents, EntityStatusInQueue, IQueuesStatusManagerComponent, SupportedPlatform } from '../types'
 
 export function createQueuesStatusManagerComponent({
   memoryStorage
 }: Pick<AppComponents, 'memoryStorage'>): IQueuesStatusManagerComponent {
-  function generateCacheKey(platform: 'windows' | 'mac', entityId: string): string {
+  function generateCacheKey(platform: SupportedPlatform, entityId: string): string {
     return `jobs:${platform}:${entityId}`
   }
 
@@ -15,7 +15,7 @@ export function createQueuesStatusManagerComponent({
     return status[0]
   }
 
-  async function markAsQueued(platform: 'windows' | 'mac', entityId: string): Promise<void> {
+  async function markAsQueued(platform: SupportedPlatform, entityId: string): Promise<void> {
     const key = generateCacheKey(platform, entityId)
     const currentValue = (await getStatus(key)) || {
       entityId,
@@ -26,7 +26,7 @@ export function createQueuesStatusManagerComponent({
     await memoryStorage.set(key, { ...currentValue, status: currentValue.status + 1 })
   }
 
-  async function markAsFinished(platform: 'windows' | 'mac', entityId: string): Promise<void> {
+  async function markAsFinished(platform: SupportedPlatform, entityId: string): Promise<void> {
     const key = generateCacheKey(platform, entityId)
     const currentValue = (await getStatus(key)) || {
       entityId,
@@ -44,7 +44,7 @@ export function createQueuesStatusManagerComponent({
     await memoryStorage.set<EntityStatusInQueue>(key, { ...currentValue, status: newStatus })
   }
 
-  async function getAllPendingEntities(platform: 'windows' | 'mac'): Promise<EntityStatusInQueue[]> {
+  async function getAllPendingEntities(platform: SupportedPlatform): Promise<EntityStatusInQueue[]> {
     const entities = (await memoryStorage.get<EntityStatusInQueue>(`jobs:${platform}:*`)) || []
     return entities
       .filter((entity: any) => entity.status > 0)

@@ -44,6 +44,14 @@ describe('status processor', () => {
     expect(queuesStatusManager.markAsQueued).toHaveBeenCalledTimes(1)
     expect(queuesStatusManager.markAsQueued).toHaveBeenCalledWith('windows', 'baf1')
   })
+
+  it('should ignore a manually queued event for the decommissioned webgl platform without queuing it', async () => {
+    jest.spyOn(queuesStatusManager, 'markAsQueued')
+    const event = createAssetBundleConversionManuallyQueuedEvent('baf1', 'webgl')
+    const result = await statusProcessor.handle(event)
+    expect(result.ok).toBe(true)
+    expect(queuesStatusManager.markAsQueued).not.toHaveBeenCalled()
+  })
 })
 
 function createDeploymentEvent(entityId: string): DeploymentToSqs {
@@ -63,7 +71,7 @@ function createDeploymentEvent(entityId: string): DeploymentToSqs {
 
 function createAssetBundleConversionManuallyQueuedEvent(
   entityId: string,
-  platform: 'windows' | 'mac'
+  platform: 'windows' | 'mac' | 'webgl'
 ): AssetBundleConversionManuallyQueuedEvent {
   return {
     type: Events.Type.ASSET_BUNDLE,

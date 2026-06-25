@@ -1,4 +1,4 @@
-import { AppComponents, IEntityStatusFetcherComponent, Registry } from '../types'
+import { AppComponents, IEntityStatusFetcherComponent, Registry, SupportedPlatform } from '../types'
 import { withRetry } from '../utils/timer'
 
 export enum ManifestStatusCode {
@@ -38,7 +38,7 @@ export async function createEntityStatusFetcherComponent({
 
   async function fetchBundleStatusAndVersion(
     entityId: string,
-    platform: string
+    platform: SupportedPlatform
   ): Promise<{ status: Registry.SimplifiedStatus; version: string; buildDate: string }> {
     return withRetry(
       async () => {
@@ -80,7 +80,7 @@ export async function createEntityStatusFetcherComponent({
     )
   }
 
-  async function fetchLODsStatus(entityId: string, platform: string): Promise<Registry.SimplifiedStatus> {
+  async function fetchLODsStatus(entityId: string, platform: SupportedPlatform): Promise<Registry.SimplifiedStatus> {
     return withRetry(
       async () => {
         const lodsBaseUrl = `${ASSET_BUNDLE_CDN_URL}LOD`

@@ -111,7 +111,9 @@ export const createTexturesEventHandler = ({
           event.metadata.statusCode === ManifestStatusCode.ALREADY_CONVERTED
 
         const bundleType = event.metadata.isLods ? 'lods' : 'assets'
-        const platform = event.metadata.platform as keyof Registry.Bundles['assets']
+        // `eventMetadata.platform` is already narrowed to a supported platform by the guard above,
+        // so it indexes the bundle maps directly without a cast.
+        const platform = eventMetadata.platform
         const previousBundleStatus = entity.bundles[bundleType]?.[platform]
 
         // If reconversion fails but previous bundles were COMPLETE, keep them as COMPLETE
@@ -159,8 +161,8 @@ export const createTexturesEventHandler = ({
 
           if (!shouldPreservePreviousStatus) {
             registryEntity = await db.updateRegistryVersionWithBuildDate(
-              event.metadata.entityId,
-              event.metadata.platform,
+              eventMetadata.entityId,
+              eventMetadata.platform,
               event.metadata.version,
               new Date(event.timestamp).toISOString()
             )

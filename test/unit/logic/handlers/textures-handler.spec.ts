@@ -115,6 +115,37 @@ describe('textures-handler', () => {
   })
 
   describe('handle', () => {
+    describe('when the event is for the decommissioned webgl platform', () => {
+      let event: AssetBundleConversionFinishedEvent
+
+      beforeEach(() => {
+        event = createEvent({
+          metadata: {
+            entityId: 'webgl-entity',
+            platform: 'webgl',
+            statusCode: ManifestStatusCode.SUCCESS,
+            isLods: false,
+            isWorld: false,
+            version: 'v1'
+          }
+        })
+      })
+
+      it('should ignore the event and report success without touching the database', async () => {
+        const result = await handler.handle(event)
+
+        expect(result.ok).toBe(true)
+        expect(db.getRegistryById).not.toHaveBeenCalled()
+      })
+
+      it('should not persist any bundle or version update', async () => {
+        await handler.handle(event)
+
+        expect(registry.updateBundleAndRotateStates).not.toHaveBeenCalled()
+        expect(db.upsertRegistryBundle).not.toHaveBeenCalled()
+      })
+    })
+
     describe('when entity does not exist', () => {
       it('should create entity with default bundle status when fetched from catalyst', async () => {
         const event = createEvent()
