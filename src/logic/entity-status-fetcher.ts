@@ -1,4 +1,4 @@
-import { AppComponents, IEntityStatusFetcherComponent, Registry } from '../types'
+import { AppComponents, IEntityStatusFetcherComponent, Registry, SupportedPlatform } from '../types'
 import { withRetry } from '../utils/timer'
 
 export enum ManifestStatusCode {
@@ -38,11 +38,11 @@ export async function createEntityStatusFetcherComponent({
 
   async function fetchBundleStatusAndVersion(
     entityId: string,
-    platform: string
+    platform: SupportedPlatform
   ): Promise<{ status: Registry.SimplifiedStatus; version: string; buildDate: string }> {
     return withRetry(
       async () => {
-        const manifestName = platform !== 'webgl' ? `${entityId}_${platform}` : entityId
+        const manifestName = `${entityId}_${platform}`
         const manifestUrl = `${ASSET_BUNDLE_CDN_URL}manifest/${manifestName}.json`
 
         const response = await fetch.fetch(manifestUrl)
@@ -80,13 +80,12 @@ export async function createEntityStatusFetcherComponent({
     )
   }
 
-  async function fetchLODsStatus(entityId: string, platform: string): Promise<Registry.SimplifiedStatus> {
+  async function fetchLODsStatus(entityId: string, platform: SupportedPlatform): Promise<Registry.SimplifiedStatus> {
     return withRetry(
       async () => {
         const lodsBaseUrl = `${ASSET_BUNDLE_CDN_URL}LOD`
-        const urlPlatformSuffix = platform === 'webgl' ? '' : `_${platform}`
         const allUrls = LEVEL_OF_DETAILS.map(
-          (levelOfDetail: string) => `${lodsBaseUrl}/${levelOfDetail}/${entityId}_${levelOfDetail}${urlPlatformSuffix}`
+          (levelOfDetail: string) => `${lodsBaseUrl}/${levelOfDetail}/${entityId}_${levelOfDetail}_${platform}`
         )
 
         const allResponses = await Promise.all(allUrls.map((url) => fetch.fetch(url, { method: 'HEAD' })))

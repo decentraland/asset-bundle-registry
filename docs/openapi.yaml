@@ -8,7 +8,7 @@ info:
     
     ### What are Unity Asset Bundles?
     
-    Unity Asset Bundles are optimized, pre-compiled packages of 3D assets used in Decentraland to improve performance in WebGL builds. Instead of loading raw GLTF models at runtime, scenes and wearables are converted into Asset Bundles by the Asset Bundle Converter service, which loads scene assets, re-imports GLTF models, and packages them into optimized bundles stored on a CDN.
+    Unity Asset Bundles are optimized, pre-compiled packages of 3D assets used in Decentraland to improve performance. Instead of loading raw GLTF models at runtime, scenes and wearables are converted into Asset Bundles by the Asset Bundle Converter service, which loads scene assets, re-imports GLTF models, and packages them into optimized bundles stored on a CDN.
     
     ### How the Registry Works
     
@@ -660,7 +660,9 @@ components:
         - assetBundles
     PlatformStatus:
       type: object
-      description: Conversion status per platform (Windows and Mac)
+      description: |
+        Conversion status per platform (Windows and Mac). This response has only ever
+        reported Windows and Mac; WebGL is not included here.
       properties:
         mac:
           type: string
@@ -691,7 +693,10 @@ components:
           type: array
           items:
             type: string
-          description: List of entity IDs with pending WebGL asset bundle conversions
+          deprecated: true
+          description: |
+            Deprecated. WebGL was decommissioned and is no longer queued for conversion.
+            Retained for backward compatibility and always returned as an empty array.
       required:
         - windowsPendingJobs
         - macPendingJobs
@@ -738,6 +743,11 @@ components:
             mac:
               $ref: '#/components/schemas/VersionInfo'
             webgl:
+              deprecated: true
+              description: |
+                Deprecated. WebGL was decommissioned. Entities converted before the
+                decommission keep their stored version info; entities created afterwards
+                report empty values. Retained for backward compatibility.
               $ref: '#/components/schemas/VersionInfo'
     VersionInfo:
       type: object
@@ -762,7 +772,11 @@ components:
         - lods
     BundlePlatformStatus:
       type: object
-      description: Conversion status for each platform
+      description: |
+        Conversion status for each platform.
+        Note: WebGL was decommissioned and is no longer processed. The `webgl` field is
+        retained for backward compatibility — entities converted before the decommission
+        keep their stored status, while newer entities report `pending`.
       properties:
         windows:
           type: string
@@ -773,6 +787,8 @@ components:
         webgl:
           type: string
           enum: [pending, complete, failed]
+          deprecated: true
+          description: Deprecated. Retained for backward compatibility; see schema description.
       required:
         - windows
         - mac

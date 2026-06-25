@@ -38,20 +38,17 @@ describe('when using the registry component', () => {
       bundles: {
         assets: {
           mac: Registry.SimplifiedStatus.PENDING,
-          windows: Registry.SimplifiedStatus.PENDING,
-          webgl: Registry.SimplifiedStatus.PENDING
+          windows: Registry.SimplifiedStatus.PENDING
         },
         lods: {
           mac: Registry.SimplifiedStatus.PENDING,
-          windows: Registry.SimplifiedStatus.PENDING,
-          webgl: Registry.SimplifiedStatus.PENDING
+          windows: Registry.SimplifiedStatus.PENDING
         }
       },
       versions: {
         assets: {
           windows: { version: '', buildDate: '' },
-          mac: { version: '', buildDate: '' },
-          webgl: { version: '', buildDate: '' }
+          mac: { version: '', buildDate: '' }
         }
       },
       ...partial

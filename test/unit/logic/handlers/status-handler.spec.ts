@@ -33,7 +33,7 @@ describe('status processor', () => {
     const event = createDeploymentEvent('baf1')
     const result = await statusProcessor.handle(event)
     expect(result.ok).toBe(true)
-    expect(queuesStatusManager.markAsQueued).toHaveBeenCalledTimes(3)
+    expect(queuesStatusManager.markAsQueued).toHaveBeenCalledTimes(2)
   })
 
   it('should handle asset bundle conversion manually queued event and mark the specific platform as pending', async () => {
@@ -43,6 +43,14 @@ describe('status processor', () => {
     expect(result.ok).toBe(true)
     expect(queuesStatusManager.markAsQueued).toHaveBeenCalledTimes(1)
     expect(queuesStatusManager.markAsQueued).toHaveBeenCalledWith('windows', 'baf1')
+  })
+
+  it('should ignore a manually queued event for the decommissioned webgl platform without queuing it', async () => {
+    jest.spyOn(queuesStatusManager, 'markAsQueued')
+    const event = createAssetBundleConversionManuallyQueuedEvent('baf1', 'webgl')
+    const result = await statusProcessor.handle(event)
+    expect(result.ok).toBe(true)
+    expect(queuesStatusManager.markAsQueued).not.toHaveBeenCalled()
   })
 })
 

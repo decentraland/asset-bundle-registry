@@ -1,5 +1,12 @@
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
-import { AppComponents, IEventHandlerComponent, EventHandlerName, EventHandlerResult } from '../../types'
+import {
+  AppComponents,
+  IEventHandlerComponent,
+  EventHandlerName,
+  EventHandlerResult,
+  isSupportedPlatform,
+  SupportedPlatform
+} from '../../types'
 import { AssetBundleConversionManuallyQueuedEvent, Events } from '@dcl/schemas'
 
 export const createStatusEventHandler = ({
@@ -14,10 +21,14 @@ export const createStatusEventHandler = ({
   function getEventProperties(event: any) {
     let entityId: string = ''
     let isLods: boolean = false
-    const platforms: ('webgl' | 'windows' | 'mac')[] = []
+    const platforms: SupportedPlatform[] = []
 
     if (event.type === Events.Type.ASSET_BUNDLE && event.subType === Events.SubType.AssetBundle.MANUALLY_QUEUED) {
       const { metadata } = event as AssetBundleConversionManuallyQueuedEvent
+
+      if (!isSupportedPlatform(metadata.platform)) {
+        return { entityId: '', platforms: [], isLods: false }
+      }
 
       entityId = metadata.entityId
       platforms.push(metadata.platform)
@@ -26,7 +37,6 @@ export const createStatusEventHandler = ({
       const deploymentEvent = event as DeploymentToSqs
 
       entityId = deploymentEvent.entity.entityId
-      platforms.push('webgl')
       platforms.push('windows')
       platforms.push('mac')
     }
@@ -42,6 +52,11 @@ export const createStatusEventHandler = ({
     handle: async (event: DeploymentToSqs | AssetBundleConversionManuallyQueuedEvent): Promise<EventHandlerResult> => {
       try {
         const { entityId, platforms, isLods } = getEventProperties(event)
+
+        if (platforms.length === 0) {
+          logger.warn('Ignoring event for unsupported platform')
+          return { ok: true, handlerName: HANDLER_NAME }
+        }
 
         if (isLods) {
           logger.info('Skipping processing status for LODs', { entityId, platforms: platforms.join(', ') })

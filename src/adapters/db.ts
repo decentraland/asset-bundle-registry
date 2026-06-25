@@ -12,7 +12,8 @@ import {
   WorldBoundingRectangle,
   WorldManifestData,
   GetSortedRegistriesByPointersOptions,
-  SortOrder
+  SortOrder,
+  SupportedPlatform
 } from '../types'
 import { PoolClient } from 'pg'
 import { EthAddress } from '@dcl/schemas'
@@ -205,7 +206,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
 
   async function upsertRegistryBundle(
     id: string,
-    platform: string,
+    platform: SupportedPlatform,
     lods: boolean,
     status: Registry.SimplifiedStatus
   ): Promise<Registry.DbEntity | null> {
@@ -229,7 +230,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
 
   async function updateRegistryVersionWithBuildDate(
     id: string,
-    platform: string,
+    platform: SupportedPlatform,
     version: string,
     buildDate: string
   ): Promise<Registry.DbEntity | null> {
@@ -1159,7 +1160,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
    * Sets the simplified status (PENDING, COMPLETE, FAILED) for either the assets or lods bundle type.
    *
    * @param id - The entity ID to update
-   * @param platform - The platform to update (e.g., 'windows', 'mac', 'webgl')
+   * @param platform - The platform to update (e.g., 'windows', 'mac')
    * @param lods - Whether to update the LODs bundle (true) or assets bundle (false)
    * @param status - The new simplified status for the bundle
    * @param executor - The transaction client to use for the query
@@ -1167,7 +1168,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
    */
   async function _upsertRegistryBundle(
     id: string,
-    platform: string,
+    platform: SupportedPlatform,
     lods: boolean,
     status: Registry.SimplifiedStatus,
     executor: QueryExecutor
@@ -1194,7 +1195,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
    * Internal: Updates the version and build date for a specific platform's asset bundle within a transaction.
    *
    * @param id - The entity ID to update
-   * @param platform - The platform to update (e.g., 'windows', 'mac', 'webgl')
+   * @param platform - The platform to update (e.g., 'windows', 'mac')
    * @param version - The asset bundle version string
    * @param buildDate - The ISO date string of when the bundle was built
    * @param executor - The transaction client to use for the query
@@ -1202,7 +1203,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
    */
   async function _updateRegistryVersionWithBuildDate(
     id: string,
-    platform: string,
+    platform: SupportedPlatform,
     version: string,
     buildDate: string,
     executor: QueryExecutor
@@ -1387,8 +1388,8 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
    * @returns The persisted registry entity with its final status, or null if the entity was not found
    */
   async function persistRegistryInTransaction(params: {
-    bundleUpdate: { entityId: string; platform: string; isLods: boolean; status: Registry.SimplifiedStatus }
-    versionUpdate?: { entityId: string; platform: string; version: string; buildDate: string }
+    bundleUpdate: { entityId: string; platform: SupportedPlatform; isLods: boolean; status: Registry.SimplifiedStatus }
+    versionUpdate?: { entityId: string; platform: SupportedPlatform; version: string; buildDate: string }
     determineStatusAndRotate: (
       currentEntity: Registry.DbEntity,
       relatedRegistries: Registry.PartialDbEntity[]

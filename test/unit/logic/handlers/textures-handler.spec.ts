@@ -62,20 +62,17 @@ describe('textures-handler', () => {
     bundles: {
       assets: {
         windows: Registry.SimplifiedStatus.PENDING,
-        mac: Registry.SimplifiedStatus.PENDING,
-        webgl: Registry.SimplifiedStatus.PENDING
+        mac: Registry.SimplifiedStatus.PENDING
       },
       lods: {
         windows: Registry.SimplifiedStatus.PENDING,
-        mac: Registry.SimplifiedStatus.PENDING,
-        webgl: Registry.SimplifiedStatus.PENDING
+        mac: Registry.SimplifiedStatus.PENDING
       }
     },
     versions: {
       assets: {
         windows: { version: '', buildDate: '' },
-        mac: { version: '', buildDate: '' },
-        webgl: { version: '', buildDate: '' }
+        mac: { version: '', buildDate: '' }
       }
     }
   })
@@ -118,6 +115,37 @@ describe('textures-handler', () => {
   })
 
   describe('handle', () => {
+    describe('when the event is for the decommissioned webgl platform', () => {
+      let event: AssetBundleConversionFinishedEvent
+
+      beforeEach(() => {
+        event = createEvent({
+          metadata: {
+            entityId: 'webgl-entity',
+            platform: 'webgl',
+            statusCode: ManifestStatusCode.SUCCESS,
+            isLods: false,
+            isWorld: false,
+            version: 'v1'
+          }
+        })
+      })
+
+      it('should ignore the event and report success without touching the database', async () => {
+        const result = await handler.handle(event)
+
+        expect(result.ok).toBe(true)
+        expect(db.getRegistryById).not.toHaveBeenCalled()
+      })
+
+      it('should not persist any bundle or version update', async () => {
+        await handler.handle(event)
+
+        expect(registry.updateBundleAndRotateStates).not.toHaveBeenCalled()
+        expect(db.upsertRegistryBundle).not.toHaveBeenCalled()
+      })
+    })
+
     describe('when entity does not exist', () => {
       it('should create entity with default bundle status when fetched from catalyst', async () => {
         const event = createEvent()
@@ -208,7 +236,7 @@ describe('textures-handler', () => {
         const event = createEvent({
           metadata: {
             entityId: 'missing-1',
-            platform: 'webgl',
+            platform: 'mac',
             statusCode: ManifestStatusCode.SUCCESS,
             isLods: false,
             isWorld: false,
@@ -216,14 +244,14 @@ describe('textures-handler', () => {
           }
         })
 
-        await queuesStatusManager.markAsQueued('webgl', 'missing-1')
+        await queuesStatusManager.markAsQueued('mac', 'missing-1')
         db.getRegistryById = jest.fn().mockResolvedValue(null)
         db.getHistoricalRegistryById = jest.fn().mockResolvedValue(null)
         catalyst.getEntityById = jest.fn().mockResolvedValue(null)
 
         await handler.handle(event)
 
-        const pending = await queuesStatusManager.getAllPendingEntities('webgl')
+        const pending = await queuesStatusManager.getAllPendingEntities('mac')
         expect(pending.find((e: any) => e.entityId === 'missing-1')).toBeUndefined()
       })
 
@@ -231,7 +259,7 @@ describe('textures-handler', () => {
         const event = createEvent({
           metadata: {
             entityId: 'missing-2',
-            platform: 'webgl',
+            platform: 'mac',
             statusCode: ManifestStatusCode.SUCCESS,
             isLods: true,
             isWorld: false,
@@ -239,14 +267,14 @@ describe('textures-handler', () => {
           }
         })
 
-        await queuesStatusManager.markAsQueued('webgl', 'missing-2')
+        await queuesStatusManager.markAsQueued('mac', 'missing-2')
         db.getRegistryById = jest.fn().mockResolvedValue(null)
         db.getHistoricalRegistryById = jest.fn().mockResolvedValue(null)
         catalyst.getEntityById = jest.fn().mockResolvedValue(null)
 
         await handler.handle(event)
 
-        const pending = await queuesStatusManager.getAllPendingEntities('webgl')
+        const pending = await queuesStatusManager.getAllPendingEntities('mac')
         expect(pending.find((e: any) => e.entityId === 'missing-2')).toBeDefined()
       })
 
@@ -401,11 +429,11 @@ describe('textures-handler', () => {
         })
       })
 
-      it('should update bundle status for webgl platform with already converted status', async () => {
+      it('should update bundle status for windows platform with already converted status', async () => {
         const event = createEvent({
           metadata: {
             entityId: '123',
-            platform: 'webgl',
+            platform: 'windows',
             statusCode: ManifestStatusCode.ALREADY_CONVERTED,
             isLods: false,
             isWorld: false,
@@ -423,13 +451,13 @@ describe('textures-handler', () => {
         expect(registry.updateBundleAndRotateStates).toHaveBeenCalledWith({
           bundleUpdate: {
             entityId: '123',
-            platform: 'webgl',
+            platform: 'windows',
             isLods: false,
             status: Registry.SimplifiedStatus.COMPLETE
           },
           versionUpdate: {
             entityId: '123',
-            platform: 'webgl',
+            platform: 'windows',
             version: 'v1',
             buildDate: new Date(event.timestamp).toISOString()
           }
@@ -494,20 +522,17 @@ describe('textures-handler', () => {
               bundles: {
                 assets: {
                   windows: Registry.SimplifiedStatus.COMPLETE,
-                  mac: Registry.SimplifiedStatus.COMPLETE,
-                  webgl: Registry.SimplifiedStatus.PENDING
+                  mac: Registry.SimplifiedStatus.COMPLETE
                 },
                 lods: {
                   windows: Registry.SimplifiedStatus.PENDING,
-                  mac: Registry.SimplifiedStatus.PENDING,
-                  webgl: Registry.SimplifiedStatus.PENDING
+                  mac: Registry.SimplifiedStatus.PENDING
                 }
               },
               versions: {
                 assets: {
                   windows: { version: 'v1', buildDate: '2024-01-01' },
-                  mac: { version: 'v1', buildDate: '2024-01-01' },
-                  webgl: { version: '', buildDate: '' }
+                  mac: { version: 'v1', buildDate: '2024-01-01' }
                 }
               }
             }
@@ -564,13 +589,11 @@ describe('textures-handler', () => {
               bundles: {
                 assets: {
                   windows: Registry.SimplifiedStatus.COMPLETE,
-                  mac: Registry.SimplifiedStatus.COMPLETE,
-                  webgl: Registry.SimplifiedStatus.PENDING
+                  mac: Registry.SimplifiedStatus.COMPLETE
                 },
                 lods: {
                   windows: Registry.SimplifiedStatus.COMPLETE,
-                  mac: Registry.SimplifiedStatus.COMPLETE,
-                  webgl: Registry.SimplifiedStatus.PENDING
+                  mac: Registry.SimplifiedStatus.COMPLETE
                 }
               }
             }
@@ -626,20 +649,17 @@ describe('textures-handler', () => {
               bundles: {
                 assets: {
                   windows: Registry.SimplifiedStatus.COMPLETE,
-                  mac: Registry.SimplifiedStatus.COMPLETE,
-                  webgl: Registry.SimplifiedStatus.PENDING
+                  mac: Registry.SimplifiedStatus.COMPLETE
                 },
                 lods: {
                   windows: Registry.SimplifiedStatus.PENDING,
-                  mac: Registry.SimplifiedStatus.PENDING,
-                  webgl: Registry.SimplifiedStatus.PENDING
+                  mac: Registry.SimplifiedStatus.PENDING
                 }
               },
               versions: {
                 assets: {
                   windows: { version: 'v1', buildDate: '2024-01-01' },
-                  mac: { version: 'v1', buildDate: '2024-01-01' },
-                  webgl: { version: '', buildDate: '' }
+                  mac: { version: 'v1', buildDate: '2024-01-01' }
                 }
               }
             }
@@ -648,8 +668,7 @@ describe('textures-handler', () => {
               versions: {
                 assets: {
                   windows: { version: 'v2', buildDate: '2024-01-02' },
-                  mac: { version: 'v1', buildDate: '2024-01-01' },
-                  webgl: { version: '', buildDate: '' }
+                  mac: { version: 'v1', buildDate: '2024-01-01' }
                 }
               }
             }
@@ -784,13 +803,11 @@ describe('textures-handler', () => {
             bundles: {
               assets: {
                 windows: Registry.SimplifiedStatus.COMPLETE,
-                mac: Registry.SimplifiedStatus.COMPLETE,
-                webgl: Registry.SimplifiedStatus.PENDING
+                mac: Registry.SimplifiedStatus.COMPLETE
               },
               lods: {
                 windows: Registry.SimplifiedStatus.PENDING,
-                mac: Registry.SimplifiedStatus.PENDING,
-                webgl: Registry.SimplifiedStatus.PENDING
+                mac: Registry.SimplifiedStatus.PENDING
               }
             }
           }
@@ -799,8 +816,7 @@ describe('textures-handler', () => {
             versions: {
               assets: {
                 windows: { version: 'v2', buildDate: '2024-01-02' },
-                mac: { version: 'v1', buildDate: '2024-01-01' },
-                webgl: { version: '', buildDate: '' }
+                mac: { version: 'v1', buildDate: '2024-01-01' }
               }
             }
           }

@@ -1,5 +1,5 @@
 import { DecentralandSignatureContext } from '@dcl/platform-crypto-middleware'
-import { EntityStatus, HandlerContextWithPath, Registry, SortOrder } from '../../types'
+import { EntityStatus, HandlerContextWithPath, Registry, SortOrder, SupportedPlatform } from '../../types'
 import { EthAddress } from '@dcl/schemas'
 
 function parseRegistryStatus(registry: Registry.DbEntity): EntityStatus {
@@ -105,20 +105,21 @@ export async function getQueuesStatuses(context: HandlerContextWithPath<'queuesS
     components: { queuesStatusManager }
   } = context
 
-  async function getEntitiesIdsOfPendingJobs(platform: 'windows' | 'mac' | 'webgl') {
+  async function getEntitiesIdsOfPendingJobs(platform: SupportedPlatform) {
     return (await queuesStatusManager.getAllPendingEntities(platform)).map((pendingJob) => pendingJob.entityId)
   }
 
   const windowsPendingJobs = await getEntitiesIdsOfPendingJobs('windows')
   const macPendingJobs = await getEntitiesIdsOfPendingJobs('mac')
-  const webglPendingJobs = await getEntitiesIdsOfPendingJobs('webgl')
 
   return {
     status: 200,
     body: {
       windowsPendingJobs,
       macPendingJobs,
-      webglPendingJobs
+      // WebGL was decommissioned and is no longer queued; the field is kept (always empty)
+      // for backward compatibility with existing consumers.
+      webglPendingJobs: [] as string[]
     },
     headers: {
       'Content-Type': 'application/json'
