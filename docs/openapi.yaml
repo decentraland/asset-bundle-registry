@@ -423,8 +423,9 @@ paths:
               type: object
               properties:
                 reason:
-                  type: string
-                  nullable: true
+                  type:
+                    - string
+                    - 'null'
                   description: Optional human-readable reason for denylisting this entity
       responses:
         '201':
@@ -945,8 +946,9 @@ components:
           type: string
           description: Lowercase entity ID (Catalyst CID) that is blocked
         reason:
-          type: string
-          nullable: true
+          type:
+            - string
+            - 'null'
           description: Optional human-readable reason why this entity was denylisted
         created_by:
           type: string
