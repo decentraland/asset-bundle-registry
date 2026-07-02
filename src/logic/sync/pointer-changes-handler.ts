@@ -1,5 +1,4 @@
 import { EntityType } from '@dcl/schemas'
-import type { IFetchComponent } from '@well-known-components/interfaces'
 import { getDeployedEntitiesStreamFromPointerChanges } from '@dcl/snapshots-fetcher'
 import { AppComponents, IProfilesSynchronizerComponent } from '../../types'
 
@@ -29,10 +28,7 @@ export async function createPointerChangesHandlerComponent({
   async function syncProfiles(fromTimestamp: number, abortSignal: AbortSignal): Promise<number> {
     const entitiesStream = getDeployedEntitiesStreamFromPointerChanges(
       {
-        // @dcl/snapshots-fetcher is still typed against @well-known-components/interfaces'
-        // node-fetch IFetchComponent, while our fetch is the native @dcl/core-commons one. It only
-        // calls fetcher.fetch(urlString, opts), so it is runtime-safe; cast to bridge the types.
-        fetcher: fetch as unknown as IFetchComponent,
+        fetcher: fetch,
         logs: logs
       },
       {

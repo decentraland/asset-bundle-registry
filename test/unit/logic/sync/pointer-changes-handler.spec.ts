@@ -20,6 +20,22 @@ import { createRefreshableFeaturesMockComponent } from '../../mocks/refreshable-
 import { createPointerChangesHandlerComponent } from '../../../../src/logic/sync/pointer-changes-handler'
 import { createValidPointerChangesResponse, parseToEntity } from '../../mocks/data/pointer-changes'
 
+// @dcl/snapshots-fetcher@10 reads JSON responses through response.body.getReader() (not
+// response.json()), so a mocked fetch response must expose a readable body stream.
+function mockJsonResponse(data: unknown) {
+  const bytes = new TextEncoder().encode(JSON.stringify(data))
+  return {
+    status: 200,
+    ok: true,
+    body: new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(bytes)
+        controller.close()
+      }
+    })
+  }
+}
+
 describe('pointer-changes-handler', () => {
   let mockConfig: IConfigComponent
   let mockLogs: ILoggerComponent
@@ -72,11 +88,7 @@ describe('pointer-changes-handler', () => {
 
       describe('and the stream returns no entities', () => {
         beforeEach(() => {
-          ;(mockFetch.fetch as jest.Mock).mockResolvedValueOnce({
-            json: jest.fn().mockResolvedValue({ deltas: [] }),
-            status: 200,
-            ok: true
-          })
+          ;(mockFetch.fetch as jest.Mock).mockResolvedValueOnce(mockJsonResponse({ deltas: [] }))
         })
 
         it('should return the original fromTimestamp', async () => {
@@ -92,11 +104,7 @@ describe('pointer-changes-handler', () => {
 
           beforeEach(() => {
             sceneEntity = createValidPointerChangesResponse({ entityType: EntityType.SCENE })
-            ;(mockFetch.fetch as jest.Mock).mockResolvedValueOnce({
-              json: jest.fn().mockResolvedValue({ deltas: [sceneEntity] }),
-              status: 200,
-              ok: true
-            })
+            ;(mockFetch.fetch as jest.Mock).mockResolvedValueOnce(mockJsonResponse({ deltas: [sceneEntity] }))
           })
 
           it('should skip the entity and not call sanitizer', async () => {
@@ -112,11 +120,7 @@ describe('pointer-changes-handler', () => {
 
             beforeEach(() => {
               profileEntity = createValidPointerChangesResponse()
-              ;(mockFetch.fetch as jest.Mock).mockResolvedValueOnce({
-                json: jest.fn().mockResolvedValue({ deltas: [profileEntity] }),
-                status: 200,
-                ok: true
-              })
+              ;(mockFetch.fetch as jest.Mock).mockResolvedValueOnce(mockJsonResponse({ deltas: [profileEntity] }))
               ;(mockEntityDeploymentTracker.hasBeenProcessed as jest.Mock).mockReturnValueOnce(true)
             })
 
@@ -138,11 +142,7 @@ describe('pointer-changes-handler', () => {
 
             describe('and sanitization returns empty array', () => {
               beforeEach(() => {
-                ;(mockFetch.fetch as jest.Mock).mockResolvedValueOnce({
-                  json: jest.fn().mockResolvedValue({ deltas: [profileEntity] }),
-                  status: 200,
-                  ok: true
-                })
+                ;(mockFetch.fetch as jest.Mock).mockResolvedValueOnce(mockJsonResponse({ deltas: [profileEntity] }))
                 ;(mockProfileSanitizer.sanitizeProfiles as jest.Mock).mockResolvedValueOnce([])
               })
 
@@ -159,11 +159,7 @@ describe('pointer-changes-handler', () => {
 
               beforeEach(() => {
                 sanitizedEntity = parseToEntity(profileEntity)
-                ;(mockFetch.fetch as jest.Mock).mockResolvedValueOnce({
-                  json: jest.fn().mockResolvedValue({ deltas: [profileEntity] }),
-                  status: 200,
-                  ok: true
-                })
+                ;(mockFetch.fetch as jest.Mock).mockResolvedValueOnce(mockJsonResponse({ deltas: [profileEntity] }))
                 ;(mockProfileSanitizer.sanitizeProfiles as jest.Mock).mockResolvedValueOnce([sanitizedEntity])
               })
 
@@ -201,11 +197,9 @@ describe('pointer-changes-handler', () => {
             })
             firstSanitizedEntity = parseToEntity(firstProfileEntity)
             secondSanitizedEntity = parseToEntity(secondProfileEntity)
-            ;(mockFetch.fetch as jest.Mock).mockResolvedValueOnce({
-              json: jest.fn().mockResolvedValue({ deltas: [firstProfileEntity, secondProfileEntity] }),
-              status: 200,
-              ok: true
-            })
+            ;(mockFetch.fetch as jest.Mock).mockResolvedValueOnce(
+              mockJsonResponse({ deltas: [firstProfileEntity, secondProfileEntity] })
+            )
             ;(mockEntityDeploymentTracker.hasBeenProcessed as jest.Mock).mockReturnValue(false)
             ;(mockProfileSanitizer.sanitizeProfiles as jest.Mock)
               .mockResolvedValueOnce([firstSanitizedEntity])
@@ -250,21 +244,17 @@ describe('pointer-changes-handler', () => {
           firstSanitizedEntity = parseToEntity(firstPageEntity)
           secondSanitizedEntity = parseToEntity(secondPageEntity)
           ;(mockFetch.fetch as jest.Mock)
-            .mockResolvedValueOnce({
-              json: jest.fn().mockResolvedValue({
+            .mockResolvedValueOnce(
+              mockJsonResponse({
                 deltas: [firstPageEntity],
                 pagination: { next: '/pointer-changes?offset=500' }
-              }),
-              status: 200,
-              ok: true
-            })
-            .mockResolvedValueOnce({
-              json: jest.fn().mockResolvedValue({
+              })
+            )
+            .mockResolvedValueOnce(
+              mockJsonResponse({
                 deltas: [secondPageEntity]
-              }),
-              status: 200,
-              ok: true
-            })
+              })
+            )
           ;(mockEntityDeploymentTracker.hasBeenProcessed as jest.Mock).mockReturnValue(false)
           ;(mockProfileSanitizer.sanitizeProfiles as jest.Mock)
             .mockResolvedValueOnce([firstSanitizedEntity])
@@ -302,11 +292,9 @@ describe('pointer-changes-handler', () => {
             entityTimestamp: 3000
           })
           firstSanitizedEntity = parseToEntity(firstProfileEntity)
-          ;(mockFetch.fetch as jest.Mock).mockResolvedValueOnce({
-            json: jest.fn().mockResolvedValue({ deltas: [firstProfileEntity, secondProfileEntity] }),
-            status: 200,
-            ok: true
-          })
+          ;(mockFetch.fetch as jest.Mock).mockResolvedValueOnce(
+            mockJsonResponse({ deltas: [firstProfileEntity, secondProfileEntity] })
+          )
           ;(mockEntityDeploymentTracker.hasBeenProcessed as jest.Mock).mockReturnValue(false)
           ;(mockProfileSanitizer.sanitizeProfiles as jest.Mock).mockImplementation(async () => {
             abortController.abort()

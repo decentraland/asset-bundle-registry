@@ -3,6 +3,7 @@ import { AppComponents, IProfilesSynchronizerComponent, Sync } from '../../types
 import { getDeployedEntitiesStreamFromSnapshot } from '@dcl/snapshots-fetcher'
 import { EntityType } from '@dcl/schemas'
 import { SNAPSHOT_DOWNLOAD_FOLDER } from './snapshots-content-storage'
+import { drainResponse } from '../../utils/fetch'
 
 export async function createSnapshotsHandlerComponent({
   config,
@@ -23,6 +24,7 @@ export async function createSnapshotsHandlerComponent({
     const response = await fetch.fetch(`${CATALYST_LOAD_BALANCER}/content/snapshots`)
 
     if (!response.ok) {
+      await drainResponse(response)
       logger.error('Failed to fetch snapshot metadata', { status: response.status, statusText: response.statusText })
       throw new Error(`HTTP ${response.status}: ${response.statusText}`)
     }
