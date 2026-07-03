@@ -1,5 +1,12 @@
 import { AssetBundleConversionFinishedEvent, Entity } from '@dcl/schemas'
-import { AppComponents, IEventHandlerComponent, EventHandlerName, EventHandlerResult, Registry } from '../../types'
+import {
+  AppComponents,
+  IEventHandlerComponent,
+  EventHandlerName,
+  EventHandlerResult,
+  Registry,
+  isSupportedPlatform
+} from '../../types'
 import { ManifestStatusCode } from '../entity-status-fetcher'
 
 export const createTexturesEventHandler = ({
@@ -21,6 +28,15 @@ export const createTexturesEventHandler = ({
     handle: async (event: AssetBundleConversionFinishedEvent): Promise<EventHandlerResult> => {
       try {
         const eventMetadata = event.metadata
+
+        if (!isSupportedPlatform(eventMetadata.platform)) {
+          logger.warn('Ignoring event for unsupported platform', {
+            entityId: eventMetadata.entityId,
+            platform: eventMetadata.platform
+          })
+          return { ok: true, handlerName: HANDLER_NAME }
+        }
+
         let entity: Registry.DbEntity | null = await db.getRegistryById(eventMetadata.entityId)
 
         // Track if the entity was originally OBSOLETE to preserve its status later
@@ -62,21 +78,18 @@ export const createTexturesEventHandler = ({
           const defaultBundles: Registry.Bundles = {
             assets: {
               windows: Registry.SimplifiedStatus.PENDING,
-              mac: Registry.SimplifiedStatus.PENDING,
-              webgl: Registry.SimplifiedStatus.PENDING
+              mac: Registry.SimplifiedStatus.PENDING
             },
             lods: {
               windows: Registry.SimplifiedStatus.PENDING,
-              mac: Registry.SimplifiedStatus.PENDING,
-              webgl: Registry.SimplifiedStatus.PENDING
+              mac: Registry.SimplifiedStatus.PENDING
             }
           }
 
           const defaultVersions: Registry.Versions = {
             assets: {
               windows: { version: '', buildDate: '' },
-              mac: { version: '', buildDate: '' },
-              webgl: { version: '', buildDate: '' }
+              mac: { version: '', buildDate: '' }
             }
           }
 
@@ -98,7 +111,9 @@ export const createTexturesEventHandler = ({
           event.metadata.statusCode === ManifestStatusCode.ALREADY_CONVERTED
 
         const bundleType = event.metadata.isLods ? 'lods' : 'assets'
-        const platform = event.metadata.platform as keyof Registry.Bundles['assets']
+        // `eventMetadata.platform` is already narrowed to a supported platform by the guard above,
+        // so it indexes the bundle maps directly without a cast.
+        const platform = eventMetadata.platform
         const previousBundleStatus = entity.bundles[bundleType]?.[platform]
 
         // If reconversion fails but previous bundles were COMPLETE, keep them as COMPLETE
@@ -146,8 +161,8 @@ export const createTexturesEventHandler = ({
 
           if (!shouldPreservePreviousStatus) {
             registryEntity = await db.updateRegistryVersionWithBuildDate(
-              event.metadata.entityId,
-              event.metadata.platform,
+              eventMetadata.entityId,
+              eventMetadata.platform,
               event.metadata.version,
               new Date(event.timestamp).toISOString()
             )

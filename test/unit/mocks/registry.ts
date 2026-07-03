@@ -15,20 +15,17 @@ export function createRegistryMockComponent(): jest.Mocked<IRegistryComponent> {
       bundles: {
         assets: {
           windows: Registry.SimplifiedStatus.PENDING,
-          mac: Registry.SimplifiedStatus.PENDING,
-          webgl: Registry.SimplifiedStatus.PENDING
+          mac: Registry.SimplifiedStatus.PENDING
         },
         lods: {
           windows: Registry.SimplifiedStatus.PENDING,
-          mac: Registry.SimplifiedStatus.PENDING,
-          webgl: Registry.SimplifiedStatus.PENDING
+          mac: Registry.SimplifiedStatus.PENDING
         }
       },
       versions: {
         assets: {
           windows: { version: '', buildDate: '' },
-          mac: { version: '', buildDate: '' },
-          webgl: { version: '', buildDate: '' }
+          mac: { version: '', buildDate: '' }
         }
       }
     } as Registry.DbEntity),
@@ -44,20 +41,17 @@ export function createRegistryMockComponent(): jest.Mocked<IRegistryComponent> {
       bundles: {
         assets: {
           windows: Registry.SimplifiedStatus.PENDING,
-          mac: Registry.SimplifiedStatus.PENDING,
-          webgl: Registry.SimplifiedStatus.PENDING
+          mac: Registry.SimplifiedStatus.PENDING
         },
         lods: {
           windows: Registry.SimplifiedStatus.PENDING,
-          mac: Registry.SimplifiedStatus.PENDING,
-          webgl: Registry.SimplifiedStatus.PENDING
+          mac: Registry.SimplifiedStatus.PENDING
         }
       },
       versions: {
         assets: {
           windows: { version: '', buildDate: '' },
-          mac: { version: '', buildDate: '' },
-          webgl: { version: '', buildDate: '' }
+          mac: { version: '', buildDate: '' }
         }
       }
     } as Registry.DbEntity),

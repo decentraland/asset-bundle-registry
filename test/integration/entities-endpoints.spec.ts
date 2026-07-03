@@ -1,4 +1,5 @@
 import { Registry } from '../../src/types'
+import { bundlesWithWebglCompat, versionsWithWebglCompat } from '../../src/utils/webgl-compat'
 import { createRegistryEntity, createRequestMaker, getIdentity, Identity } from '../utils'
 import { test } from '../components'
 
@@ -10,6 +11,8 @@ test('POST /entities endpoints', async function ({ components }) {
     current: []
   }
 
+  // Responses re-add the decommissioned `webgl` fields with defaults for backward
+  // compatibility, so the expected payloads must apply the same compat shim.
   const endpoints = [
     {
       path: '/entities/active',
@@ -18,7 +21,8 @@ test('POST /entities endpoints', async function ({ components }) {
           ...entity,
           deployer: entity.deployer.toLocaleLowerCase(),
           timestamp: entity.timestamp.toString(),
-          versions: entity.versions
+          bundles: bundlesWithWebglCompat(entity.bundles),
+          versions: versionsWithWebglCompat(entity.versions)
         }))
     },
     {
@@ -26,8 +30,8 @@ test('POST /entities endpoints', async function ({ components }) {
       parseResponse: (response: Registry.DbEntity[]) =>
         response.map((entity: Registry.DbEntity) => ({
           status: entity.status,
-          bundles: entity.bundles,
-          versions: entity.versions,
+          bundles: bundlesWithWebglCompat(entity.bundles),
+          versions: versionsWithWebglCompat(entity.versions),
           pointers: entity.pointers
         }))
     }
@@ -669,7 +673,8 @@ test('POST /entities endpoints', async function ({ components }) {
               ...entity,
               deployer: entity.deployer.toLocaleLowerCase(),
               timestamp: entity.timestamp.toString(),
-              versions: entity.versions
+              bundles: bundlesWithWebglCompat(entity.bundles),
+              versions: versionsWithWebglCompat(entity.versions)
             }))
           )
         })

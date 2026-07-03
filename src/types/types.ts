@@ -52,13 +52,11 @@ export namespace Registry {
     assets: {
       windows: SimplifiedStatus
       mac: SimplifiedStatus
-      webgl: SimplifiedStatus
     }
     // LODs are optional - worlds don't support LODs
     lods?: {
       windows: SimplifiedStatus
       mac: SimplifiedStatus
-      webgl: SimplifiedStatus
     }
   }
 
@@ -66,7 +64,6 @@ export namespace Registry {
     assets: {
       windows: { version: string; buildDate: string }
       mac: { version: string; buildDate: string }
-      webgl: { version: string; buildDate: string }
     }
   }
 
@@ -109,7 +106,7 @@ export enum EntityQueueStatusValue {
 
 export type EntityStatusInQueue = {
   entityId: string
-  platform: 'windows' | 'mac' | 'webgl'
+  platform: SupportedPlatform
   status: EntityQueueStatusValue
 }
 
@@ -153,4 +150,16 @@ export namespace Denylist {
 export type MessageProcessorResult = {
   ok: boolean
   failedHandlers: EventHandlerName[]
+}
+
+/**
+ * Platforms supported for asset bundle conversion.
+ * WebGL was decommissioned — stale events with platform 'webgl' must be
+ * filtered out at the handler entry point.
+ */
+export const SUPPORTED_PLATFORMS = ['windows', 'mac'] as const
+export type SupportedPlatform = (typeof SUPPORTED_PLATFORMS)[number]
+
+export function isSupportedPlatform(p: string): p is SupportedPlatform {
+  return (SUPPORTED_PLATFORMS as readonly string[]).includes(p)
 }

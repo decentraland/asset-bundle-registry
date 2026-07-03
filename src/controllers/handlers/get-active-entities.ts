@@ -1,5 +1,6 @@
 import { getMostUpdatedRegistryByPointers } from '../../logic/registry-parser'
 import { HandlerContextWithPath, Registry } from '../../types'
+import { withWebglCompat } from '../../utils/webgl-compat'
 
 export async function getActiveEntityHandler(context: HandlerContextWithPath<'db' | 'metrics', '/entities/active'>) {
   const {
@@ -39,7 +40,8 @@ export async function getActiveEntityHandler(context: HandlerContextWithPath<'db
   metrics.increment('registries_served_count', {}, entitiesByPointers.length)
 
   return {
-    body: entitiesByPointers,
+    // WebGL was decommissioned; re-add its fields with defaults so the public API stays backward-compatible.
+    body: entitiesByPointers.map(withWebglCompat),
     headers: {
       'Content-Type': 'application/json'
     }

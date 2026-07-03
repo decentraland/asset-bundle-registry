@@ -90,7 +90,7 @@ Stores active entity registrations including scenes, wearables, emotes, and worl
 | `content` | JSONB | NOT NULL | Entity content files with file paths and content hashes. |
 | `metadata` | JSONB | NULL | Entity-specific metadata (varies by entity type). |
 | `status` | VARCHAR(255) | NOT NULL | Registry status: `complete`, `pending`, `failed`, `obsolete`, or `fallback`. |
-| `bundles` | JSONB | NOT NULL | Asset bundle and LOD conversion status per platform (Windows, Mac, WebGL). |
+| `bundles` | JSONB | NOT NULL | Asset bundle and LOD conversion status per platform (Windows, Mac). |
 | `deployer` | VARCHAR(255) | NOT NULL | Ethereum address of the entity deployer. |
 | `versions` | JSONB | NULL | Asset bundle version information per platform (version string, build date). |
 
@@ -109,13 +109,11 @@ Stores active entity registrations including scenes, wearables, emotes, and worl
 {
   "assets": {
     "windows": "complete|pending|failed",
-    "mac": "complete|pending|failed",
-    "webgl": "complete|pending|failed"
+    "mac": "complete|pending|failed"
   },
   "lods": {
     "windows": "complete|pending|failed",
-    "mac": "complete|pending|failed",
-    "webgl": "complete|pending|failed"
+    "mac": "complete|pending|failed"
   }
 }
 ```
@@ -126,8 +124,7 @@ Stores active entity registrations including scenes, wearables, emotes, and worl
 {
   "assets": {
     "windows": { "version": "v5", "buildDate": "2024-01-15" },
-    "mac": { "version": "v5", "buildDate": "2024-01-15" },
-    "webgl": { "version": "v5", "buildDate": "2024-01-15" }
+    "mac": { "version": "v5", "buildDate": "2024-01-15" }
   }
 }
 ```

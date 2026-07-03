@@ -1,5 +1,6 @@
 import { getMostUpdatedRegistryByPointers } from '../../logic/registry-parser'
 import { HandlerContextWithPath, Registry } from '../../types'
+import { bundlesWithWebglCompat, versionsWithWebglCompat } from '../../utils/webgl-compat'
 
 export async function getEntityVersionsHandler(context: HandlerContextWithPath<'db', '/entities/versions'>) {
   const {
@@ -27,13 +28,13 @@ export async function getEntityVersionsHandler(context: HandlerContextWithPath<'
     worldName
   })
 
-  const entitiesByPointers: Pick<Registry.DbEntity, 'pointers' | 'versions' | 'bundles'>[] =
-    getMostUpdatedRegistryByPointers(entities).map((entity) => ({
-      pointers: entity.pointers,
-      versions: entity.versions,
-      bundles: entity.bundles,
-      status: entity.status
-    }))
+  const entitiesByPointers = getMostUpdatedRegistryByPointers(entities).map((entity) => ({
+    pointers: entity.pointers,
+    // WebGL was decommissioned; re-add its fields with defaults so the public API stays backward-compatible.
+    versions: versionsWithWebglCompat(entity.versions),
+    bundles: bundlesWithWebglCompat(entity.bundles),
+    status: entity.status
+  }))
 
   return {
     body: entitiesByPointers,

@@ -12,7 +12,6 @@ describe('queues status manager', () => {
     jest.clearAllMocks()
     await memoryStorage.purge(`jobs:${platform}:${entityId}`)
     await memoryStorage.purge(`jobs:mac:${entityId}`)
-    await memoryStorage.purge(`jobs:webgl:${entityId}`)
   })
 
   it('should return empty for pending entities when there are no pending entities', async () => {
@@ -91,11 +90,9 @@ describe('queues status manager', () => {
     it('should return pending entities for multiple platforms', async () => {
       await queuesStatusManager.markAsQueued(platform, entityId)
       await queuesStatusManager.markAsQueued('mac', entityId)
-      await queuesStatusManager.markAsQueued('webgl', entityId)
 
       const windowsResult = await queuesStatusManager.getAllPendingEntities(platform)
       const macResult = await queuesStatusManager.getAllPendingEntities('mac')
-      const webglResult = await queuesStatusManager.getAllPendingEntities('webgl')
 
       expect(windowsResult).toContainEqual({
         entityId,
@@ -103,7 +100,6 @@ describe('queues status manager', () => {
         status: EntityQueueStatusValue.BUNDLE_PENDING
       })
       expect(macResult).toContainEqual({ entityId, platform: 'mac', status: EntityQueueStatusValue.BUNDLE_PENDING })
-      expect(webglResult).toContainEqual({ entityId, platform: 'webgl', status: EntityQueueStatusValue.BUNDLE_PENDING })
     })
 
     it('should not return stale entities', async () => {

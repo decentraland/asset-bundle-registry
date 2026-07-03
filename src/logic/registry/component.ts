@@ -1,4 +1,4 @@
-import { AppComponents, Registry, UndeploymentResult } from '../../types'
+import { AppComponents, Registry, SupportedPlatform, UndeploymentResult } from '../../types'
 import { RelatedEntities } from './types'
 
 export interface IRegistryComponent {
@@ -18,8 +18,8 @@ export interface IRegistryComponent {
    * @returns The updated registry entity, or null if the entity was not found
    */
   updateBundleAndRotateStates(params: {
-    bundleUpdate: { entityId: string; platform: string; isLods: boolean; status: Registry.SimplifiedStatus }
-    versionUpdate?: { entityId: string; platform: string; version: string; buildDate: string }
+    bundleUpdate: { entityId: string; platform: SupportedPlatform; isLods: boolean; status: Registry.SimplifiedStatus }
+    versionUpdate?: { entityId: string; platform: SupportedPlatform; version: string; buildDate: string }
   }): Promise<Registry.DbEntity | null>
 
   /**
@@ -212,8 +212,8 @@ export function createRegistryComponent({
    * @returns The updated registry entity with its final status, or null if the entity was not found
    */
   async function updateBundleAndRotateStates(params: {
-    bundleUpdate: { entityId: string; platform: string; isLods: boolean; status: Registry.SimplifiedStatus }
-    versionUpdate?: { entityId: string; platform: string; version: string; buildDate: string }
+    bundleUpdate: { entityId: string; platform: SupportedPlatform; isLods: boolean; status: Registry.SimplifiedStatus }
+    versionUpdate?: { entityId: string; platform: SupportedPlatform; version: string; buildDate: string }
   }): Promise<Registry.DbEntity | null> {
     const result = await db.persistRegistryInTransaction({
       ...params,
