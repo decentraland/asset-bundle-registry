@@ -4,7 +4,7 @@ import { createDbMockComponent } from '../../mocks/db'
 import { createLogMockComponent } from '../../mocks/logs'
 import { createCoordinatesMockComponent } from '../../mocks/coordinates'
 import { createRegistryComponent, IRegistryComponent } from '../../../../src/logic/registry'
-import { createTestMetricsComponent } from '@well-known-components/metrics'
+import { createTestMetricsComponent } from '@dcl/metrics'
 import { metricDeclarations } from '../../../../src/metrics'
 
 describe('when using the registry component', () => {

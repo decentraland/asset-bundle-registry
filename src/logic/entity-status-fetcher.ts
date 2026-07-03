@@ -1,5 +1,6 @@
 import { AppComponents, IEntityStatusFetcherComponent, Registry, SupportedPlatform } from '../types'
 import { withRetry } from '../utils/timer'
+import { drainResponse } from '../utils/fetch'
 
 export enum ManifestStatusCode {
   SUCCESS = 0,
@@ -48,6 +49,7 @@ export async function createEntityStatusFetcherComponent({
         const response = await fetch.fetch(manifestUrl)
 
         if (!response.ok) {
+          await drainResponse(response)
           logger.error('Failed to fetch bundle status', {
             entityId,
             platform,
@@ -90,6 +92,9 @@ export async function createEntityStatusFetcherComponent({
 
         const allResponses = await Promise.all(allUrls.map((url) => fetch.fetch(url, { method: 'HEAD' })))
         const allExist = allResponses.every((response) => response.ok)
+        // HEAD responses carry no body for a compliant server, but drain them anyway so a
+        // non-compliant one that returns a body on a probe does not leave the socket pinned.
+        await Promise.all(allResponses.map(drainResponse))
         return allExist ? Registry.SimplifiedStatus.COMPLETE : Registry.SimplifiedStatus.FAILED
       },
       { maxRetries: MAX_RETRIES, logger }

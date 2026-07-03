@@ -1,5 +1,5 @@
 import { Entity, EntityType } from '@dcl/schemas'
-import { IFetchComponent, RequestOptions } from '@well-known-components/interfaces'
+import { IFetchComponent, RequestOptions } from '@dcl/core-commons'
 import { ContentClient, createContentClient, createLambdasClient } from 'dcl-catalyst-client'
 import { Profile } from 'dcl-catalyst-client/dist/client/specs/lambdas-client'
 
@@ -158,7 +158,7 @@ export async function createCatalystAdapter({
       return undefined
     }
 
-    const contentString = downloadedContent.toString('utf-8')
+    const contentString = Buffer.from(downloadedContent).toString('utf-8')
     const contentJson = JSON.parse(contentString)
     return contentJson as Entity
   }

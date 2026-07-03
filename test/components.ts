@@ -1,9 +1,9 @@
 // This file is the "test-environment" analogous for src/components.ts
 // Here we define the test components to be used in the testing environment
 
-import { createRunner, createLocalFetchCompoment } from '@well-known-components/test-helpers'
 import { createDotEnvConfigComponent } from '@well-known-components/env-config-provider'
-import { createTestMetricsComponent } from '@well-known-components/metrics'
+import { createRunner, createLocalFetchComponent } from '@dcl/test-helpers'
+import { createTestMetricsComponent } from '@dcl/metrics'
 import { createPgComponent } from '@dcl/pg-component'
 
 import { initComponents as originalInitComponents } from '../src/components'
@@ -89,7 +89,7 @@ async function initComponents(): Promise<TestComponents> {
     coordinates,
     registry,
     metrics,
-    localFetch: await createLocalFetchCompoment(config),
+    localFetch: await createLocalFetchComponent(config),
     messageConsumer,
     messageProcessor,
     extendedDb: extendDbComponent({ db, pg }),

@@ -4,7 +4,7 @@ import { createLRUNormalizedCacheMock } from '../../mocks/lru-cache'
 import { createProfilesCacheComponent } from '../../../../src/logic/sync/profiles-cache'
 import { createProfileEntity } from '../../mocks/data/profiles'
 import { Entity } from '@dcl/schemas'
-import { createTestMetricsComponent } from '@well-known-components/metrics'
+import { createTestMetricsComponent } from '@dcl/metrics'
 import { metricDeclarations } from '../../../../src/metrics'
 
 describe('profiles cache', () => {

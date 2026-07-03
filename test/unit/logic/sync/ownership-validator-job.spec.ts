@@ -20,7 +20,7 @@ import { createDbMockComponent } from '../../mocks/db'
 import { createOwnershipValidatorJob } from '../../../../src/logic/sync/ownership-validator-job'
 import { createProfileSanitizerComponent } from '../../../../src/logic/sync/profile-sanitizer'
 import { createProfileEntity, createAvatarInfo, createFullAvatar } from '../../mocks/data/profiles'
-import { createTestMetricsComponent } from '@well-known-components/metrics'
+import { createTestMetricsComponent } from '@dcl/metrics'
 import { metricDeclarations } from '../../../../src/metrics'
 
 const FIVE_MINUTES_MS = 5 * 60 * 1000 // 5 minutes

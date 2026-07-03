@@ -1,6 +1,7 @@
 import { Entity } from '@dcl/schemas'
 import { AppComponents, IWorldsComponent } from '../types'
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
+import { drainResponse } from '../utils/fetch'
 
 // Regular expression for Genesis City coordinates (e.g., -53,71 or 100,-50)
 const GENESIS_COORDINATES_REGEX = /^-?\d+,-?\d+$/
@@ -32,6 +33,7 @@ export async function createWorldsAdapter({
       const response = await fetch.fetch(url, { redirect: 'error' })
 
       if (!response.ok) {
+        await drainResponse(response)
         return null
       }
 
