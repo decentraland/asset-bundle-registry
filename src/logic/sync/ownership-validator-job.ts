@@ -72,19 +72,12 @@ export async function createOwnershipValidatorJob(
       return 0
     }
 
-    const fetchedProfiles = await catalyst.getProfiles(pointers)
+    // Keyed by the requested pointer rather than by the identity metadata
+    const sanitizedMap = await catalyst.getProfiles(pointers)
 
-    if (fetchedProfiles.length === 0) {
+    if (sanitizedMap.size === 0) {
       logger.warn('No profiles returned from lamb2', { requestedCount: pointers.length })
       return 0
-    }
-
-    // Build sanitized map keyed by lowercased userId
-    const sanitizedMap = new Map<string, Profile>()
-    for (const profile of fetchedProfiles) {
-      if (profile.avatars?.[0]?.userId) {
-        sanitizedMap.set(profile.avatars[0].userId.toLowerCase(), profile)
-      }
     }
 
     const cachedMap = profilesCache.getMany(pointers)
@@ -104,12 +97,17 @@ export async function createOwnershipValidatorJob(
       }
 
       const originalProfile = originalProfileMap.get(pointer)
-      const sanitizedProfile = sanitizedMap.get(pointer)
+      const sanitizedProfile = sanitizedMap.get(pointer.toLowerCase())
 
-      if (originalProfile && sanitizedProfile && shouldUpdateProfile(originalProfile, sanitizedProfile)) {
+      if (!sanitizedProfile) {
+        logger.warn('Skipping validation, no matching profile returned', { pointer })
+        continue
+      }
+
+      if (originalProfile && shouldUpdateProfile(originalProfile, sanitizedProfile)) {
         logger.info('Profile update required', { pointer })
 
-        const curatedProfile = catalyst.convertLambdasProfileToEntity(sanitizedProfile)
+        const curatedProfile = catalyst.convertLambdasProfileToEntity(sanitizedProfile, pointer)
 
         if (!curatedProfile) {
           logger.error('Failed to convert sanitized profile to entity', { pointer })

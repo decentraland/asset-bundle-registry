@@ -201,8 +201,8 @@ export interface ICatalystComponent {
   getEntitiesByIds(ids: string[], options?: CatalystFetchOptions): Promise<Entity[]>
   getEntityByPointers(pointers: string[]): Promise<Entity[]>
   getContent(id: string): Promise<Entity | undefined>
-  getProfiles(pointers: string[]): Promise<Profile[]>
-  convertLambdasProfileToEntity(profile: Profile): Entity | null
+  getProfiles(pointers: string[]): Promise<Map<string, Profile>>
+  convertLambdasProfileToEntity(profile: Profile, pointer: string): Entity | null
 }
 
 export interface IWorldsComponent {

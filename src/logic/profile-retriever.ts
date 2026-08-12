@@ -55,11 +55,11 @@ export function createProfileRetrieverComponent(
 
   async function getFromCatalyst(pointers: string[]): Promise<Entity[]> {
     try {
-      const profiles = await catalyst.getProfiles(pointers)
+      const profilesByPointer = await catalyst.getProfiles(pointers)
       const entities: Entity[] = []
 
-      for (const profile of profiles) {
-        const entity = catalyst.convertLambdasProfileToEntity(profile)
+      for (const [pointer, profile] of profilesByPointer) {
+        const entity = catalyst.convertLambdasProfileToEntity(profile, pointer)
         if (entity) {
           entities.push(entity)
         }
@@ -100,7 +100,7 @@ export function createProfileRetrieverComponent(
     metrics.increment('profiles_retrieved_from_database', {}, profilesFromDB.length)
 
     const pointersFoundInDB = new Set(profilesFromDB.map((p) => p.pointers[0].toLowerCase()))
-    const pointersMissingFromDB = cacheMisses.filter((p) => !pointersFoundInDB.has(p))
+    const pointersMissingFromDB = cacheMisses.filter((p) => !pointersFoundInDB.has(p.toLowerCase()))
     if (pointersMissingFromDB.length === 0) {
       logger.debug('All remaining profiles found in database', { total: retrievedProfiles.size })
       return retrievedProfiles

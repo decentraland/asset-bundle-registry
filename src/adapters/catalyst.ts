@@ -37,21 +37,21 @@ export async function createCatalystAdapter({
     return match ? match[1] : null
   }
 
-  function convertLambdasProfileToEntity(profile: Profile): Entity | null {
+  function convertLambdasProfileToEntity(profile: Profile, pointer: string): Entity | null {
     const avatar = profile.avatars?.[0]
-    if (!avatar?.ethAddress) {
+    if (!avatar) {
       return null
     }
 
     const snapshotUrl = avatar.avatar?.snapshots?.body || avatar.avatar?.snapshots?.face256
     if (!snapshotUrl) {
-      logger.warn('Profile has no snapshot URL to extract entity ID', { pointer: avatar.ethAddress })
+      logger.warn('Profile has no snapshot URL to extract entity ID', { pointer })
       return null
     }
 
     const entityId = extractEntityIdFromSnapshotUrl(snapshotUrl)
     if (!entityId) {
-      logger.warn('Could not extract entity ID from snapshot URL', { snapshotUrl, pointer: avatar.ethAddress })
+      logger.warn('Could not extract entity ID from snapshot URL', { snapshotUrl, pointer })
       return null
     }
 
@@ -59,7 +59,8 @@ export async function createCatalystAdapter({
       version: 'v3',
       id: entityId,
       type: EntityType.PROFILE,
-      pointers: [avatar.ethAddress.toLowerCase()],
+      // Supplied by the caller so the entity is keyed by the pointer it was requested for
+      pointers: [pointer.toLowerCase()],
       timestamp: profile.timestamp!,
       content: [],
       metadata: { avatars: profile.avatars }
@@ -163,23 +164,56 @@ export async function createCatalystAdapter({
     return contentJson as Entity
   }
 
-  async function getProfiles(pointers: string[]): Promise<Profile[]> {
+  async function getProfiles(pointers: string[]): Promise<Map<string, Profile>> {
+    const profilesByPointer = new Map<string, Profile>()
+
     if (pointers.length === 0) {
-      return []
+      return profilesByPointer
     }
 
     try {
       const profiles = await historicalLambdasClient.getAvatarsDetailsByPost({ ids: pointers })
-      const profilesWithAvatars = profiles.filter(
-        (profile) => profile.avatars && profile.avatars.length > 0 && profile.avatars[0].ethAddress
-      )
-      return profilesWithAvatars
+
+      // The response has no requested-id echo, so profiles are matched on the address in their
+      // metadata: only requested pointers are accepted, and a repeated one is dropped as ambiguous
+      const requested = new Set(pointers.map((pointer) => pointer.toLowerCase()))
+      const ambiguous = new Set<string>()
+
+      for (const profile of profiles) {
+        const metadataAddress = profile.avatars?.[0]?.ethAddress?.toLowerCase()
+
+        if (!metadataAddress || !requested.has(metadataAddress)) {
+          continue
+        }
+
+        if (profilesByPointer.has(metadataAddress)) {
+          ambiguous.add(metadataAddress)
+          continue
+        }
+
+        profilesByPointer.set(metadataAddress, profile)
+      }
+
+      for (const pointer of ambiguous) {
+        profilesByPointer.delete(pointer)
+        logger.warn('Discarded profiles sharing the same address', { pointer })
+      }
+
+      if (profilesByPointer.size !== profiles.length) {
+        logger.warn('Discarded profiles not matching any requested pointer', {
+          requested: pointers.length,
+          received: profiles.length,
+          matched: profilesByPointer.size
+        })
+      }
+
+      return profilesByPointer
     } catch (error: any) {
       logger.error('Error fetching profiles from historical catalyst lambdas', {
         error: error?.message || 'Unknown error',
         count: pointers.length
       })
-      return []
+      return new Map()
     }
   }
 

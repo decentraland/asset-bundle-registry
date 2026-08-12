@@ -8,6 +8,9 @@ import { Entity } from '@dcl/schemas'
 import { createLogMockComponent } from '../../mocks/logs'
 
 const MOCK_PROFILE_IMAGES_URL = 'https://profiles.mock.org'
+// createProfileEntity's default pointer, which the served identity is pinned to
+const DEFAULT_POINTER = '0x0000000000000000000000000000000000000000'
+const pinnedIdentity = { userId: DEFAULT_POINTER, ethAddress: DEFAULT_POINTER }
 
 describe('profile sanitizer', () => {
   let catalystMock: ICatalystComponent
@@ -167,6 +170,7 @@ describe('profile sanitizer', () => {
           avatars: [
             {
               ...avatarA,
+              ...pinnedIdentity,
               avatar: {
                 ...avatarA.avatar,
                 snapshots: {
@@ -182,6 +186,7 @@ describe('profile sanitizer', () => {
           avatars: [
             {
               ...avatarB,
+              ...pinnedIdentity,
               avatar: {
                 ...avatarB.avatar,
                 snapshots: {
@@ -222,9 +227,69 @@ describe('profile sanitizer', () => {
         expect(result).toHaveLength(1)
         expect(result[0]).toEqual({
           timestamp,
-          avatars: [simpleAvatar]
+          avatars: [{ ...simpleAvatar, ...pinnedIdentity }]
         })
         expect(result[0].avatars[0].avatar).toBeUndefined()
+      })
+    })
+
+    describe('when an avatar has a different address than the pointer', () => {
+      let entities: Entity[]
+      let pointer: string
+
+      beforeEach(() => {
+        pointer = '0x1111111111111111111111111111111111111111'
+        entities = [
+          createProfileEntity({
+            id: 'bafz',
+            pointers: [pointer],
+            metadata: {
+              avatars: [
+                createAvatar({
+                  userId: '0x2222222222222222222222222222222222222222',
+                  ethAddress: '0x2222222222222222222222222222222222222222',
+                  avatar: createAvatarInfo()
+                })
+              ]
+            }
+          })
+        ]
+      })
+
+      it('should serve the pointer as the ethAddress', () => {
+        const result = component.mapEntitiesToProfiles(entities)
+
+        expect(result[0].avatars[0].ethAddress).toEqual(pointer)
+      })
+
+      it('should serve the pointer as the userId', () => {
+        const result = component.mapEntitiesToProfiles(entities)
+
+        expect(result[0].avatars[0].userId).toEqual(pointer)
+      })
+    })
+
+    describe('when the pointer is a default profile name', () => {
+      let entities: Entity[]
+      let deployedAddress: string
+
+      beforeEach(() => {
+        deployedAddress = '0x3333333333333333333333333333333333333333'
+        entities = [
+          createProfileEntity({
+            id: 'bafz',
+            pointers: ['default5'],
+            metadata: {
+              avatars: [createAvatar({ ethAddress: deployedAddress, avatar: createAvatarInfo() })]
+            }
+          })
+        ]
+      })
+
+      it('should leave the deployed ethAddress untouched', () => {
+        const result = component.mapEntitiesToProfiles(entities)
+
+        expect(result[0].avatars[0].ethAddress).toEqual(deployedAddress)
       })
     })
 
@@ -251,7 +316,7 @@ describe('profile sanitizer', () => {
           face256: 'https://profiles.mock.org/entities/bafz/face.png',
           body: 'https://profiles.mock.org/entities/bafz/body.png'
         })
-        expect(result[0].avatars[1]).toEqual(avatarWithoutInfo)
+        expect(result[0].avatars[1]).toEqual({ ...avatarWithoutInfo, ...pinnedIdentity })
         expect(result[0].avatars[1].avatar).toBeUndefined()
       })
     })

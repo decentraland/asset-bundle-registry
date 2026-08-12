@@ -56,6 +56,9 @@ export async function createProfileSanitizerComponent({
     return profiles.map((profile) => {
       const snapshots = buildProfilesSnapshots(profile.id)
       const metadata = profile.metadata as Profile
+      const pointer = profile.pointers[0]
+      // The pointer is the authoritative identity, not the deployed metadata
+      const identity = pointer.startsWith('default') ? {} : { userId: pointer, ethAddress: pointer }
 
       return {
         ...profile,
@@ -65,6 +68,7 @@ export async function createProfileSanitizerComponent({
             if (avatar.avatar) {
               return {
                 ...avatar,
+                ...identity,
                 avatar: {
                   ...avatar.avatar,
                   snapshots: {
@@ -74,7 +78,7 @@ export async function createProfileSanitizerComponent({
                 }
               }
             }
-            return avatar
+            return { ...avatar, ...identity }
           })
         }
       }

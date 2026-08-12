@@ -77,15 +77,16 @@ describe('profile retriever', () => {
             entityIdB = 'bafkreientityb'
             mockCatalyst.getProfiles = jest
               .fn()
-              .mockResolvedValueOnce([
-                createTestLambdasProfile(entityIdA, pointerA),
-                createTestLambdasProfile(entityIdB, pointerB)
-              ])
-            mockCatalyst.convertLambdasProfileToEntity = jest.fn().mockImplementation((profile: Profile) => {
-              const pointer = profile.avatars?.[0]?.ethAddress?.toLowerCase()
-              if (pointer === pointerA.toLowerCase()) {
+              .mockResolvedValueOnce(
+                new Map([
+                  [pointerA, createTestLambdasProfile(entityIdA, pointerA)],
+                  [pointerB, createTestLambdasProfile(entityIdB, pointerB)]
+                ])
+              )
+            mockCatalyst.convertLambdasProfileToEntity = jest.fn().mockImplementation((_profile: Profile, pointer: string) => {
+              if (pointer.toLowerCase() === pointerA.toLowerCase()) {
                 return createProfileEntity({ id: entityIdA, pointers: [pointerA] })
-              } else if (pointer === pointerB.toLowerCase()) {
+              } else if (pointer.toLowerCase() === pointerB.toLowerCase()) {
                 return createProfileEntity({ id: entityIdB, pointers: [pointerB] })
               }
               return null
@@ -148,7 +149,9 @@ describe('profile retriever', () => {
           entityIdB = 'bafkreientityb'
           profilesFromDB = [createProfileDbEntity({ id: pointerA, pointer: pointerA })]
           mockDb.getProfilesByPointers = jest.fn().mockResolvedValueOnce(profilesFromDB)
-          mockCatalyst.getProfiles = jest.fn().mockResolvedValueOnce([createTestLambdasProfile(entityIdB, pointerB)])
+          mockCatalyst.getProfiles = jest
+            .fn()
+            .mockResolvedValueOnce(new Map([[pointerB, createTestLambdasProfile(entityIdB, pointerB)]]))
           mockCatalyst.convertLambdasProfileToEntity = jest.fn().mockImplementation((profile: Profile) => {
             const pointer = profile.avatars?.[0]?.ethAddress?.toLowerCase()
             if (pointer === pointerB.toLowerCase()) {
@@ -219,7 +222,9 @@ describe('profile retriever', () => {
       describe('and the rest of profiles are found in the catalyst', () => {
         const entityIdB = 'bafkreientityb'
         beforeEach(() => {
-          mockCatalyst.getProfiles = jest.fn().mockResolvedValueOnce([createTestLambdasProfile(entityIdB, pointerB)])
+          mockCatalyst.getProfiles = jest
+            .fn()
+            .mockResolvedValueOnce(new Map([[pointerB, createTestLambdasProfile(entityIdB, pointerB)]]))
           mockCatalyst.convertLambdasProfileToEntity = jest.fn().mockImplementation((profile: Profile) => {
             const pointer = profile.avatars?.[0]?.ethAddress?.toLowerCase()
             if (pointer === pointerB.toLowerCase()) {

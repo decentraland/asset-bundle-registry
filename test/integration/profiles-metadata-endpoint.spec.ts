@@ -122,7 +122,7 @@ test('POST /profiles/metadata endpoint', async function ({ components, spyCompon
     beforeEach(async function () {
       pointer = '0xcatalystmeta111111111111111111111111'
       lambdasProfile = createTestLambdasProfile('bafkreicatalystmeta', pointer, 'CatalystUser', true)
-      spyComponents.catalyst.getProfiles.mockResolvedValueOnce([lambdasProfile])
+      spyComponents.catalyst.getProfiles.mockResolvedValueOnce(new Map([[pointer, lambdasProfile]]))
       spyComponents.catalyst.convertLambdasProfileToEntity.mockReturnValueOnce(
         profileDbEntityToEntity(
           createProfileDbEntity({
@@ -163,7 +163,7 @@ test('POST /profiles/metadata endpoint', async function ({ components, spyCompon
 
     beforeEach(function () {
       pointer = '0xnonexistent1111111111111111111111111'
-      spyComponents.catalyst.getProfiles.mockResolvedValueOnce([])
+      spyComponents.catalyst.getProfiles.mockResolvedValueOnce(new Map())
     })
 
     it('should return an empty array', async function () {
