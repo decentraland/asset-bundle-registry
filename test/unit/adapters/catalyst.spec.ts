@@ -105,6 +105,49 @@ describe('catalyst adapter', () => {
         expect(result.get(requestedPointer)).toBeDefined()
       })
     })
+
+    describe('and a name pointer is requested', () => {
+      const namePointer = 'default5'
+
+      beforeEach(() => {
+        // A default profile carries the deployer address, unrelated to the requested name
+        getAvatarsDetailsByPost.mockResolvedValue([createLambdasProfile(otherPointer)])
+      })
+
+      it('should key the profile by the requested name pointer', async () => {
+        const result = await component.getProfiles([namePointer])
+
+        expect(result.get(namePointer)).toBeDefined()
+      })
+
+      it('should not key it by the address in its metadata', async () => {
+        const result = await component.getProfiles([namePointer])
+
+        expect(result.has(otherPointer)).toBe(false)
+      })
+
+      it('should request it on its own so it can be correlated', async () => {
+        await component.getProfiles([namePointer, requestedPointer])
+
+        expect(getAvatarsDetailsByPost).toHaveBeenCalledWith({ ids: [namePointer] })
+        expect(getAvatarsDetailsByPost).toHaveBeenCalledWith({ ids: [requestedPointer] })
+      })
+    })
+
+    describe('and a name pointer request returns more than one profile', () => {
+      beforeEach(() => {
+        getAvatarsDetailsByPost.mockResolvedValue([
+          createLambdasProfile(otherPointer),
+          createLambdasProfile(requestedPointer)
+        ])
+      })
+
+      it('should drop it rather than guess which one was meant', async () => {
+        const result = await component.getProfiles(['default5'])
+
+        expect(result.size).toEqual(0)
+      })
+    })
   })
 
   describe('when converting a lambdas profile to an entity', () => {

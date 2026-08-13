@@ -1,4 +1,4 @@
-import { Entity, EntityType } from '@dcl/schemas'
+import { Entity, EntityType, EthAddress } from '@dcl/schemas'
 import { IFetchComponent, RequestOptions } from '@dcl/core-commons'
 import { ContentClient, createContentClient, createLambdasClient } from 'dcl-catalyst-client'
 import { Profile } from 'dcl-catalyst-client/dist/client/specs/lambdas-client'
@@ -164,11 +164,11 @@ export async function createCatalystAdapter({
     return contentJson as Entity
   }
 
-  async function getProfiles(pointers: string[]): Promise<Map<string, Profile>> {
-    const profilesByPointer = new Map<string, Profile>()
+  async function getProfilesByAddress(pointers: string[]): Promise<Map<string, Profile>> {
+    const matched = new Map<string, Profile>()
 
     if (pointers.length === 0) {
-      return profilesByPointer
+      return matched
     }
 
     try {
@@ -186,35 +186,91 @@ export async function createCatalystAdapter({
           continue
         }
 
-        if (profilesByPointer.has(metadataAddress)) {
+        if (matched.has(metadataAddress)) {
           ambiguous.add(metadataAddress)
           continue
         }
 
-        profilesByPointer.set(metadataAddress, profile)
+        matched.set(metadataAddress, profile)
       }
 
       for (const pointer of ambiguous) {
-        profilesByPointer.delete(pointer)
+        matched.delete(pointer)
         logger.warn('Discarded profiles sharing the same address', { pointer })
       }
 
-      if (profilesByPointer.size !== profiles.length) {
+      if (matched.size !== profiles.length) {
         logger.warn('Discarded profiles not matching any requested pointer', {
           requested: pointers.length,
           received: profiles.length,
-          matched: profilesByPointer.size
+          matched: matched.size
         })
       }
-
-      return profilesByPointer
     } catch (error: any) {
       logger.error('Error fetching profiles from historical catalyst lambdas', {
         error: error?.message || 'Unknown error',
         count: pointers.length
       })
-      return new Map()
     }
+
+    return matched
+  }
+
+  async function getProfileByNamePointer(pointer: string): Promise<Profile | null> {
+    try {
+      const profiles = await historicalLambdasClient.getAvatarsDetailsByPost({ ids: [pointer] })
+
+      // Asked for one pointer, so anything other than a single profile cannot be correlated
+      if (profiles.length !== 1 || !profiles[0].avatars?.[0]) {
+        return null
+      }
+
+      return profiles[0]
+    } catch (error: any) {
+      logger.error('Error fetching profile from historical catalyst lambdas', {
+        pointer,
+        error: error?.message || 'Unknown error'
+      })
+      return null
+    }
+  }
+
+  async function getProfiles(pointers: string[]): Promise<Map<string, Profile>> {
+    const profilesByPointer = new Map<string, Profile>()
+
+    if (pointers.length === 0) {
+      return profilesByPointer
+    }
+
+    // Name pointers (default profiles) carry an unrelated address in their metadata, and every
+    // default profile shares the same one, so they can only be correlated one request at a time
+    const addressPointers: string[] = []
+    const namePointers: string[] = []
+
+    for (const pointer of pointers) {
+      if (EthAddress.validate(pointer)) {
+        addressPointers.push(pointer)
+      } else {
+        namePointers.push(pointer)
+      }
+    }
+
+    const [byAddress, byName] = await Promise.all([
+      getProfilesByAddress(addressPointers),
+      Promise.all(namePointers.map(async (pointer) => [pointer, await getProfileByNamePointer(pointer)] as const))
+    ])
+
+    for (const [pointer, profile] of byAddress) {
+      profilesByPointer.set(pointer, profile)
+    }
+
+    for (const [pointer, profile] of byName) {
+      if (profile) {
+        profilesByPointer.set(pointer.toLowerCase(), profile)
+      }
+    }
+
+    return profilesByPointer
   }
 
   return {

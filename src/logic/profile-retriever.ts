@@ -73,7 +73,8 @@ export function createProfileRetrieverComponent(
   }
 
   async function getProfiles(pointers: string[]): Promise<Map<string, Entity>> {
-    const uniquePointers = [...new Set(pointers)]
+    // Every layer below keys by the lowercased pointer, so case variants are the same request
+    const uniquePointers = [...new Set(pointers.map((pointer) => pointer.toLowerCase()))]
     let retrievedProfiles = new Map<string, Entity>()
 
     // Layer 1: Batch fetch from hot cache (L1 cache)
