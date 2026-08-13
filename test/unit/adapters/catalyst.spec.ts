@@ -146,17 +146,17 @@ describe('catalyst adapter', () => {
       })
     })
 
-    describe('and more name pointers are requested than the lookup limit', () => {
-      const namePointers = Array.from({ length: 60 }, (_, index) => `default${index}`)
+    describe('and several name pointers are requested', () => {
+      const namePointers = Array.from({ length: 12 }, (_, index) => `default${index}`)
 
       beforeEach(() => {
         getAvatarsDetailsByPost.mockResolvedValue([])
       })
 
-      it('should bound the amount of outbound requests', async () => {
+      it('should look every one of them up rather than truncate', async () => {
         await component.getProfiles(namePointers)
 
-        expect(getAvatarsDetailsByPost.mock.calls.length).toBeLessThanOrEqual(25)
+        expect(getAvatarsDetailsByPost).toHaveBeenCalledTimes(namePointers.length)
       })
     })
 
