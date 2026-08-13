@@ -49,39 +49,6 @@ describe('catalyst adapter', () => {
   })
 
   describe('when fetching profiles', () => {
-    describe('and a returned profile has an address that was not requested', () => {
-      beforeEach(() => {
-        getAvatarsDetailsByPost.mockResolvedValue([createLambdasProfile(otherPointer)])
-      })
-
-      it('should not return it under that address', async () => {
-        const result = await component.getProfiles([requestedPointer])
-
-        expect(result.has(otherPointer)).toBe(false)
-      })
-
-      it('should return no profiles at all', async () => {
-        const result = await component.getProfiles([requestedPointer])
-
-        expect(result.size).toEqual(0)
-      })
-    })
-
-    describe('and two returned profiles have the same requested address', () => {
-      beforeEach(() => {
-        getAvatarsDetailsByPost.mockResolvedValue([
-          createLambdasProfile(requestedPointer, 1000),
-          createLambdasProfile(requestedPointer, 2000)
-        ])
-      })
-
-      it('should drop the ambiguous address rather than pick a winner', async () => {
-        const result = await component.getProfiles([requestedPointer])
-
-        expect(result.has(requestedPointer)).toBe(false)
-      })
-    })
-
     describe('and a returned profile matches the requested address', () => {
       beforeEach(() => {
         getAvatarsDetailsByPost.mockResolvedValue([createLambdasProfile(requestedPointer)])
@@ -185,12 +152,10 @@ describe('catalyst adapter', () => {
   })
 
   describe('when converting a lambdas profile to an entity', () => {
-    describe('and the metadata has a different address than the supplied pointer', () => {
-      it('should point the entity at the supplied pointer', () => {
-        const entity = component.convertLambdasProfileToEntity(createLambdasProfile(otherPointer), requestedPointer)
+    it('should point the entity at the supplied pointer', () => {
+      const entity = component.convertLambdasProfileToEntity(createLambdasProfile(requestedPointer), requestedPointer)
 
-        expect(entity?.pointers).toEqual([requestedPointer])
-      })
+      expect(entity?.pointers).toEqual([requestedPointer])
     })
   })
 })

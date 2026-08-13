@@ -4,13 +4,10 @@ import { createConfigMockComponent } from '../../mocks/config'
 import { createCatalystMockComponent } from '../../mocks/catalyst'
 import { createProfileSanitizerComponent } from '../../../../src/logic/sync/profile-sanitizer'
 import { createAvatar, createAvatarInfo, createProfileEntity } from '../../mocks/data/profiles'
-import { Entity } from '@dcl/schemas'
+import { Entity, Profile } from '@dcl/schemas'
 import { createLogMockComponent } from '../../mocks/logs'
 
 const MOCK_PROFILE_IMAGES_URL = 'https://profiles.mock.org'
-// createProfileEntity's default pointer, which the served identity is pinned to
-const DEFAULT_POINTER = '0x0000000000000000000000000000000000000000'
-const pinnedIdentity = { userId: DEFAULT_POINTER, ethAddress: DEFAULT_POINTER }
 
 describe('profile sanitizer', () => {
   let catalystMock: ICatalystComponent
@@ -48,8 +45,16 @@ describe('profile sanitizer', () => {
         entityIdB = 'bafy'
         pointerA = '0x1111111111111111111111111111111111111111'
         pointerB = '0x2222222222222222222222222222222222222222'
-        entityA = createProfileEntity({ id: entityIdA, pointers: [pointerA] })
-        entityB = createProfileEntity({ id: entityIdB, pointers: [pointerB] })
+        entityA = createProfileEntity({
+          id: entityIdA,
+          pointers: [pointerA],
+          metadata: { avatars: [createAvatar({ userId: pointerA, ethAddress: pointerA })] }
+        })
+        entityB = createProfileEntity({
+          id: entityIdB,
+          pointers: [pointerB],
+          metadata: { avatars: [createAvatar({ userId: pointerB, ethAddress: pointerB })] }
+        })
         profilesToSanitize = [
           { entityId: entityIdA, pointer: pointerA, timestamp: 1 },
           { entityId: entityIdB, pointer: pointerB, timestamp: 2 }
@@ -93,9 +98,14 @@ describe('profile sanitizer', () => {
 
       describe('and a fetched profile points somewhere else than its deployment', () => {
         beforeEach(() => {
-          catalystMock.getEntitiesByIds = jest
-            .fn()
-            .mockResolvedValueOnce([createProfileEntity({ id: entityIdA, pointers: [pointerB] }), entityB])
+          catalystMock.getEntitiesByIds = jest.fn().mockResolvedValueOnce([
+            createProfileEntity({
+              id: entityIdA,
+              pointers: [pointerB],
+              metadata: { avatars: [createAvatar({ userId: pointerB, ethAddress: pointerB })] }
+            }),
+            entityB
+          ])
         })
 
         it('should discard it and keep the consistent one', async () => {
@@ -141,9 +151,14 @@ describe('profile sanitizer', () => {
 
       describe('and a fetched profile has no pointers', () => {
         beforeEach(() => {
-          catalystMock.getEntitiesByIds = jest
-            .fn()
-            .mockResolvedValueOnce([createProfileEntity({ id: entityIdA, pointers: [] }), entityB])
+          catalystMock.getEntitiesByIds = jest.fn().mockResolvedValueOnce([
+            createProfileEntity({
+              id: entityIdA,
+              pointers: [],
+              metadata: { avatars: [createAvatar({ userId: pointerA, ethAddress: pointerA })] }
+            }),
+            entityB
+          ])
         })
 
         it('should discard it', async () => {
@@ -155,15 +170,70 @@ describe('profile sanitizer', () => {
 
       describe('and a fetched profile pointer differs only in casing', () => {
         beforeEach(() => {
-          catalystMock.getEntitiesByIds = jest
-            .fn()
-            .mockResolvedValueOnce([createProfileEntity({ id: entityIdA, pointers: [pointerA.toUpperCase()] })])
+          catalystMock.getEntitiesByIds = jest.fn().mockResolvedValueOnce([
+            createProfileEntity({
+              id: entityIdA,
+              pointers: [pointerA.toUpperCase()],
+              metadata: { avatars: [createAvatar({ userId: pointerA, ethAddress: pointerA })] }
+            })
+          ])
         })
 
         it('should keep it, since pointers are compared normalized', async () => {
           const result = await component.sanitizeProfiles(profilesToSanitize, jest.fn())
 
           expect(result).toHaveLength(1)
+        })
+      })
+
+      describe('and a fetched avatar carries an address other than the pointer', () => {
+        beforeEach(() => {
+          catalystMock.getEntitiesByIds = jest.fn().mockResolvedValueOnce([
+            createProfileEntity({
+              id: entityIdA,
+              pointers: [pointerA],
+              metadata: {
+                avatars: [createAvatar({ userId: pointerB, ethAddress: pointerB, avatar: createAvatarInfo() })]
+              }
+            })
+          ])
+        })
+
+        it('should settle the ethAddress to the pointer before it is stored', async () => {
+          const result = await component.sanitizeProfiles(profilesToSanitize, jest.fn())
+
+          expect((result[0].metadata as Profile).avatars[0].ethAddress).toEqual(pointerA)
+        })
+
+        it('should settle the userId to the pointer before it is stored', async () => {
+          const result = await component.sanitizeProfiles(profilesToSanitize, jest.fn())
+
+          expect((result[0].metadata as Profile).avatars[0].userId).toEqual(pointerA)
+        })
+      })
+
+      describe('and the fetched profile is a default profile', () => {
+        const deployedAddress = '0x3333333333333333333333333333333333333333'
+
+        beforeEach(() => {
+          profilesToSanitize = [{ entityId: entityIdA, pointer: 'default5', timestamp: 1 }]
+          catalystMock.getEntitiesByIds = jest.fn().mockResolvedValueOnce([
+            createProfileEntity({
+              id: entityIdA,
+              pointers: ['default5'],
+              metadata: {
+                avatars: [
+                  createAvatar({ userId: deployedAddress, ethAddress: deployedAddress, avatar: createAvatarInfo() })
+                ]
+              }
+            })
+          ])
+        })
+
+        it('should leave the deployed identity untouched, since its pointer is a name', async () => {
+          const result = await component.sanitizeProfiles(profilesToSanitize, jest.fn())
+
+          expect((result[0].metadata as Profile).avatars[0].ethAddress).toEqual(deployedAddress)
         })
       })
 
@@ -254,7 +324,6 @@ describe('profile sanitizer', () => {
           avatars: [
             {
               ...avatarA,
-              ...pinnedIdentity,
               avatar: {
                 ...avatarA.avatar,
                 snapshots: {
@@ -270,7 +339,6 @@ describe('profile sanitizer', () => {
           avatars: [
             {
               ...avatarB,
-              ...pinnedIdentity,
               avatar: {
                 ...avatarB.avatar,
                 snapshots: {
@@ -311,69 +379,9 @@ describe('profile sanitizer', () => {
         expect(result).toHaveLength(1)
         expect(result[0]).toEqual({
           timestamp,
-          avatars: [{ ...simpleAvatar, ...pinnedIdentity }]
+          avatars: [simpleAvatar]
         })
         expect(result[0].avatars[0].avatar).toBeUndefined()
-      })
-    })
-
-    describe('when an avatar has a different address than the pointer', () => {
-      let entities: Entity[]
-      let pointer: string
-
-      beforeEach(() => {
-        pointer = '0x1111111111111111111111111111111111111111'
-        entities = [
-          createProfileEntity({
-            id: 'bafz',
-            pointers: [pointer],
-            metadata: {
-              avatars: [
-                createAvatar({
-                  userId: '0x2222222222222222222222222222222222222222',
-                  ethAddress: '0x2222222222222222222222222222222222222222',
-                  avatar: createAvatarInfo()
-                })
-              ]
-            }
-          })
-        ]
-      })
-
-      it('should serve the pointer as the ethAddress', () => {
-        const result = component.mapEntitiesToProfiles(entities)
-
-        expect(result[0].avatars[0].ethAddress).toEqual(pointer)
-      })
-
-      it('should serve the pointer as the userId', () => {
-        const result = component.mapEntitiesToProfiles(entities)
-
-        expect(result[0].avatars[0].userId).toEqual(pointer)
-      })
-    })
-
-    describe('when the pointer is not an address', () => {
-      let entities: Entity[]
-      let deployedAddress: string
-
-      beforeEach(() => {
-        deployedAddress = '0x3333333333333333333333333333333333333333'
-        entities = [
-          createProfileEntity({
-            id: 'bafz',
-            pointers: ['default5'],
-            metadata: {
-              avatars: [createAvatar({ ethAddress: deployedAddress, avatar: createAvatarInfo() })]
-            }
-          })
-        ]
-      })
-
-      it('should leave the deployed ethAddress untouched', () => {
-        const result = component.mapEntitiesToProfiles(entities)
-
-        expect(result[0].avatars[0].ethAddress).toEqual(deployedAddress)
       })
     })
 
@@ -400,7 +408,7 @@ describe('profile sanitizer', () => {
           face256: 'https://profiles.mock.org/entities/bafz/face.png',
           body: 'https://profiles.mock.org/entities/bafz/body.png'
         })
-        expect(result[0].avatars[1]).toEqual({ ...avatarWithoutInfo, ...pinnedIdentity })
+        expect(result[0].avatars[1]).toEqual(avatarWithoutInfo)
         expect(result[0].avatars[1].avatar).toBeUndefined()
       })
     })

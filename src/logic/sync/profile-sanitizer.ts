@@ -1,6 +1,7 @@
-import { Entity, EthAddress, Profile } from '@dcl/schemas'
+import { Entity, Profile } from '@dcl/schemas'
 import { AppComponents, IProfileSanitizerComponent, Sync, ProfileMetadataDTO, ProfileDTO } from '../../types'
 import { withRetry, withTimeout } from '../../utils/timer'
+import { isAddressPointer } from '../../utils/pointers'
 
 const THIRTY_SECONDS_IN_MS = 30000
 
@@ -33,7 +34,34 @@ export async function createProfileSanitizerComponent({
 
     const expectedPointers = new Map(minimalProfiles.map((p) => [p.entityId, p.pointer.toLowerCase()]))
 
-    return (profilesFetched as Entity[]).filter((profile) => validateFetchedProfile(profile, expectedPointers))
+    return (profilesFetched as Entity[])
+      .filter((profile) => validateFetchedProfile(profile, expectedPointers))
+      .map(withIdentityFromPointer)
+  }
+
+  /**
+   * Deployed metadata carries its own `userId` and `ethAddress`, which need not agree with the
+   * pointer for profiles deployed before the validator enforced it. The pointer is authoritative, so
+   * they are settled here, once, instead of on every read. Default profiles keep their deployed
+   * value, since their pointer is a name.
+   */
+  function withIdentityFromPointer(profile: Entity): Entity {
+    const pointer = profile.pointers[0]
+
+    if (!isAddressPointer(pointer)) {
+      return profile
+    }
+
+    const metadata = profile.metadata as Profile
+    const identity = { userId: pointer.toLowerCase(), ethAddress: pointer.toLowerCase() }
+
+    return {
+      ...profile,
+      metadata: {
+        ...metadata,
+        avatars: metadata.avatars.map((avatar) => ({ ...avatar, ...identity }))
+      }
+    }
   }
 
   /**
@@ -91,9 +119,6 @@ export async function createProfileSanitizerComponent({
     return profiles.map((profile) => {
       const snapshots = buildProfilesSnapshots(profile.id)
       const metadata = profile.metadata as Profile
-      const pointer = profile.pointers[0]
-      // Authoritative identity for address pointers; default profiles are pointed at by name
-      const identity = EthAddress.validate(pointer) ? { userId: pointer, ethAddress: pointer } : {}
 
       return {
         ...profile,
@@ -103,7 +128,6 @@ export async function createProfileSanitizerComponent({
             if (avatar.avatar) {
               return {
                 ...avatar,
-                ...identity,
                 avatar: {
                   ...avatar.avatar,
                   snapshots: {
@@ -113,7 +137,7 @@ export async function createProfileSanitizerComponent({
                 }
               }
             }
-            return { ...avatar, ...identity }
+            return avatar
           })
         }
       }

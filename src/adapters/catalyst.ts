@@ -176,37 +176,14 @@ export async function createCatalystAdapter({
     try {
       const profiles = await historicalLambdasClient.getAvatarsDetailsByPost({ ids: pointers })
 
-      // The response has no requested-id echo, so profiles are matched on the address in their
-      // metadata: only requested pointers are accepted, and a repeated one is dropped as ambiguous
-      const requested = new Set(pointers.map((pointer) => pointer.toLowerCase()))
-      const ambiguous = new Set<string>()
-
+      // Lambdas serves the identity of an address profile from the entity pointer, so the address in
+      // the response is what the profile was requested for
       for (const profile of profiles) {
-        const metadataAddress = profile.avatars?.[0]?.ethAddress?.toLowerCase()
+        const address = profile.avatars?.[0]?.ethAddress?.toLowerCase()
 
-        if (!metadataAddress || !requested.has(metadataAddress)) {
-          continue
+        if (address) {
+          matched.set(address, profile)
         }
-
-        if (matched.has(metadataAddress)) {
-          ambiguous.add(metadataAddress)
-          continue
-        }
-
-        matched.set(metadataAddress, profile)
-      }
-
-      for (const pointer of ambiguous) {
-        matched.delete(pointer)
-        logger.warn('Discarded profiles sharing the same address', { pointer })
-      }
-
-      if (matched.size !== profiles.length) {
-        logger.warn('Discarded profiles not matching any requested pointer', {
-          requested: pointers.length,
-          received: profiles.length,
-          matched: matched.size
-        })
       }
     } catch (error: any) {
       logger.error('Error fetching profiles from historical catalyst lambdas', {
