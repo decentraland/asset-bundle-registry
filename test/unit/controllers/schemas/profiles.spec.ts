@@ -12,6 +12,12 @@ describe('profile pointers request schema', () => {
     })
   })
 
+  describe('when the ids property is empty', () => {
+    it('should return an empty array', () => {
+      expect(parseProfilePointers({ ids: [] })).toEqual([])
+    })
+  })
+
   describe('when the ids property is missing', () => {
     it('should throw an invalid request error', () => {
       expect(() => parseProfilePointers({})).toThrow(InvalidRequestError)
@@ -73,6 +79,18 @@ describe('profile pointers request schema', () => {
       expect(() => parseProfilePointers({ ids })).toThrow(
         `A maximum of ${MAX_NAME_POINTERS_PER_REQUEST} default profile ids can be requested at once, got ${ids.length}`
       )
+    })
+  })
+
+  describe('when more malformed default-looking ids than the default profile name limit are requested', () => {
+    let ids: string[]
+
+    beforeEach(() => {
+      ids = Array.from({ length: MAX_NAME_POINTERS_PER_REQUEST + 1 }, (_, index) => `defaultfoo${index}`)
+    })
+
+    it('should return them because they are ignored ids rather than default profile names', () => {
+      expect(parseProfilePointers({ ids })).toHaveLength(ids.length)
     })
   })
 

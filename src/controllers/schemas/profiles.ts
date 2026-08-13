@@ -9,8 +9,16 @@ export const MAX_NAME_POINTERS_PER_REQUEST = 25
  * lookups, so the amount of work a single request can ask for has to be bounded. Name pointers get
  * a lower limit because they cannot be batched: each one costs its own catalyst request.
  */
-export function parseProfilePointers(body: any): string[] {
-  const pointers = body?.ids
+function getIds(body: unknown): unknown {
+  if (typeof body !== 'object' || body === null || !('ids' in body)) {
+    return undefined
+  }
+
+  return body.ids
+}
+
+export function parseProfilePointers(body: unknown): string[] {
+  const pointers = getIds(body)
 
   if (!Array.isArray(pointers) || pointers.some((pointer) => typeof pointer !== 'string' || pointer.length === 0)) {
     throw new InvalidRequestError('The ids property must be an array of non-empty strings')
@@ -22,9 +30,7 @@ export function parseProfilePointers(body: any): string[] {
     )
   }
 
-  const namePointers = pointers.filter(
-    (pointer: string) => !isAddressPointer(pointer) && isDefaultProfilePointer(pointer)
-  )
+  const namePointers = pointers.filter((pointer) => !isAddressPointer(pointer) && isDefaultProfilePointer(pointer))
 
   if (namePointers.length > MAX_NAME_POINTERS_PER_REQUEST) {
     throw new InvalidRequestError(

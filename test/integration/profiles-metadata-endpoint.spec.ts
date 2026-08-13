@@ -158,6 +158,16 @@ test('POST /profiles/metadata endpoint', async function ({ components, spyCompon
     })
   })
 
+  describe('when ids is empty', function () {
+    it('should return an empty array', async function () {
+      const response = await fetchLocally('POST', '/profiles/metadata', undefined, { ids: [] })
+      const parsedResponse = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(parsedResponse).toEqual([])
+    })
+  })
+
   describe('when no profiles are found', function () {
     let pointer: string
 

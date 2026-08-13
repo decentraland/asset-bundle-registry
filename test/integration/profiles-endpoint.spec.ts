@@ -162,6 +162,16 @@ test('POST /profiles endpoint', async function ({ components, spyComponents }) {
     })
   })
 
+  describe('when ids is empty', function () {
+    it('should return an empty array', async function () {
+      const response = await fetchLocally('POST', '/profiles', undefined, { ids: [] })
+      const parsedResponse = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(parsedResponse).toEqual([])
+    })
+  })
+
   describe('when no profiles are found', function () {
     let pointer: string
 

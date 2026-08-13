@@ -140,7 +140,15 @@ describe('catalyst adapter', () => {
       })
 
       it('should not request them at all', async () => {
-        await component.getProfiles(['not-a-pointer', 'another-one', ''])
+        await component.getProfiles([
+          'not-a-pointer',
+          'another-one',
+          '',
+          'default',
+          'defaultfoo',
+          'default-1',
+          'default_1'
+        ])
 
         expect(getAvatarsDetailsByPost).not.toHaveBeenCalled()
       })

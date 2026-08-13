@@ -1,6 +1,6 @@
 import { EthAddress } from '@dcl/schemas'
 
-const DEFAULT_PROFILE_POINTER_PREFIX = 'default'
+const DEFAULT_PROFILE_POINTER_REGEX = /^default\d+$/
 
 /**
  * Profile pointers are either an address or, for default profiles, a name. Both are matched on the
@@ -11,5 +11,5 @@ export function isAddressPointer(pointer: string): boolean {
 }
 
 export function isDefaultProfilePointer(pointer: string): boolean {
-  return pointer.toLowerCase().startsWith(DEFAULT_PROFILE_POINTER_PREFIX)
+  return DEFAULT_PROFILE_POINTER_REGEX.test(pointer.toLowerCase())
 }
