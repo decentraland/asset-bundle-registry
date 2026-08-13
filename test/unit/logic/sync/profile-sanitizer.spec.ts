@@ -37,14 +37,22 @@ describe('profile sanitizer', () => {
     describe('when there are profiles to sanitize', () => {
       let entityIdA: string
       let entityIdB: string
+      let pointerA: string
+      let pointerB: string
+      let entityA: Entity
+      let entityB: Entity
       let profilesToSanitize: Sync.ProfileDeployment[]
 
       beforeEach(() => {
         entityIdA = 'bafz'
         entityIdB = 'bafy'
+        pointerA = '0x1111111111111111111111111111111111111111'
+        pointerB = '0x2222222222222222222222222222222222222222'
+        entityA = createProfileEntity({ id: entityIdA, pointers: [pointerA] })
+        entityB = createProfileEntity({ id: entityIdB, pointers: [pointerB] })
         profilesToSanitize = [
-          { entityId: entityIdA, pointer: '0x123', timestamp: 1 },
-          { entityId: entityIdB, pointer: '0x456', timestamp: 2 }
+          { entityId: entityIdA, pointer: pointerA, timestamp: 1 },
+          { entityId: entityIdB, pointer: pointerB, timestamp: 2 }
         ]
       })
 
@@ -68,14 +76,12 @@ describe('profile sanitizer', () => {
 
       describe('and all profiles are found in catalyst', () => {
         beforeEach(async () => {
-          catalystMock.getEntitiesByIds = jest
-            .fn()
-            .mockResolvedValueOnce([createProfileEntity({ id: entityIdA }), createProfileEntity({ id: entityIdB })])
+          catalystMock.getEntitiesByIds = jest.fn().mockResolvedValueOnce([entityA, entityB])
         })
 
         it('should return the profiles', async () => {
           const result = await component.sanitizeProfiles(profilesToSanitize, jest.fn())
-          expect(result).toEqual([createProfileEntity({ id: entityIdA }), createProfileEntity({ id: entityIdB })])
+          expect(result).toEqual([entityA, entityB])
         })
 
         it('should not call callback', async () => {
@@ -85,14 +91,90 @@ describe('profile sanitizer', () => {
         })
       })
 
+      describe('and a fetched profile points somewhere else than its deployment', () => {
+        beforeEach(() => {
+          catalystMock.getEntitiesByIds = jest
+            .fn()
+            .mockResolvedValueOnce([createProfileEntity({ id: entityIdA, pointers: [pointerB] }), entityB])
+        })
+
+        it('should discard it and keep the consistent one', async () => {
+          const result = await component.sanitizeProfiles(profilesToSanitize, jest.fn())
+
+          expect(result).toEqual([entityB])
+        })
+      })
+
+      describe('and a fetched profile carries no avatars', () => {
+        beforeEach(() => {
+          catalystMock.getEntitiesByIds = jest
+            .fn()
+            .mockResolvedValueOnce([
+              createProfileEntity({ id: entityIdA, pointers: [pointerA], metadata: {} }),
+              entityB
+            ])
+        })
+
+        it('should discard it so it is never stored or served', async () => {
+          const result = await component.sanitizeProfiles(profilesToSanitize, jest.fn())
+
+          expect(result).toEqual([entityB])
+        })
+      })
+
+      describe('and a fetched profile carries an empty avatars array', () => {
+        beforeEach(() => {
+          catalystMock.getEntitiesByIds = jest
+            .fn()
+            .mockResolvedValueOnce([
+              createProfileEntity({ id: entityIdA, pointers: [pointerA], metadata: { avatars: [] } }),
+              entityB
+            ])
+        })
+
+        it('should discard it', async () => {
+          const result = await component.sanitizeProfiles(profilesToSanitize, jest.fn())
+
+          expect(result).toEqual([entityB])
+        })
+      })
+
+      describe('and a fetched profile has no pointers', () => {
+        beforeEach(() => {
+          catalystMock.getEntitiesByIds = jest
+            .fn()
+            .mockResolvedValueOnce([createProfileEntity({ id: entityIdA, pointers: [] }), entityB])
+        })
+
+        it('should discard it', async () => {
+          const result = await component.sanitizeProfiles(profilesToSanitize, jest.fn())
+
+          expect(result).toEqual([entityB])
+        })
+      })
+
+      describe('and a fetched profile pointer differs only in casing', () => {
+        beforeEach(() => {
+          catalystMock.getEntitiesByIds = jest
+            .fn()
+            .mockResolvedValueOnce([createProfileEntity({ id: entityIdA, pointers: [pointerA.toUpperCase()] })])
+        })
+
+        it('should keep it, since pointers are compared normalized', async () => {
+          const result = await component.sanitizeProfiles(profilesToSanitize, jest.fn())
+
+          expect(result).toHaveLength(1)
+        })
+      })
+
       describe('and some profiles are not found in catalyst', () => {
         beforeEach(async () => {
-          catalystMock.getEntitiesByIds = jest.fn().mockResolvedValueOnce([createProfileEntity({ id: entityIdA })])
+          catalystMock.getEntitiesByIds = jest.fn().mockResolvedValueOnce([entityA])
         })
 
         it('should return the profiles', async () => {
           const result = await component.sanitizeProfiles(profilesToSanitize, jest.fn())
-          expect(result).toEqual([createProfileEntity({ id: entityIdA })])
+          expect(result).toEqual([entityA])
         })
 
         it('should call callback with not found profiles', async () => {

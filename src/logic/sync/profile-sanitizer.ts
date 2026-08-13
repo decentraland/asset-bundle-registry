@@ -31,7 +31,42 @@ export async function createProfileSanitizerComponent({
       await notFoundProfilesHandler(missingProfile)
     }
 
-    return profilesFetched as Entity[]
+    const expectedPointers = new Map(minimalProfiles.map((p) => [p.entityId, p.pointer.toLowerCase()]))
+
+    return (profilesFetched as Entity[]).filter((profile) => validateFetchedProfile(profile, expectedPointers))
+  }
+
+  /**
+   * The entity is stored and served as fetched, so what it carries is checked once here rather than
+   * trusted on every read.
+   */
+  function validateFetchedProfile(profile: Entity, expectedPointers: Map<string, string>): boolean {
+    const pointer = profile.pointers?.[0]
+
+    if (!pointer) {
+      logger.warn('Discarding fetched profile without a pointer', { entityId: profile.id })
+      return false
+    }
+
+    const expectedPointer = expectedPointers.get(profile.id)
+
+    if (expectedPointer && pointer.toLowerCase() !== expectedPointer) {
+      logger.warn('Discarding fetched profile pointing somewhere else than its deployment', {
+        entityId: profile.id,
+        pointer,
+        expectedPointer
+      })
+      return false
+    }
+
+    const avatars = (profile.metadata as Profile | undefined)?.avatars
+
+    if (!Array.isArray(avatars) || avatars.length === 0) {
+      logger.warn('Discarding fetched profile without avatars', { entityId: profile.id, pointer })
+      return false
+    }
+
+    return true
   }
 
   function buildProfilesSnapshots(entityId: string): { body: string; face: string } {
