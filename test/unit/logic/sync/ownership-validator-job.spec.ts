@@ -574,7 +574,7 @@ describe('ownership validator job', () => {
               // After first batch, trigger stop (don't await it to avoid deadlock)
               void component.stop?.()
             }
-            return []
+            return new Map()
           })
 
           await component.start?.(createStartOptions())

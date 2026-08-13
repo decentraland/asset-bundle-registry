@@ -1,4 +1,5 @@
 import { HandlerContextWithPath } from '../../types'
+import { parseProfilePointers } from '../schemas/profiles'
 
 export async function getProfilesHandler(
   context: HandlerContextWithPath<'metrics' | 'profileRetriever' | 'profileSanitizer', '/profiles'>
@@ -8,7 +9,7 @@ export async function getProfilesHandler(
   } = context
 
   const body = await context.request.json()
-  const pointers: string[] = body.ids
+  const pointers = parseProfilePointers(body)
 
   metrics.observe('profiles_pointers_per_request', {}, pointers.length)
   const profilesMap = await profileRetriever.getProfiles(pointers)

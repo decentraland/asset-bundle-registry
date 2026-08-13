@@ -6,6 +6,9 @@ import { Profile } from 'dcl-catalyst-client/dist/client/specs/lambdas-client'
 import { AppComponents, ICatalystComponent, CatalystFetchOptions } from '../types'
 
 const ENTITY_ID_FROM_SNAPSHOT_REGEX = /\/entities\/([^/]+)\//
+const DEFAULT_PROFILE_POINTER_PREFIX = 'default'
+const MAX_NAME_POINTER_LOOKUPS = 25
+const NAME_POINTER_LOOKUP_CONCURRENCY = 5
 
 export async function createCatalystAdapter({
   config,
@@ -235,6 +238,34 @@ export async function createCatalystAdapter({
     }
   }
 
+  async function getProfilesByNamePointers(pointers: string[]): Promise<Map<string, Profile>> {
+    const matched = new Map<string, Profile>()
+
+    // Each of these costs its own request, so the amount of them is bounded
+    const lookups = pointers.slice(0, MAX_NAME_POINTER_LOOKUPS)
+
+    if (lookups.length < pointers.length) {
+      logger.warn('Too many name pointers requested, ignoring the excess', {
+        requested: pointers.length,
+        lookedUp: lookups.length
+      })
+    }
+
+    for (let i = 0; i < lookups.length; i += NAME_POINTER_LOOKUP_CONCURRENCY) {
+      const chunk = lookups.slice(i, i + NAME_POINTER_LOOKUP_CONCURRENCY)
+      const profiles = await Promise.all(chunk.map((pointer) => getProfileByNamePointer(pointer)))
+
+      chunk.forEach((pointer, index) => {
+        const profile = profiles[index]
+        if (profile) {
+          matched.set(pointer.toLowerCase(), profile)
+        }
+      })
+    }
+
+    return matched
+  }
+
   async function getProfiles(pointers: string[]): Promise<Map<string, Profile>> {
     const profilesByPointer = new Map<string, Profile>()
 
@@ -246,28 +277,33 @@ export async function createCatalystAdapter({
     // default profile shares the same one, so they can only be correlated one request at a time
     const addressPointers: string[] = []
     const namePointers: string[] = []
+    let ignored = 0
 
     for (const pointer of pointers) {
-      if (EthAddress.validate(pointer)) {
+      // Validated on the normalized form, since every layer keys by the lowercased pointer
+      const isAddress: boolean = EthAddress.validate(pointer.toLowerCase())
+
+      if (isAddress) {
         addressPointers.push(pointer)
-      } else {
+      } else if (pointer.toLowerCase().startsWith(DEFAULT_PROFILE_POINTER_PREFIX)) {
         namePointers.push(pointer)
+      } else {
+        // Neither an address nor a default profile name, so it cannot match any profile
+        ignored++
       }
+    }
+
+    if (ignored > 0) {
+      logger.debug('Ignored pointers that are neither an address nor a default profile name', { ignored })
     }
 
     const [byAddress, byName] = await Promise.all([
       getProfilesByAddress(addressPointers),
-      Promise.all(namePointers.map(async (pointer) => [pointer, await getProfileByNamePointer(pointer)] as const))
+      getProfilesByNamePointers(namePointers)
     ])
 
-    for (const [pointer, profile] of byAddress) {
+    for (const [pointer, profile] of [...byAddress, ...byName]) {
       profilesByPointer.set(pointer, profile)
-    }
-
-    for (const [pointer, profile] of byName) {
-      if (profile) {
-        profilesByPointer.set(pointer.toLowerCase(), profile)
-      }
     }
 
     return profilesByPointer

@@ -134,6 +134,32 @@ describe('catalyst adapter', () => {
       })
     })
 
+    describe('and pointers are neither an address nor a default profile name', () => {
+      beforeEach(() => {
+        getAvatarsDetailsByPost.mockResolvedValue([])
+      })
+
+      it('should not request them at all', async () => {
+        await component.getProfiles(['not-a-pointer', 'another-one', ''])
+
+        expect(getAvatarsDetailsByPost).not.toHaveBeenCalled()
+      })
+    })
+
+    describe('and more name pointers are requested than the lookup limit', () => {
+      const namePointers = Array.from({ length: 60 }, (_, index) => `default${index}`)
+
+      beforeEach(() => {
+        getAvatarsDetailsByPost.mockResolvedValue([])
+      })
+
+      it('should bound the amount of outbound requests', async () => {
+        await component.getProfiles(namePointers)
+
+        expect(getAvatarsDetailsByPost.mock.calls.length).toBeLessThanOrEqual(25)
+      })
+    })
+
     describe('and a name pointer request returns more than one profile', () => {
       beforeEach(() => {
         getAvatarsDetailsByPost.mockResolvedValue([
