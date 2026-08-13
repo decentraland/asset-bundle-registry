@@ -81,16 +81,15 @@ describe('profile retriever', () => {
                 [pointerB, createTestLambdasProfile(entityIdB, pointerB)]
               ])
             )
-            mockCatalyst.convertLambdasProfileToEntity = jest
-              .fn()
-              .mockImplementation((_profile: Profile, pointer: string) => {
-                if (pointer.toLowerCase() === pointerA.toLowerCase()) {
-                  return createProfileEntity({ id: entityIdA, pointers: [pointerA] })
-                } else if (pointer.toLowerCase() === pointerB.toLowerCase()) {
-                  return createProfileEntity({ id: entityIdB, pointers: [pointerB] })
-                }
-                return null
-              })
+            mockCatalyst.convertLambdasProfileToEntity = jest.fn().mockImplementation((profile: Profile) => {
+              const pointer = profile.avatars?.[0]?.ethAddress?.toLowerCase()
+              if (pointer === pointerA.toLowerCase()) {
+                return createProfileEntity({ id: entityIdA, pointers: [pointerA] })
+              } else if (pointer === pointerB.toLowerCase()) {
+                return createProfileEntity({ id: entityIdB, pointers: [pointerB] })
+              }
+              return null
+            })
           })
 
           it('should fetch the profiles from the catalyst and return them', async () => {

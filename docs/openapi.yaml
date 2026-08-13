@@ -816,13 +816,11 @@ components:
             minLength: 1
           maxItems: 500
           description: |
-            Profile pointers to fetch. A pointer is either an Ethereum address or, for default
-            profiles, a numeric name such as `default5`. Ids that are neither are ignored. Empty
-            arrays are accepted and return an empty response.
+            Ethereum addresses to fetch profiles for. Empty arrays are accepted and return an empty
+            response.
 
-            At most 500 pointers per request, of which at most 25 may be numeric default profile names:
-            those cannot be batched upstream, so each one costs its own lookup. Exceeding either
-            limit is rejected rather than answered with a partial result.
+            At most 500 addresses per request; exceeding it is rejected rather than answered with a
+            partial result.
       required:
         - ids
     ProfileDTO:

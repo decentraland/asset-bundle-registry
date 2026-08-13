@@ -107,7 +107,7 @@ export async function createOwnershipValidatorJob(
       if (originalProfile && shouldUpdateProfile(originalProfile, sanitizedProfile)) {
         logger.info('Profile update required', { pointer })
 
-        const curatedProfile = catalyst.convertLambdasProfileToEntity(sanitizedProfile, pointer)
+        const curatedProfile = catalyst.convertLambdasProfileToEntity(sanitizedProfile)
 
         if (!curatedProfile) {
           logger.error('Failed to convert sanitized profile to entity', { pointer })

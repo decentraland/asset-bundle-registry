@@ -202,7 +202,7 @@ export interface ICatalystComponent {
   getEntityByPointers(pointers: string[]): Promise<Entity[]>
   getContent(id: string): Promise<Entity | undefined>
   getProfiles(pointers: string[]): Promise<Map<string, Profile>>
-  convertLambdasProfileToEntity(profile: Profile, pointer: string): Entity | null
+  convertLambdasProfileToEntity(profile: Profile): Entity | null
 }
 
 export interface IWorldsComponent {
