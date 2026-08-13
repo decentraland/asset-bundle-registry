@@ -897,13 +897,16 @@ components:
       properties:
         pointer:
           type: string
-          description: Ethereum address of the profile owner
+          description: Requested profile pointer, either an Ethereum address or numeric default profile name
         hasClaimedName:
           type: boolean
           description: Whether the user has claimed a unique Decentraland name
         name:
           type: string
           description: Display name for the profile
+        nameColor:
+          type: object
+          description: Optional profile name color configuration
         thumbnailUrl:
           type: string
           description: URL to the profile's face thumbnail image

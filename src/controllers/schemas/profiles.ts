@@ -1,5 +1,5 @@
 import { InvalidRequestError } from '@dcl/http-commons'
-import { isAddressPointer, isDefaultProfilePointer } from '../../utils/pointers'
+import { isDefaultProfilePointer } from '../../utils/pointers'
 
 export const MAX_PROFILE_POINTERS_PER_REQUEST = 500
 export const MAX_NAME_POINTERS_PER_REQUEST = 25
@@ -17,10 +17,14 @@ function getIds(body: unknown): unknown {
   return body.ids
 }
 
+function isNonEmptyStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((pointer) => typeof pointer === 'string' && pointer.length > 0)
+}
+
 export function parseProfilePointers(body: unknown): string[] {
   const pointers = getIds(body)
 
-  if (!Array.isArray(pointers) || pointers.some((pointer) => typeof pointer !== 'string' || pointer.length === 0)) {
+  if (!isNonEmptyStringArray(pointers)) {
     throw new InvalidRequestError('The ids property must be an array of non-empty strings')
   }
 
@@ -30,7 +34,7 @@ export function parseProfilePointers(body: unknown): string[] {
     )
   }
 
-  const namePointers = pointers.filter((pointer) => !isAddressPointer(pointer) && isDefaultProfilePointer(pointer))
+  const namePointers = pointers.filter(isDefaultProfilePointer)
 
   if (namePointers.length > MAX_NAME_POINTERS_PER_REQUEST) {
     throw new InvalidRequestError(

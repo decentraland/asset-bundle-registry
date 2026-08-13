@@ -111,12 +111,13 @@ describe('profile sanitizer', () => {
       beforeEach(() => {
         entity = createProfileEntity({
           id: 'bafz',
-          pointers: ['0x123'],
+          pointers: ['default5'],
           metadata: {
             avatars: [
               {
                 hasClaimedName: false,
-                name: 'test'
+                name: 'test',
+                nameColor: { r: 1, g: 2, b: 3 }
               }
             ]
           }
@@ -126,9 +127,10 @@ describe('profile sanitizer', () => {
       it('should return the metadata', () => {
         const result = component.getMetadata(entity)
         expect(result).toEqual({
-          pointer: '0x123',
+          pointer: 'default5',
           hasClaimedName: false,
           name: 'test',
+          nameColor: { r: 1, g: 2, b: 3 },
           thumbnailUrl: 'https://profiles.mock.org/entities/bafz/face.png'
         })
       })
