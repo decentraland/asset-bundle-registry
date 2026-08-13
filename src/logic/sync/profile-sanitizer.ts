@@ -1,4 +1,4 @@
-import { Entity, Profile } from '@dcl/schemas'
+import { Entity, EthAddress, Profile } from '@dcl/schemas'
 import { AppComponents, IProfileSanitizerComponent, Sync, ProfileMetadataDTO, ProfileDTO } from '../../types'
 import { withRetry, withTimeout } from '../../utils/timer'
 
@@ -57,8 +57,8 @@ export async function createProfileSanitizerComponent({
       const snapshots = buildProfilesSnapshots(profile.id)
       const metadata = profile.metadata as Profile
       const pointer = profile.pointers[0]
-      // The pointer is the authoritative identity, not the deployed metadata
-      const identity = pointer.startsWith('default') ? {} : { userId: pointer, ethAddress: pointer }
+      // Authoritative identity for address pointers; default profiles are pointed at by name
+      const identity = EthAddress.validate(pointer) ? { userId: pointer, ethAddress: pointer } : {}
 
       return {
         ...profile,

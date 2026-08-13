@@ -269,7 +269,7 @@ describe('profile sanitizer', () => {
       })
     })
 
-    describe('when the pointer is a default profile name', () => {
+    describe('when the pointer is not an address', () => {
       let entities: Entity[]
       let deployedAddress: string
 
