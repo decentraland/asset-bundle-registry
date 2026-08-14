@@ -176,6 +176,37 @@ describe('profile retriever', () => {
           expect(mockCatalyst.getProfiles).toHaveBeenCalledWith([pointerB])
         })
       })
+
+      describe('and the catalyst answers with a profile for a pointer that was not requested', () => {
+        let pointerA: string
+        let unrequestedPointer: string
+
+        beforeEach(() => {
+          pointerA = '0x123'
+          unrequestedPointer = '0x456'
+          mockDb.getProfilesByPointers = jest.fn().mockResolvedValueOnce([])
+          mockCatalyst.getProfiles = jest
+            .fn()
+            .mockResolvedValueOnce(
+              new Map([[unrequestedPointer, createTestLambdasProfile('bafkreiunrequested', unrequestedPointer)]])
+            )
+          mockCatalyst.convertLambdasProfileToEntity = jest
+            .fn()
+            .mockReturnValue(createProfileEntity({ id: 'bafkreiunrequested', pointers: [unrequestedPointer] }))
+        })
+
+        it('should leave it out of the result', async () => {
+          const result = await component.getProfiles([pointerA])
+
+          expect(result.has(unrequestedPointer)).toBe(false)
+        })
+
+        it('should report the requested pointer as not found', async () => {
+          const result = await component.getProfiles([pointerA])
+
+          expect(result.size).toEqual(0)
+        })
+      })
     })
 
     describe('when some profiles are found in the cache and some are not', () => {

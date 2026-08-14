@@ -117,6 +117,18 @@ export function createProfileRetrieverComponent(
     }
     metrics.increment('profiles_retrieved_from_catalyst', {}, profilesFromCatalyst.length)
 
+    // Only what was asked for belongs in the result, whichever layer answered
+    const requested = new Set(uniquePointers)
+    const unrequested = Array.from(retrievedProfiles.keys()).filter((pointer) => !requested.has(pointer))
+
+    for (const pointer of unrequested) {
+      retrievedProfiles.delete(pointer)
+    }
+
+    if (unrequested.length > 0) {
+      logger.debug('Left out profiles that were not requested', { count: unrequested.length })
+    }
+
     const notFoundPointers: Set<string> = new Set(uniquePointers.filter((p) => !retrievedProfiles.has(p.toLowerCase())))
     metrics.increment('profiles_not_found', {}, notFoundPointers.size)
 
