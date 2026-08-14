@@ -61,27 +61,65 @@ describe('catalyst adapter', () => {
     })
 
     describe('and a default profile name is requested', () => {
+      const deployerAddress = '0x1337000000000000000000000000000000001337'
+
       beforeEach(() => {
         // A default profile reports the deployer address, not the name it was asked for
-        getAvatarsDetailsByPost.mockResolvedValue([createLambdasProfile('0x1337000000000000000000000000000000001337')])
+        getAvatarsDetailsByPost.mockResolvedValue([createLambdasProfile(deployerAddress)])
       })
 
-      it('should not look it up, since the response could not be attributed to it', async () => {
-        await component.getProfiles(['default5'])
+      it('should key it by the name it was asked for', async () => {
+        const result = await component.getProfiles(['default5'])
 
-        expect(getAvatarsDetailsByPost).not.toHaveBeenCalled()
+        expect(result.get('default5')).toBeDefined()
       })
 
-      it('should not return a profile under the address it would have reported', async () => {
+      it('should not key it by the deployer address it reports', async () => {
+        const result = await component.getProfiles(['default5'])
+
+        expect(result.has(deployerAddress)).toBe(false)
+      })
+
+      it('should ask for it on its own, which is what attributes the answer to the name', async () => {
+        await component.getProfiles(['default5', requestedPointer])
+
+        expect(getAvatarsDetailsByPost).toHaveBeenCalledWith({ ids: ['default5'] })
+        expect(getAvatarsDetailsByPost).toHaveBeenCalledWith({ ids: [requestedPointer] })
+      })
+
+      it('should look every requested name up rather than truncate', async () => {
+        const names = Array.from({ length: 12 }, (_, index) => `default${index}`)
+
+        await component.getProfiles(names)
+
+        expect(getAvatarsDetailsByPost).toHaveBeenCalledTimes(names.length)
+      })
+    })
+
+    describe('and a name pointer answer holds more than one profile', () => {
+      beforeEach(() => {
+        getAvatarsDetailsByPost.mockResolvedValue([
+          createLambdasProfile('0x1337000000000000000000000000000000001337'),
+          createLambdasProfile(requestedPointer)
+        ])
+      })
+
+      it('should drop it rather than guess which name it belongs to', async () => {
         const result = await component.getProfiles(['default5'])
 
         expect(result.size).toEqual(0)
       })
+    })
 
-      it('should still look up the address pointers requested alongside it', async () => {
-        await component.getProfiles(['default5', requestedPointer])
+    describe('and an id is neither an address nor a default profile name', () => {
+      beforeEach(() => {
+        getAvatarsDetailsByPost.mockResolvedValue([])
+      })
 
-        expect(getAvatarsDetailsByPost).toHaveBeenCalledWith({ ids: [requestedPointer] })
+      it('should not look it up at all', async () => {
+        await component.getProfiles(['not-a-pointer'])
+
+        expect(getAvatarsDetailsByPost).not.toHaveBeenCalled()
       })
     })
 
@@ -109,7 +147,7 @@ describe('catalyst adapter', () => {
       })
 
       it('should settle the userId to the pointer the entity is keyed by', () => {
-        const entity = component.convertLambdasProfileToEntity(profile)
+        const entity = component.convertLambdasProfileToEntity(profile, requestedPointer)
 
         expect((entity?.metadata as Profile).avatars?.[0].userId).toEqual(requestedPointer)
       })
@@ -119,7 +157,10 @@ describe('catalyst adapter', () => {
       let entity: ReturnType<ICatalystComponent['convertLambdasProfileToEntity']>
 
       beforeEach(() => {
-        entity = component.convertLambdasProfileToEntity(createLambdasProfile(requestedPointer.toUpperCase()))
+        entity = component.convertLambdasProfileToEntity(
+          createLambdasProfile(requestedPointer.toUpperCase()),
+          requestedPointer.toUpperCase()
+        )
       })
 
       it('should key the entity by the lowercased pointer', () => {
@@ -133,8 +174,24 @@ describe('catalyst adapter', () => {
       })
     })
 
+    describe('and the pointer is a default profile name', () => {
+      const deployerAddress = '0x1337000000000000000000000000000000001337'
+
+      it('should key the entity by the name', () => {
+        const entity = component.convertLambdasProfileToEntity(createLambdasProfile(deployerAddress), 'default5')
+
+        expect(entity?.pointers).toEqual(['default5'])
+      })
+
+      it('should leave the deployed identity alone, since the pointer is not an address', () => {
+        const entity = component.convertLambdasProfileToEntity(createLambdasProfile(deployerAddress), 'default5')
+
+        expect((entity?.metadata as Profile).avatars?.[0].ethAddress).toEqual(deployerAddress)
+      })
+    })
+
     it('should point the entity at the address it reports', () => {
-      const entity = component.convertLambdasProfileToEntity(createLambdasProfile(requestedPointer))
+      const entity = component.convertLambdasProfileToEntity(createLambdasProfile(requestedPointer), requestedPointer)
 
       expect(entity?.pointers).toEqual([requestedPointer])
     })

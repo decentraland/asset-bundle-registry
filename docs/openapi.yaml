@@ -818,10 +818,10 @@ components:
             Profile pointers to fetch. A pointer is either an Ethereum address or, for default
             profiles, a name such as `default5`.
 
-            An address resolves from the cache, the database, or a catalyst lookup. A default profile
-            name resolves from the cache or the database only: a catalyst response reports that
-            profile's deployer address rather than the name, so it cannot be attributed to the name
-            it was asked for.
+            Both resolve from the cache, the database, or a catalyst lookup. Addresses are looked up
+            in one batch, while default profile names are looked up one at a time, since a catalyst
+            response reports that profile's deployer address rather than the name it was asked for.
+            At most 25 default profile names per request for that reason; addresses are not capped.
 
             Empty arrays are accepted and return an empty response.
       required:

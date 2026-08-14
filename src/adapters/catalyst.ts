@@ -7,6 +7,7 @@ import { AppComponents, ICatalystComponent, CatalystFetchOptions } from '../type
 import { isAddressPointer, isDefaultProfilePointer } from '../utils/pointers'
 
 const ENTITY_ID_FROM_SNAPSHOT_REGEX = /\/entities\/([^/]+)\//
+const NAME_POINTER_LOOKUP_CONCURRENCY = 5
 
 export async function createCatalystAdapter({
   config,
@@ -38,15 +39,15 @@ export async function createCatalystAdapter({
     return match ? match[1] : null
   }
 
-  function convertLambdasProfileToEntity(profile: Profile): Entity | null {
+  function convertLambdasProfileToEntity(profile: Profile, requestedPointer: string): Entity | null {
     const avatars = profile.avatars ?? []
     const avatar = avatars[0]
 
-    if (!avatar?.ethAddress) {
+    if (!avatar) {
       return null
     }
 
-    const pointer = avatar.ethAddress.toLowerCase()
+    const pointer = requestedPointer.toLowerCase()
 
     const snapshotUrl = avatar.avatar?.snapshots?.body || avatar.avatar?.snapshots?.face256
     if (!snapshotUrl) {
@@ -68,13 +69,12 @@ export async function createCatalystAdapter({
       timestamp: profile.timestamp!,
       content: [],
       // The entity is keyed by this pointer, so the identity it carries is settled to match it: the
-      // node this came from serves it from the pointer, but only from the version that does so
+      // node this came from serves it from the pointer, but only from the version that does so. A
+      // default profile is pointed at by name and keeps the deployer address it was deployed with.
       metadata: {
-        avatars: avatars.map((profileAvatar) => ({
-          ...profileAvatar,
-          userId: pointer,
-          ethAddress: pointer
-        }))
+        avatars: isAddressPointer(pointer)
+          ? avatars.map((profileAvatar) => ({ ...profileAvatar, userId: pointer, ethAddress: pointer }))
+          : avatars
       }
     }
   }
@@ -176,29 +176,15 @@ export async function createCatalystAdapter({
     return contentJson as Entity
   }
 
-  async function getProfiles(pointers: string[]): Promise<Map<string, Profile>> {
-    const profilesByPointer = new Map<string, Profile>()
+  async function getProfilesByAddress(pointers: string[]): Promise<Map<string, Profile>> {
+    const matched = new Map<string, Profile>()
 
-    // A default profile is pointed at by name and reports the deployer's address, so its response
-    // cannot be attributed to the name it was asked for. Only address pointers are looked up here;
-    // names resolve from the cache or the database, where this service syncs those deployments.
-    const addressPointers = pointers.filter(isAddressPointer)
-    const skipped = pointers.filter((pointer) => !isAddressPointer(pointer))
-    const defaultProfiles = skipped.filter(isDefaultProfilePointer).length
-
-    if (skipped.length > 0) {
-      logger.debug('Skipping catalyst lookup for pointers that are not addresses', {
-        defaultProfiles,
-        notAPointer: skipped.length - defaultProfiles
-      })
-    }
-
-    if (addressPointers.length === 0) {
-      return profilesByPointer
+    if (pointers.length === 0) {
+      return matched
     }
 
     try {
-      const profiles = await historicalLambdasClient.getAvatarsDetailsByPost({ ids: addressPointers })
+      const profiles = await historicalLambdasClient.getAvatarsDetailsByPost({ ids: pointers })
 
       // Lambdas serves an address profile's identity from the entity pointer, so the address it
       // reports is the pointer the profile was requested for
@@ -206,14 +192,93 @@ export async function createCatalystAdapter({
         const address = profile.avatars?.[0]?.ethAddress?.toLowerCase()
 
         if (address) {
-          profilesByPointer.set(address, profile)
+          matched.set(address, profile)
         }
       }
     } catch (error: any) {
       logger.error('Error fetching profiles from historical catalyst lambdas', {
         error: error?.message || 'Unknown error',
-        count: addressPointers.length
+        count: pointers.length
       })
+    }
+
+    return matched
+  }
+
+  async function getProfileByNamePointer(pointer: string): Promise<Profile | null> {
+    try {
+      const profiles = await historicalLambdasClient.getAvatarsDetailsByPost({ ids: [pointer] })
+
+      // Asked for one pointer, so anything other than a single profile cannot be attributed to it
+      if (profiles.length !== 1 || !profiles[0].avatars?.[0]) {
+        return null
+      }
+
+      return profiles[0]
+    } catch (error: any) {
+      logger.error('Error fetching profile from historical catalyst lambdas', {
+        pointer,
+        error: error?.message || 'Unknown error'
+      })
+      return null
+    }
+  }
+
+  async function getProfilesByNamePointers(pointers: string[]): Promise<Map<string, Profile>> {
+    const matched = new Map<string, Profile>()
+
+    // Each costs its own request, so they go out in bounded chunks rather than all at once
+    for (let i = 0; i < pointers.length; i += NAME_POINTER_LOOKUP_CONCURRENCY) {
+      const chunk = pointers.slice(i, i + NAME_POINTER_LOOKUP_CONCURRENCY)
+      const profiles = await Promise.all(chunk.map((pointer) => getProfileByNamePointer(pointer)))
+
+      chunk.forEach((pointer, index) => {
+        const profile = profiles[index]
+
+        if (profile) {
+          matched.set(pointer.toLowerCase(), profile)
+        }
+      })
+    }
+
+    return matched
+  }
+
+  async function getProfiles(pointers: string[]): Promise<Map<string, Profile>> {
+    const profilesByPointer = new Map<string, Profile>()
+
+    // Addresses can be batched, because lambdas reports each one back. Every default profile reports
+    // the same deployer address instead, so those are asked for one at a time to know which name
+    // each answer belongs to. Anything else cannot match a profile and is not looked up at all.
+    const addressPointers: string[] = []
+    const namePointers: string[] = []
+    let ignored = 0
+
+    for (const pointer of pointers) {
+      if (isAddressPointer(pointer)) {
+        addressPointers.push(pointer)
+      } else if (isDefaultProfilePointer(pointer)) {
+        namePointers.push(pointer)
+      } else {
+        ignored++
+      }
+    }
+
+    if (ignored > 0) {
+      logger.debug('Ignored pointers that are neither an address nor a default profile name', { ignored })
+    }
+
+    if (addressPointers.length === 0 && namePointers.length === 0) {
+      return profilesByPointer
+    }
+
+    const [byAddress, byName] = await Promise.all([
+      getProfilesByAddress(addressPointers),
+      getProfilesByNamePointers(namePointers)
+    ])
+
+    for (const [pointer, profile] of [...byAddress, ...byName]) {
+      profilesByPointer.set(pointer, profile)
     }
 
     return profilesByPointer

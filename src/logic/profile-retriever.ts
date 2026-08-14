@@ -58,8 +58,8 @@ export function createProfileRetrieverComponent(
       const profilesByPointer = await catalyst.getProfiles(pointers)
       const entities: Entity[] = []
 
-      for (const profile of profilesByPointer.values()) {
-        const entity = catalyst.convertLambdasProfileToEntity(profile)
+      for (const [pointer, profile] of profilesByPointer) {
+        const entity = catalyst.convertLambdasProfileToEntity(profile, pointer)
         if (entity) {
           entities.push(entity)
         }
