@@ -310,7 +310,7 @@ paths:
                 items:
                   $ref: '#/components/schemas/ProfileDTO'
         '400':
-          description: The ids property is missing, malformed or exceeds the request limits
+          description: The ids property is missing or malformed
           content:
             application/json:
               schema:
@@ -343,7 +343,7 @@ paths:
                 items:
                   $ref: '#/components/schemas/ProfileMetadataDTO'
         '400':
-          description: The ids property is missing, malformed or exceeds the request limits
+          description: The ids property is missing or malformed
           content:
             application/json:
               schema:
@@ -814,13 +814,9 @@ components:
           items:
             type: string
             minLength: 1
-          maxItems: 500
           description: |
             Ethereum addresses to fetch profiles for. Empty arrays are accepted and return an empty
             response.
-
-            At most 500 addresses per request; exceeding it is rejected rather than answered with a
-            partial result.
       required:
         - ids
     ProfileDTO:

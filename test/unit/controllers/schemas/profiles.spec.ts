@@ -1,5 +1,5 @@
 import { InvalidRequestError } from '@dcl/http-commons'
-import { MAX_PROFILE_POINTERS_PER_REQUEST, parseProfilePointers } from '../../../../src/controllers/schemas/profiles'
+import { parseProfilePointers } from '../../../../src/controllers/schemas/profiles'
 
 describe('profile pointers request schema', () => {
   describe('when the body holds an array of pointers', () => {
@@ -35,32 +35,6 @@ describe('profile pointers request schema', () => {
   describe('when the ids property holds an empty string', () => {
     it('should throw an invalid request error', () => {
       expect(() => parseProfilePointers({ ids: [''] })).toThrow(InvalidRequestError)
-    })
-  })
-
-  describe('when more pointers than the limit are requested', () => {
-    let ids: string[]
-
-    beforeEach(() => {
-      ids = Array.from({ length: MAX_PROFILE_POINTERS_PER_REQUEST + 1 }, (_, index) => `0x${index}`)
-    })
-
-    it('should throw an invalid request error naming the limit', () => {
-      expect(() => parseProfilePointers({ ids })).toThrow(
-        `A maximum of ${MAX_PROFILE_POINTERS_PER_REQUEST} ids can be requested at once, got ${ids.length}`
-      )
-    })
-  })
-
-  describe('when exactly the limit is requested', () => {
-    let ids: string[]
-
-    beforeEach(() => {
-      ids = Array.from({ length: MAX_PROFILE_POINTERS_PER_REQUEST }, (_, index) => `0x${index}`)
-    })
-
-    it('should return them', () => {
-      expect(parseProfilePointers({ ids })).toHaveLength(MAX_PROFILE_POINTERS_PER_REQUEST)
     })
   })
 
