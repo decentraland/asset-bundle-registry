@@ -4,6 +4,7 @@ import { AvatarInfo, Entity, EntityType } from '@dcl/schemas'
 import { Sync } from '../../types'
 import { Profile } from 'dcl-catalyst-client/dist/client/specs/lambdas-client'
 import { interruptibleSleep } from '../../utils/timer'
+import { isAddressPointer } from '../../utils/pointers'
 
 // Timing constants
 const TEN_MINUTES_MS = 10 * 60 * 1000
@@ -72,19 +73,12 @@ export async function createOwnershipValidatorJob(
       return 0
     }
 
-    const fetchedProfiles = await catalyst.getProfiles(pointers)
+    // Keyed by the requested pointer rather than by the identity metadata
+    const sanitizedMap = await catalyst.getProfiles(pointers)
 
-    if (fetchedProfiles.length === 0) {
+    if (sanitizedMap.size === 0) {
       logger.warn('No profiles returned from lamb2', { requestedCount: pointers.length })
       return 0
-    }
-
-    // Build sanitized map keyed by lowercased userId
-    const sanitizedMap = new Map<string, Profile>()
-    for (const profile of fetchedProfiles) {
-      if (profile.avatars?.[0]?.userId) {
-        sanitizedMap.set(profile.avatars[0].userId.toLowerCase(), profile)
-      }
     }
 
     const cachedMap = profilesCache.getMany(pointers)
@@ -103,10 +97,21 @@ export async function createOwnershipValidatorJob(
         break
       }
 
-      const originalProfile = originalProfileMap.get(pointer)
-      const sanitizedProfile = sanitizedMap.get(pointer)
+      // A default profile is pointed at by name, which a catalyst response cannot be attributed to,
+      // so there is nothing to validate it against
+      if (!isAddressPointer(pointer)) {
+        continue
+      }
 
-      if (originalProfile && sanitizedProfile && shouldUpdateProfile(originalProfile, sanitizedProfile)) {
+      const originalProfile = originalProfileMap.get(pointer)
+      const sanitizedProfile = sanitizedMap.get(pointer.toLowerCase())
+
+      if (!sanitizedProfile) {
+        logger.warn('Skipping validation, no matching profile returned', { pointer })
+        continue
+      }
+
+      if (originalProfile && shouldUpdateProfile(originalProfile, sanitizedProfile)) {
         logger.info('Profile update required', { pointer })
 
         const curatedProfile = catalyst.convertLambdasProfileToEntity(sanitizedProfile)

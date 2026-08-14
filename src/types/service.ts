@@ -201,7 +201,7 @@ export interface ICatalystComponent {
   getEntitiesByIds(ids: string[], options?: CatalystFetchOptions): Promise<Entity[]>
   getEntityByPointers(pointers: string[]): Promise<Entity[]>
   getContent(id: string): Promise<Entity | undefined>
-  getProfiles(pointers: string[]): Promise<Profile[]>
+  getProfiles(pointers: string[]): Promise<Map<string, Profile>>
   convertLambdasProfileToEntity(profile: Profile): Entity | null
 }
 

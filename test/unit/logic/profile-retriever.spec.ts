@@ -75,12 +75,12 @@ describe('profile retriever', () => {
             pointerB = '0x456'
             entityIdA = 'bafkreientitya'
             entityIdB = 'bafkreientityb'
-            mockCatalyst.getProfiles = jest
-              .fn()
-              .mockResolvedValueOnce([
-                createTestLambdasProfile(entityIdA, pointerA),
-                createTestLambdasProfile(entityIdB, pointerB)
+            mockCatalyst.getProfiles = jest.fn().mockResolvedValueOnce(
+              new Map([
+                [pointerA, createTestLambdasProfile(entityIdA, pointerA)],
+                [pointerB, createTestLambdasProfile(entityIdB, pointerB)]
               ])
+            )
             mockCatalyst.convertLambdasProfileToEntity = jest.fn().mockImplementation((profile: Profile) => {
               const pointer = profile.avatars?.[0]?.ethAddress?.toLowerCase()
               if (pointer === pointerA.toLowerCase()) {
@@ -148,7 +148,9 @@ describe('profile retriever', () => {
           entityIdB = 'bafkreientityb'
           profilesFromDB = [createProfileDbEntity({ id: pointerA, pointer: pointerA })]
           mockDb.getProfilesByPointers = jest.fn().mockResolvedValueOnce(profilesFromDB)
-          mockCatalyst.getProfiles = jest.fn().mockResolvedValueOnce([createTestLambdasProfile(entityIdB, pointerB)])
+          mockCatalyst.getProfiles = jest
+            .fn()
+            .mockResolvedValueOnce(new Map([[pointerB, createTestLambdasProfile(entityIdB, pointerB)]]))
           mockCatalyst.convertLambdasProfileToEntity = jest.fn().mockImplementation((profile: Profile) => {
             const pointer = profile.avatars?.[0]?.ethAddress?.toLowerCase()
             if (pointer === pointerB.toLowerCase()) {
@@ -172,6 +174,43 @@ describe('profile retriever', () => {
         it('should call catalyst with the pointer that is not in the database', async () => {
           await component.getProfiles([pointerA, pointerB])
           expect(mockCatalyst.getProfiles).toHaveBeenCalledWith([pointerB])
+        })
+      })
+
+      describe('and the catalyst answers with a profile for a pointer that was not requested', () => {
+        let pointerA: string
+        let unrequestedPointer: string
+
+        beforeEach(() => {
+          pointerA = '0x123'
+          unrequestedPointer = '0x456'
+          mockDb.getProfilesByPointers = jest.fn().mockResolvedValueOnce([])
+          mockCatalyst.getProfiles = jest
+            .fn()
+            .mockResolvedValueOnce(
+              new Map([[unrequestedPointer, createTestLambdasProfile('bafkreiunrequested', unrequestedPointer)]])
+            )
+          mockCatalyst.convertLambdasProfileToEntity = jest
+            .fn()
+            .mockReturnValue(createProfileEntity({ id: 'bafkreiunrequested', pointers: [unrequestedPointer] }))
+        })
+
+        it('should leave it out of the result', async () => {
+          const result = await component.getProfiles([pointerA])
+
+          expect(result.has(unrequestedPointer)).toBe(false)
+        })
+
+        it('should not persist it as a side effect of the request', async () => {
+          await component.getProfiles([pointerA])
+
+          expect(mockEntityPersister.persistEntity).not.toHaveBeenCalled()
+        })
+
+        it('should report the requested pointer as not found', async () => {
+          const result = await component.getProfiles([pointerA])
+
+          expect(result.size).toEqual(0)
         })
       })
     })
@@ -219,7 +258,9 @@ describe('profile retriever', () => {
       describe('and the rest of profiles are found in the catalyst', () => {
         const entityIdB = 'bafkreientityb'
         beforeEach(() => {
-          mockCatalyst.getProfiles = jest.fn().mockResolvedValueOnce([createTestLambdasProfile(entityIdB, pointerB)])
+          mockCatalyst.getProfiles = jest
+            .fn()
+            .mockResolvedValueOnce(new Map([[pointerB, createTestLambdasProfile(entityIdB, pointerB)]]))
           mockCatalyst.convertLambdasProfileToEntity = jest.fn().mockImplementation((profile: Profile) => {
             const pointer = profile.avatars?.[0]?.ethAddress?.toLowerCase()
             if (pointer === pointerB.toLowerCase()) {

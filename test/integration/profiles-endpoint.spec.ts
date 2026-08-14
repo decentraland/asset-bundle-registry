@@ -131,7 +131,7 @@ test('POST /profiles endpoint', async function ({ components, spyComponents }) {
     beforeEach(async function () {
       pointer = '0xcatalystprofile1111111111111111111'
       lambdasProfile = createTestLambdasProfile('bafkreicatalystprofile', pointer, 'CatalystUser')
-      spyComponents.catalyst.getProfiles.mockResolvedValueOnce([lambdasProfile])
+      spyComponents.catalyst.getProfiles.mockResolvedValueOnce(new Map([[pointer, lambdasProfile]]))
       spyComponents.catalyst.convertLambdasProfileToEntity.mockReturnValueOnce(
         profileDbEntityToEntity(
           createProfileDbEntity({
@@ -162,12 +162,22 @@ test('POST /profiles endpoint', async function ({ components, spyComponents }) {
     })
   })
 
+  describe('when ids is empty', function () {
+    it('should return an empty array', async function () {
+      const response = await fetchLocally('POST', '/profiles', undefined, { ids: [] })
+      const parsedResponse = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(parsedResponse).toEqual([])
+    })
+  })
+
   describe('when no profiles are found', function () {
     let pointer: string
 
     beforeEach(function () {
       pointer = '0xnonexistentprofile11111111111111111'
-      spyComponents.catalyst.getProfiles.mockResolvedValueOnce([])
+      spyComponents.catalyst.getProfiles.mockResolvedValueOnce(new Map())
     })
 
     it('should return an empty array', async function () {

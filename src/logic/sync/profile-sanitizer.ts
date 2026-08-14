@@ -1,6 +1,7 @@
 import { Entity, Profile } from '@dcl/schemas'
 import { AppComponents, IProfileSanitizerComponent, Sync, ProfileMetadataDTO, ProfileDTO } from '../../types'
 import { withRetry, withTimeout } from '../../utils/timer'
+import { isAddressPointer } from '../../utils/pointers'
 
 const THIRTY_SECONDS_IN_MS = 30000
 
@@ -31,7 +32,69 @@ export async function createProfileSanitizerComponent({
       await notFoundProfilesHandler(missingProfile)
     }
 
-    return profilesFetched as Entity[]
+    const expectedPointers = new Map(minimalProfiles.map((p) => [p.entityId, p.pointer.toLowerCase()]))
+
+    return (profilesFetched as Entity[])
+      .filter((profile) => validateFetchedProfile(profile, expectedPointers))
+      .map(withIdentityFromPointer)
+  }
+
+  /**
+   * Deployed metadata carries its own `userId` and `ethAddress`, which need not agree with the
+   * pointer for profiles deployed before the validator enforced it. The pointer is authoritative, so
+   * they are settled here, once, instead of on every read. Default profiles keep their deployed
+   * value, since their pointer is a name.
+   */
+  function withIdentityFromPointer(profile: Entity): Entity {
+    const pointer = profile.pointers[0]
+
+    if (!isAddressPointer(pointer)) {
+      return profile
+    }
+
+    const metadata = profile.metadata as Profile
+    const identity = { userId: pointer.toLowerCase(), ethAddress: pointer.toLowerCase() }
+
+    return {
+      ...profile,
+      metadata: {
+        ...metadata,
+        avatars: metadata.avatars.map((avatar) => ({ ...avatar, ...identity }))
+      }
+    }
+  }
+
+  /**
+   * The entity is stored and served as fetched, so what it carries is checked once here rather than
+   * trusted on every read.
+   */
+  function validateFetchedProfile(profile: Entity, expectedPointers: Map<string, string>): boolean {
+    const pointer = profile.pointers?.[0]
+
+    if (!pointer) {
+      logger.warn('Discarding fetched profile without a pointer', { entityId: profile.id })
+      return false
+    }
+
+    const expectedPointer = expectedPointers.get(profile.id)
+
+    if (expectedPointer && pointer.toLowerCase() !== expectedPointer) {
+      logger.warn('Discarding fetched profile pointing somewhere else than its deployment', {
+        entityId: profile.id,
+        pointer,
+        expectedPointer
+      })
+      return false
+    }
+
+    const avatars = (profile.metadata as Profile | undefined)?.avatars
+
+    if (!Array.isArray(avatars) || avatars.length === 0) {
+      logger.warn('Discarding fetched profile without avatars', { entityId: profile.id, pointer })
+      return false
+    }
+
+    return true
   }
 
   function buildProfilesSnapshots(entityId: string): { body: string; face: string } {

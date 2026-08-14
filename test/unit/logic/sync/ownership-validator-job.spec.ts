@@ -116,10 +116,30 @@ describe('ownership validator job', () => {
           pointers = ['0x1234567890123456789012345678901234567890']
         })
 
+        describe('and a cached pointer is a default profile name', () => {
+          let warn: jest.Mock
+
+          beforeEach(async () => {
+            warn = (mockLogs.getLogger as jest.Mock)().warn as jest.Mock
+            warn.mockClear()
+            ;(mockProfilesCache.getAllPointers as jest.Mock).mockReturnValueOnce(['default5'])
+            ;(mockCatalyst.getProfiles as jest.Mock).mockResolvedValueOnce(new Map())
+
+            await component.start?.(createStartOptions())
+            await jest.advanceTimersByTimeAsync(0)
+          })
+
+          it('should not warn about it, since it cannot be validated by design', () => {
+            expect(warn).not.toHaveBeenCalledWith('Skipping validation, no matching profile returned', {
+              pointer: 'default5'
+            })
+          })
+        })
+
         describe('and fetching profiles from catalyst returns empty', () => {
           beforeEach(async () => {
             ;(mockProfilesCache.getAllPointers as jest.Mock).mockReturnValueOnce(pointers)
-            ;(mockCatalyst.getProfiles as jest.Mock).mockResolvedValueOnce([])
+            ;(mockCatalyst.getProfiles as jest.Mock).mockResolvedValueOnce(new Map())
 
             await component.start?.(createStartOptions())
             await jest.advanceTimersByTimeAsync(0)
@@ -172,7 +192,7 @@ describe('ownership validator job', () => {
               })
               ;(mockProfilesCache.getAllPointers as jest.Mock).mockReturnValueOnce(pointers)
               ;(mockProfilesCache.getMany as jest.Mock).mockReturnValueOnce(new Map([[pointers[0], storedEntity]]))
-              ;(mockCatalyst.getProfiles as jest.Mock).mockResolvedValueOnce([fetchedProfile])
+              ;(mockCatalyst.getProfiles as jest.Mock).mockResolvedValueOnce(new Map([[pointers[0], fetchedProfile]]))
 
               await component.start?.(createStartOptions())
               await jest.advanceTimersByTimeAsync(0)
@@ -210,7 +230,7 @@ describe('ownership validator job', () => {
               })
               ;(mockProfilesCache.getAllPointers as jest.Mock).mockReturnValueOnce(pointers)
               ;(mockProfilesCache.getMany as jest.Mock).mockReturnValueOnce(new Map([[pointers[0], storedEntity]]))
-              ;(mockCatalyst.getProfiles as jest.Mock).mockResolvedValueOnce([fetchedProfile])
+              ;(mockCatalyst.getProfiles as jest.Mock).mockResolvedValueOnce(new Map([[pointers[0], fetchedProfile]]))
               ;(mockCatalyst.convertLambdasProfileToEntity as jest.Mock).mockReturnValueOnce(
                 createProfileEntity({
                   id: newEntityId,
@@ -271,7 +291,7 @@ describe('ownership validator job', () => {
               })
               ;(mockProfilesCache.getAllPointers as jest.Mock).mockReturnValueOnce(pointers)
               ;(mockProfilesCache.getMany as jest.Mock).mockReturnValueOnce(new Map([[pointers[0], storedEntity]]))
-              ;(mockCatalyst.getProfiles as jest.Mock).mockResolvedValueOnce([fetchedProfile])
+              ;(mockCatalyst.getProfiles as jest.Mock).mockResolvedValueOnce(new Map([[pointers[0], fetchedProfile]]))
               ;(mockCatalyst.convertLambdasProfileToEntity as jest.Mock).mockReturnValueOnce(
                 createProfileEntity({
                   id: entityId,
@@ -340,7 +360,7 @@ describe('ownership validator job', () => {
               })
               ;(mockProfilesCache.getAllPointers as jest.Mock).mockReturnValueOnce(pointers)
               ;(mockProfilesCache.getMany as jest.Mock).mockReturnValueOnce(new Map([[pointers[0], storedEntity]]))
-              ;(mockCatalyst.getProfiles as jest.Mock).mockResolvedValueOnce([fetchedProfile])
+              ;(mockCatalyst.getProfiles as jest.Mock).mockResolvedValueOnce(new Map([[pointers[0], fetchedProfile]]))
               ;(mockCatalyst.convertLambdasProfileToEntity as jest.Mock).mockReturnValueOnce(
                 createProfileEntity({
                   id: entityId,
@@ -407,7 +427,7 @@ describe('ownership validator job', () => {
               })
               ;(mockProfilesCache.getAllPointers as jest.Mock).mockReturnValueOnce(pointers)
               ;(mockProfilesCache.getMany as jest.Mock).mockReturnValueOnce(new Map([[pointers[0], storedEntity]]))
-              ;(mockCatalyst.getProfiles as jest.Mock).mockResolvedValueOnce([fetchedProfile])
+              ;(mockCatalyst.getProfiles as jest.Mock).mockResolvedValueOnce(new Map([[pointers[0], fetchedProfile]]))
 
               await component.start?.(createStartOptions())
               await jest.advanceTimersByTimeAsync(0)
@@ -499,7 +519,7 @@ describe('ownership validator job', () => {
       beforeEach(async () => {
         pointers = ['0x1234567890123456789012345678901234567890']
         ;(mockProfilesCache.getAllPointers as jest.Mock).mockReturnValue(pointers)
-        ;(mockCatalyst.getProfiles as jest.Mock).mockResolvedValue([])
+        ;(mockCatalyst.getProfiles as jest.Mock).mockResolvedValue(new Map())
 
         component = await createOwnershipValidatorJob({
           logs: mockLogs,
@@ -549,7 +569,7 @@ describe('ownership validator job', () => {
       describe('and all profiles are processed', () => {
         beforeEach(async () => {
           ;(mockProfilesCache.getAllPointers as jest.Mock).mockReturnValueOnce(pointers)
-          ;(mockCatalyst.getProfiles as jest.Mock).mockResolvedValue([])
+          ;(mockCatalyst.getProfiles as jest.Mock).mockResolvedValue(new Map())
 
           await component.start?.(createStartOptions())
           // Allow batch delays to complete
@@ -574,7 +594,7 @@ describe('ownership validator job', () => {
               // After first batch, trigger stop (don't await it to avoid deadlock)
               void component.stop?.()
             }
-            return []
+            return new Map()
           })
 
           await component.start?.(createStartOptions())
@@ -591,7 +611,7 @@ describe('ownership validator job', () => {
         beforeEach(async () => {
           ;(mockProfilesCache.getAllPointers as jest.Mock).mockReturnValueOnce(pointers)
           ;(mockCatalyst.getProfiles as jest.Mock)
-            .mockResolvedValueOnce([])
+            .mockResolvedValueOnce(new Map())
             .mockRejectedValueOnce(new Error('Batch error'))
 
           await component.start?.(createStartOptions())
@@ -653,7 +673,7 @@ describe('ownership validator job', () => {
           if (batchCount === 2) {
             void component.stop?.()
           }
-          return []
+          return new Map()
         })
 
         component = await createOwnershipValidatorJob({

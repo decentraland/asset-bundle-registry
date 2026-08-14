@@ -4,6 +4,7 @@ import { ContentClient, createContentClient, createLambdasClient } from 'dcl-cat
 import { Profile } from 'dcl-catalyst-client/dist/client/specs/lambdas-client'
 
 import { AppComponents, ICatalystComponent, CatalystFetchOptions } from '../types'
+import { isAddressPointer, isDefaultProfilePointer } from '../utils/pointers'
 
 const ENTITY_ID_FROM_SNAPSHOT_REGEX = /\/entities\/([^/]+)\//
 
@@ -38,20 +39,24 @@ export async function createCatalystAdapter({
   }
 
   function convertLambdasProfileToEntity(profile: Profile): Entity | null {
-    const avatar = profile.avatars?.[0]
+    const avatars = profile.avatars ?? []
+    const avatar = avatars[0]
+
     if (!avatar?.ethAddress) {
       return null
     }
 
+    const pointer = avatar.ethAddress.toLowerCase()
+
     const snapshotUrl = avatar.avatar?.snapshots?.body || avatar.avatar?.snapshots?.face256
     if (!snapshotUrl) {
-      logger.warn('Profile has no snapshot URL to extract entity ID', { pointer: avatar.ethAddress })
+      logger.warn('Profile has no snapshot URL to extract entity ID', { pointer })
       return null
     }
 
     const entityId = extractEntityIdFromSnapshotUrl(snapshotUrl)
     if (!entityId) {
-      logger.warn('Could not extract entity ID from snapshot URL', { snapshotUrl, pointer: avatar.ethAddress })
+      logger.warn('Could not extract entity ID from snapshot URL', { snapshotUrl, pointer })
       return null
     }
 
@@ -59,10 +64,18 @@ export async function createCatalystAdapter({
       version: 'v3',
       id: entityId,
       type: EntityType.PROFILE,
-      pointers: [avatar.ethAddress.toLowerCase()],
+      pointers: [pointer],
       timestamp: profile.timestamp!,
       content: [],
-      metadata: { avatars: profile.avatars }
+      // The entity is keyed by this pointer, so the identity it carries is settled to match it: the
+      // node this came from serves it from the pointer, but only from the version that does so
+      metadata: {
+        avatars: avatars.map((profileAvatar) => ({
+          ...profileAvatar,
+          userId: pointer,
+          ethAddress: pointer
+        }))
+      }
     }
   }
 
@@ -163,24 +176,47 @@ export async function createCatalystAdapter({
     return contentJson as Entity
   }
 
-  async function getProfiles(pointers: string[]): Promise<Profile[]> {
-    if (pointers.length === 0) {
-      return []
+  async function getProfiles(pointers: string[]): Promise<Map<string, Profile>> {
+    const profilesByPointer = new Map<string, Profile>()
+
+    // A default profile is pointed at by name and reports the deployer's address, so its response
+    // cannot be attributed to the name it was asked for. Only address pointers are looked up here;
+    // names resolve from the cache or the database, where this service syncs those deployments.
+    const addressPointers = pointers.filter(isAddressPointer)
+    const skipped = pointers.filter((pointer) => !isAddressPointer(pointer))
+    const defaultProfiles = skipped.filter(isDefaultProfilePointer).length
+
+    if (skipped.length > 0) {
+      logger.debug('Skipping catalyst lookup for pointers that are not addresses', {
+        defaultProfiles,
+        notAPointer: skipped.length - defaultProfiles
+      })
+    }
+
+    if (addressPointers.length === 0) {
+      return profilesByPointer
     }
 
     try {
-      const profiles = await historicalLambdasClient.getAvatarsDetailsByPost({ ids: pointers })
-      const profilesWithAvatars = profiles.filter(
-        (profile) => profile.avatars && profile.avatars.length > 0 && profile.avatars[0].ethAddress
-      )
-      return profilesWithAvatars
+      const profiles = await historicalLambdasClient.getAvatarsDetailsByPost({ ids: addressPointers })
+
+      // Lambdas serves an address profile's identity from the entity pointer, so the address it
+      // reports is the pointer the profile was requested for
+      for (const profile of profiles) {
+        const address = profile.avatars?.[0]?.ethAddress?.toLowerCase()
+
+        if (address) {
+          profilesByPointer.set(address, profile)
+        }
+      }
     } catch (error: any) {
       logger.error('Error fetching profiles from historical catalyst lambdas', {
         error: error?.message || 'Unknown error',
-        count: pointers.length
+        count: addressPointers.length
       })
-      return []
     }
+
+    return profilesByPointer
   }
 
   return {

@@ -3,32 +3,32 @@ info:
   title: Asset Bundle Registry API
   description: |
     ## Overview
-    
+
     The Asset Bundle Registry is a proxy service that manages the availability of converted Unity Asset Bundles for Decentraland content. It acts as an intermediary between the Unity Client and the content network hosted in the Catalyst servers.
-    
+
     ### What are Unity Asset Bundles?
-    
+
     Unity Asset Bundles are optimized, pre-compiled packages of 3D assets used in Decentraland to improve performance. Instead of loading raw GLTF models at runtime, scenes and wearables are converted into Asset Bundles by the Asset Bundle Converter service, which loads scene assets, re-imports GLTF models, and packages them into optimized bundles stored on a CDN.
-    
+
     ### How the Registry Works
-    
+
     The Asset Bundle Registry acts as an intelligent proxy between clients and the Catalyst content servers:
-    
+
     1. **Content Upload**: When new content (scenes, wearables, etc.) is uploaded to a Catalyst server, it triggers the Asset Bundle Converter to process the assets.
-    
+
     2. **Availability Management**: While the new content is being converted (which can take time), the registry continues to serve the **previous version** of the asset bundle for that pointer.
-    
+
     3. **Seamless Transitions**: This ensures that when clients request a scene or wearable, there is always something to display in-world, preventing broken experiences during content updates.
-    
+
     4. **Pointer-based Queries**: Clients query the registry by pointers (e.g., scene coordinates like "-53,71" or wearable URNs) to get the latest **available** and **ready** asset bundle, not necessarily the latest uploaded content.
-    
+
     ### Key Features
-    
+
     - **Always Available**: Returns the most recent successfully converted asset bundle
     - **Processing Status**: Track conversion progress of new content
     - **Multi-version Support**: Handles different Asset Bundle versions (v4, v5, etc.) based on Unity version and material changes
     - **Queue Monitoring**: Provides visibility into conversion queue status
-    
+
     The registry works in conjunction with the Asset Bundle Converter service and the Catalyst content servers to provide a reliable, performant content delivery system for Decentraland.
   version: 1.0.0
   contact:
@@ -95,11 +95,11 @@ paths:
       description: |
         Returns the currently active (ready-to-use) entities for the given pointers. This is the primary endpoint 
         for clients to query which asset bundles are available for display.
-        
+
         **Pointers** are unique identifiers for content locations:
         - For scenes: coordinates like "-53,71" or "-100,-50"
         - For wearables: URNs like "urn:decentraland:matic:collections-v2:0x..."
-        
+
         The response includes entities with their associated asset bundle content that are **ready for use**. 
         If new content is currently being processed for a pointer, this endpoint will return the previous 
         successfully converted version, ensuring clients always have something to render.
@@ -133,10 +133,10 @@ paths:
       summary: Get entity status by ID
       description: |
         Returns the current processing status of a specific entity by its ID (typically a content identifier/CID).
-        
+
         Use this endpoint to check whether an entity has been successfully converted to an asset bundle, 
         is currently being processed, or is inactive.
-        
+
         **Status values:**
         - `active`: Entity has been successfully converted and is ready for use
         - `processing`: Entity is currently being converted by the Asset Bundle Converter
@@ -171,7 +171,7 @@ paths:
       description: |
         Returns the processing status of multiple entities in a single request. This endpoint requires 
         authenticated access via Decentraland's signed fetch mechanism.
-        
+
         Useful for batch checking the conversion status of multiple pieces of content (scenes, wearables, etc.) 
         to determine which are ready for use and which are still being processed.
       operationId: getEntitiesStatus
@@ -249,13 +249,13 @@ paths:
       summary: Get queue status information
       description: |
         Returns status information about the internal processing queues that handle asset bundle conversion requests.
-        
+
         This endpoint provides visibility into:
         - Number of entities pending conversion
         - Number of entities currently being processed
         - Number of successfully completed conversions
         - Number of failed conversions
-        
+
         Useful for monitoring system load and identifying potential bottlenecks in the asset bundle conversion pipeline.
       operationId: getQueuesStatus
       security: []
@@ -282,9 +282,9 @@ paths:
     post:
       tags:
         - Profiles
-      summary: Get profiles by addresses
+      summary: Get profiles by pointer
       description: |
-        Returns validated Catalyst profiles for the given Ethereum addresses. Profiles include
+        Returns validated Catalyst profiles for the given pointers. Profiles include
         avatar information, names, wearables, and snapshot URLs.
 
         The service maintains a multi-layer cache (memory and database) for fast profile retrieval
@@ -309,13 +309,19 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/ProfileDTO'
+        '400':
+          description: The ids property is missing or malformed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /profiles/metadata:
     post:
       tags:
         - Profiles
-      summary: Get profile metadata by addresses
+      summary: Get profile metadata by pointer
       description: |
-        Returns lightweight metadata for profiles at the given Ethereum addresses.
+        Returns lightweight metadata for profiles at the given pointers.
         This endpoint returns only essential profile information (name, claimed name status,
         thumbnail URL) without full avatar details, making it suitable for displaying
         profile cards or lists.
@@ -336,6 +342,12 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/ProfileMetadataDTO'
+        '400':
+          description: The ids property is missing or malformed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /registry:
     post:
       tags:
@@ -801,7 +813,17 @@ components:
           type: array
           items:
             type: string
-          description: List of Ethereum addresses to fetch profiles for
+            minLength: 1
+          description: |
+            Profile pointers to fetch. A pointer is either an Ethereum address or, for default
+            profiles, a name such as `default5`.
+
+            An address resolves from the cache, the database, or a catalyst lookup. A default profile
+            name resolves from the cache or the database only: a catalyst response reports that
+            profile's deployer address rather than the name, so it cannot be attributed to the name
+            it was asked for.
+
+            Empty arrays are accepted and return an empty response.
       required:
         - ids
     ProfileDTO:
@@ -876,13 +898,16 @@ components:
       properties:
         pointer:
           type: string
-          description: Ethereum address of the profile owner
+          description: Requested profile pointer, either an Ethereum address or numeric default profile name
         hasClaimedName:
           type: boolean
           description: Whether the user has claimed a unique Decentraland name
         name:
           type: string
           description: Display name for the profile
+        nameColor:
+          type: object
+          description: Optional profile name color configuration
         thumbnailUrl:
           type: string
           description: URL to the profile's face thumbnail image

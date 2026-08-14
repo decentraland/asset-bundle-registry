@@ -55,10 +55,10 @@ export function createProfileRetrieverComponent(
 
   async function getFromCatalyst(pointers: string[]): Promise<Entity[]> {
     try {
-      const profiles = await catalyst.getProfiles(pointers)
+      const profilesByPointer = await catalyst.getProfiles(pointers)
       const entities: Entity[] = []
 
-      for (const profile of profiles) {
+      for (const profile of profilesByPointer.values()) {
         const entity = catalyst.convertLambdasProfileToEntity(profile)
         if (entity) {
           entities.push(entity)
@@ -73,7 +73,8 @@ export function createProfileRetrieverComponent(
   }
 
   async function getProfiles(pointers: string[]): Promise<Map<string, Entity>> {
-    const uniquePointers = [...new Set(pointers)]
+    // Every layer below keys by the lowercased pointer, so case variants are the same request
+    const uniquePointers = [...new Set(pointers.map((pointer) => pointer.toLowerCase()))]
     let retrievedProfiles = new Map<string, Entity>()
 
     // Layer 1: Batch fetch from hot cache (L1 cache)
@@ -100,7 +101,7 @@ export function createProfileRetrieverComponent(
     metrics.increment('profiles_retrieved_from_database', {}, profilesFromDB.length)
 
     const pointersFoundInDB = new Set(profilesFromDB.map((p) => p.pointers[0].toLowerCase()))
-    const pointersMissingFromDB = cacheMisses.filter((p) => !pointersFoundInDB.has(p))
+    const pointersMissingFromDB = cacheMisses.filter((p) => !pointersFoundInDB.has(p.toLowerCase()))
     if (pointersMissingFromDB.length === 0) {
       logger.debug('All remaining profiles found in database', { total: retrievedProfiles.size })
       return retrievedProfiles
@@ -108,13 +109,30 @@ export function createProfileRetrieverComponent(
 
     // Layer 3: Fall-back to Catalyst
     logger.debug('Fetching remaining profiles from Catalyst', { count: pointersMissingFromDB.length })
-    const profilesFromCatalyst = await getFromCatalyst(pointersMissingFromDB)
+    const requested = new Set(uniquePointers)
+    // Scoped before anything is written: a profile for a pointer this request did not ask for has no
+    // business warming the cache or the database as a side effect of it
+    const profilesFromCatalyst = (await getFromCatalyst(pointersMissingFromDB)).filter((profile) =>
+      requested.has(profile.pointers[0].toLowerCase())
+    )
+
     if (profilesFromCatalyst.length > 0) {
       await Promise.all(profilesFromCatalyst.map((p) => entityPersister.persistEntity(p)))
       for (const profile of profilesFromCatalyst) retrievedProfiles.set(profile.pointers[0].toLowerCase(), profile)
       logger.debug('Profiles found in Catalyst', { count: profilesFromCatalyst.length })
     }
     metrics.increment('profiles_retrieved_from_catalyst', {}, profilesFromCatalyst.length)
+
+    // Only what was asked for belongs in the result, whichever layer answered
+    const unrequested = Array.from(retrievedProfiles.keys()).filter((pointer) => !requested.has(pointer))
+
+    for (const pointer of unrequested) {
+      retrievedProfiles.delete(pointer)
+    }
+
+    if (unrequested.length > 0) {
+      logger.debug('Left out profiles that were not requested', { count: unrequested.length })
+    }
 
     const notFoundPointers: Set<string> = new Set(uniquePointers.filter((p) => !retrievedProfiles.has(p.toLowerCase())))
     metrics.increment('profiles_not_found', {}, notFoundPointers.size)
