@@ -39,12 +39,14 @@ export async function createCatalystAdapter({
   }
 
   function convertLambdasProfileToEntity(profile: Profile): Entity | null {
-    const avatar = profile.avatars?.[0]
+    const avatars = profile.avatars ?? []
+    const avatar = avatars[0]
+
     if (!avatar?.ethAddress) {
       return null
     }
 
-    const pointer = avatar.ethAddress
+    const pointer = avatar.ethAddress.toLowerCase()
 
     const snapshotUrl = avatar.avatar?.snapshots?.body || avatar.avatar?.snapshots?.face256
     if (!snapshotUrl) {
@@ -62,10 +64,18 @@ export async function createCatalystAdapter({
       version: 'v3',
       id: entityId,
       type: EntityType.PROFILE,
-      pointers: [pointer.toLowerCase()],
+      pointers: [pointer],
       timestamp: profile.timestamp!,
       content: [],
-      metadata: { avatars: profile.avatars }
+      // The entity is keyed by this pointer, so the identity it carries is settled to match it: the
+      // node this came from serves it from the pointer, but only from the version that does so
+      metadata: {
+        avatars: avatars.map((profileAvatar) => ({
+          ...profileAvatar,
+          userId: pointer,
+          ethAddress: pointer
+        }))
+      }
     }
   }
 

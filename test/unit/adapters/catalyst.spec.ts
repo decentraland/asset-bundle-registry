@@ -99,6 +99,40 @@ describe('catalyst adapter', () => {
   })
 
   describe('when converting a lambdas profile to an entity', () => {
+    describe('and the metadata carries an identity other than the address it reports', () => {
+      let profile: Profile
+
+      beforeEach(() => {
+        profile = createLambdasProfile(requestedPointer)
+        // an older node serves the deployed metadata, where the two can disagree
+        ;(profile.avatars as any)[0].userId = '0x9999999999999999999999999999999999999999'
+      })
+
+      it('should settle the userId to the pointer the entity is keyed by', () => {
+        const entity = component.convertLambdasProfileToEntity(profile)
+
+        expect((entity?.metadata as Profile).avatars?.[0].userId).toEqual(requestedPointer)
+      })
+    })
+
+    describe('and the reported address is checksummed', () => {
+      let entity: ReturnType<ICatalystComponent['convertLambdasProfileToEntity']>
+
+      beforeEach(() => {
+        entity = component.convertLambdasProfileToEntity(createLambdasProfile(requestedPointer.toUpperCase()))
+      })
+
+      it('should key the entity by the lowercased pointer', () => {
+        expect(entity?.pointers).toEqual([requestedPointer])
+      })
+
+      it('should settle the identity to the same lowercased value', () => {
+        const avatar = (entity?.metadata as Profile).avatars?.[0]
+
+        expect([avatar?.ethAddress, avatar?.userId]).toEqual([requestedPointer, requestedPointer])
+      })
+    })
+
     it('should point the entity at the address it reports', () => {
       const entity = component.convertLambdasProfileToEntity(createLambdasProfile(requestedPointer))
 
