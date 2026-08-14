@@ -4,7 +4,7 @@ import { ContentClient, createContentClient, createLambdasClient } from 'dcl-cat
 import { Profile } from 'dcl-catalyst-client/dist/client/specs/lambdas-client'
 
 import { AppComponents, ICatalystComponent, CatalystFetchOptions } from '../types'
-import { isAddressPointer } from '../utils/pointers'
+import { isAddressPointer, isDefaultProfilePointer } from '../utils/pointers'
 
 const ENTITY_ID_FROM_SNAPSHOT_REGEX = /\/entities\/([^/]+)\//
 
@@ -173,10 +173,13 @@ export async function createCatalystAdapter({
     // cannot be attributed to the name it was asked for. Only address pointers are looked up here;
     // names resolve from the cache or the database, where this service syncs those deployments.
     const addressPointers = pointers.filter(isAddressPointer)
+    const skipped = pointers.filter((pointer) => !isAddressPointer(pointer))
+    const defaultProfiles = skipped.filter(isDefaultProfilePointer).length
 
-    if (addressPointers.length !== pointers.length) {
+    if (skipped.length > 0) {
       logger.debug('Skipping catalyst lookup for pointers that are not addresses', {
-        skipped: pointers.length - addressPointers.length
+        defaultProfiles,
+        notAPointer: skipped.length - defaultProfiles
       })
     }
 

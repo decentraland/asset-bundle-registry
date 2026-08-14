@@ -116,6 +116,26 @@ describe('ownership validator job', () => {
           pointers = ['0x1234567890123456789012345678901234567890']
         })
 
+        describe('and a cached pointer is a default profile name', () => {
+          let warn: jest.Mock
+
+          beforeEach(async () => {
+            warn = (mockLogs.getLogger as jest.Mock)().warn as jest.Mock
+            warn.mockClear()
+            ;(mockProfilesCache.getAllPointers as jest.Mock).mockReturnValueOnce(['default5'])
+            ;(mockCatalyst.getProfiles as jest.Mock).mockResolvedValueOnce(new Map())
+
+            await component.start?.(createStartOptions())
+            await jest.advanceTimersByTimeAsync(0)
+          })
+
+          it('should not warn about it, since it cannot be validated by design', () => {
+            expect(warn).not.toHaveBeenCalledWith('Skipping validation, no matching profile returned', {
+              pointer: 'default5'
+            })
+          })
+        })
+
         describe('and fetching profiles from catalyst returns empty', () => {
           beforeEach(async () => {
             ;(mockProfilesCache.getAllPointers as jest.Mock).mockReturnValueOnce(pointers)

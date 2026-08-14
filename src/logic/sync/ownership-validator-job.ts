@@ -4,6 +4,7 @@ import { AvatarInfo, Entity, EntityType } from '@dcl/schemas'
 import { Sync } from '../../types'
 import { Profile } from 'dcl-catalyst-client/dist/client/specs/lambdas-client'
 import { interruptibleSleep } from '../../utils/timer'
+import { isAddressPointer } from '../../utils/pointers'
 
 // Timing constants
 const TEN_MINUTES_MS = 10 * 60 * 1000
@@ -94,6 +95,12 @@ export async function createOwnershipValidatorJob(
     for (const pointer of pointers) {
       if (abortSignal.aborted) {
         break
+      }
+
+      // A default profile is pointed at by name, which a catalyst response cannot be attributed to,
+      // so there is nothing to validate it against
+      if (!isAddressPointer(pointer)) {
+        continue
       }
 
       const originalProfile = originalProfileMap.get(pointer)
