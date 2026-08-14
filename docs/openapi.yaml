@@ -815,8 +815,15 @@ components:
             type: string
             minLength: 1
           description: |
-            Ethereum addresses to fetch profiles for. Empty arrays are accepted and return an empty
-            response.
+            Profile pointers to fetch. A pointer is either an Ethereum address or, for default
+            profiles, a name such as `default5`.
+
+            An address resolves from the cache, the database, or a catalyst lookup. A default profile
+            name resolves from the cache or the database only: a catalyst response reports that
+            profile's deployer address rather than the name, so it cannot be attributed to the name
+            it was asked for.
+
+            Empty arrays are accepted and return an empty response.
       required:
         - ids
     ProfileDTO:
