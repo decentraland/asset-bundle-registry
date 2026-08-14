@@ -4,6 +4,7 @@ import { ContentClient, createContentClient, createLambdasClient } from 'dcl-cat
 import { Profile } from 'dcl-catalyst-client/dist/client/specs/lambdas-client'
 
 import { AppComponents, ICatalystComponent, CatalystFetchOptions } from '../types'
+import { isAddressPointer } from '../utils/pointers'
 
 const ENTITY_ID_FROM_SNAPSHOT_REGEX = /\/entities\/([^/]+)\//
 
@@ -168,12 +169,23 @@ export async function createCatalystAdapter({
   async function getProfiles(pointers: string[]): Promise<Map<string, Profile>> {
     const profilesByPointer = new Map<string, Profile>()
 
-    if (pointers.length === 0) {
+    // A default profile is pointed at by name and reports the deployer's address, so its response
+    // cannot be attributed to the name it was asked for. Only address pointers are looked up here;
+    // names resolve from the cache or the database, where this service syncs those deployments.
+    const addressPointers = pointers.filter(isAddressPointer)
+
+    if (addressPointers.length !== pointers.length) {
+      logger.debug('Skipping catalyst lookup for pointers that are not addresses', {
+        skipped: pointers.length - addressPointers.length
+      })
+    }
+
+    if (addressPointers.length === 0) {
       return profilesByPointer
     }
 
     try {
-      const profiles = await historicalLambdasClient.getAvatarsDetailsByPost({ ids: pointers })
+      const profiles = await historicalLambdasClient.getAvatarsDetailsByPost({ ids: addressPointers })
 
       // Lambdas serves an address profile's identity from the entity pointer, so the address it
       // reports is the pointer the profile was requested for
@@ -187,7 +199,7 @@ export async function createCatalystAdapter({
     } catch (error: any) {
       logger.error('Error fetching profiles from historical catalyst lambdas', {
         error: error?.message || 'Unknown error',
-        count: pointers.length
+        count: addressPointers.length
       })
     }
 

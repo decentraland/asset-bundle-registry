@@ -60,6 +60,31 @@ describe('catalyst adapter', () => {
       })
     })
 
+    describe('and a default profile name is requested', () => {
+      beforeEach(() => {
+        // A default profile reports the deployer address, not the name it was asked for
+        getAvatarsDetailsByPost.mockResolvedValue([createLambdasProfile('0x1337000000000000000000000000000000001337')])
+      })
+
+      it('should not look it up, since the response could not be attributed to it', async () => {
+        await component.getProfiles(['default5'])
+
+        expect(getAvatarsDetailsByPost).not.toHaveBeenCalled()
+      })
+
+      it('should not return a profile under the address it would have reported', async () => {
+        const result = await component.getProfiles(['default5'])
+
+        expect(result.size).toEqual(0)
+      })
+
+      it('should still look up the address pointers requested alongside it', async () => {
+        await component.getProfiles(['default5', requestedPointer])
+
+        expect(getAvatarsDetailsByPost).toHaveBeenCalledWith({ ids: [requestedPointer] })
+      })
+    })
+
     describe('and the requested pointer is checksummed', () => {
       beforeEach(() => {
         getAvatarsDetailsByPost.mockResolvedValue([createLambdasProfile(requestedPointer.toUpperCase())])
