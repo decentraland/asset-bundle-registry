@@ -201,6 +201,12 @@ describe('profile retriever', () => {
           expect(result.has(unrequestedPointer)).toBe(false)
         })
 
+        it('should not persist it as a side effect of the request', async () => {
+          await component.getProfiles([pointerA])
+
+          expect(mockEntityPersister.persistEntity).not.toHaveBeenCalled()
+        })
+
         it('should report the requested pointer as not found', async () => {
           const result = await component.getProfiles([pointerA])
 

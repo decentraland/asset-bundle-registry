@@ -109,7 +109,13 @@ export function createProfileRetrieverComponent(
 
     // Layer 3: Fall-back to Catalyst
     logger.debug('Fetching remaining profiles from Catalyst', { count: pointersMissingFromDB.length })
-    const profilesFromCatalyst = await getFromCatalyst(pointersMissingFromDB)
+    const requested = new Set(uniquePointers)
+    // Scoped before anything is written: a profile for a pointer this request did not ask for has no
+    // business warming the cache or the database as a side effect of it
+    const profilesFromCatalyst = (await getFromCatalyst(pointersMissingFromDB)).filter((profile) =>
+      requested.has(profile.pointers[0].toLowerCase())
+    )
+
     if (profilesFromCatalyst.length > 0) {
       await Promise.all(profilesFromCatalyst.map((p) => entityPersister.persistEntity(p)))
       for (const profile of profilesFromCatalyst) retrievedProfiles.set(profile.pointers[0].toLowerCase(), profile)
@@ -118,7 +124,6 @@ export function createProfileRetrieverComponent(
     metrics.increment('profiles_retrieved_from_catalyst', {}, profilesFromCatalyst.length)
 
     // Only what was asked for belongs in the result, whichever layer answered
-    const requested = new Set(uniquePointers)
     const unrequested = Array.from(retrievedProfiles.keys()).filter((pointer) => !requested.has(pointer))
 
     for (const pointer of unrequested) {
