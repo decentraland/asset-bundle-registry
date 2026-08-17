@@ -31,6 +31,32 @@ function createLambdasProfile(address: string, timestamp = 1000): Profile {
   } as unknown as Profile
 }
 
+// The shape lambdas serves a default profile in: identity is the deployer address it was deployed
+// with, checksummed, and there is no userId at all
+function createLambdasDefaultProfile(): Profile {
+  return {
+    timestamp: 1000,
+    avatars: [
+      {
+        name: '',
+        description: '',
+        version: 1,
+        tutorialStep: 1,
+        hasClaimedName: false,
+        ethAddress: '0x1337e0507EB4aB47E08a179573ED4533d9E22a7b',
+        avatar: {
+          bodyShape: 'urn:decentraland:off-chain:base-avatars:BaseFemale',
+          wearables: ['urn:decentraland:off-chain:base-avatars:curly_hair'],
+          snapshots: {
+            body: 'https://profile-images.decentraland.org/entities/bafkreidefault/body.png',
+            face256: 'https://profile-images.decentraland.org/entities/bafkreidefault/face.png'
+          }
+        }
+      }
+    ]
+  } as unknown as Profile
+}
+
 describe('catalyst adapter', () => {
   const requestedPointer = '0x1111111111111111111111111111111111111111'
   let component: ICatalystComponent
@@ -187,6 +213,28 @@ describe('catalyst adapter', () => {
         const entity = component.convertLambdasProfileToEntity(createLambdasProfile(deployerAddress), 'default5')
 
         expect((entity?.metadata as Profile).avatars?.[0].ethAddress).toEqual(deployerAddress)
+      })
+
+      it('should carry the avatars through exactly as lambdas serves them', () => {
+        const profile = createLambdasDefaultProfile()
+
+        const entity = component.convertLambdasProfileToEntity(profile, 'default5')
+
+        expect((entity?.metadata as Profile).avatars).toEqual(profile.avatars)
+      })
+
+      it('should not introduce a userId that lambdas does not report', () => {
+        const entity = component.convertLambdasProfileToEntity(createLambdasDefaultProfile(), 'default5')
+
+        expect((entity?.metadata as Profile).avatars?.[0]).not.toHaveProperty('userId')
+      })
+
+      it('should keep the checksummed casing of the deployed address', () => {
+        const entity = component.convertLambdasProfileToEntity(createLambdasDefaultProfile(), 'default5')
+
+        expect((entity?.metadata as Profile).avatars?.[0].ethAddress).toEqual(
+          '0x1337e0507EB4aB47E08a179573ED4533d9E22a7b'
+        )
       })
     })
 

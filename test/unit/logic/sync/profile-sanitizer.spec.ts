@@ -235,6 +235,21 @@ describe('profile sanitizer', () => {
 
           expect((result[0].metadata as Profile).avatars[0].ethAddress).toEqual(deployedAddress)
         })
+
+        it('should not introduce a userId when the deployment does not carry one', async () => {
+          catalystMock.getEntitiesByIds = jest.fn().mockResolvedValueOnce([
+            createProfileEntity({
+              id: entityIdA,
+              pointers: ['default5'],
+              // lambdas serves a default profile without a userId, so neither may this
+              metadata: { avatars: [{ name: '', hasClaimedName: false, ethAddress: deployedAddress }] }
+            })
+          ])
+
+          const result = await component.sanitizeProfiles(profilesToSanitize, jest.fn())
+
+          expect((result[0].metadata as Profile).avatars[0]).not.toHaveProperty('userId')
+        })
       })
 
       describe('and some profiles are not found in catalyst', () => {
