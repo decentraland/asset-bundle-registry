@@ -39,13 +39,14 @@ test('GET /entities/status with a scene signer', function ({ components }) {
     const response = await components.localFetch.fetch('/entities/status', { method: 'GET', headers })
     const parsedResponse = await response.json()
 
-    // Re-casing the metadata after signing breaks signature verification itself, so this is a 401
-    // rather than the 400 the (now removed) canonical signer/intent guard used to produce. Were it
-    // accepted, the mixed-case spelling would fail the strict `!== 'decentraland-kernel-scene'`
-    // check in routes.ts and the scene request would be read as a directly user-signed one.
-    expect(response.status).toBe(401)
-    // The verification failure detail is appended to the message, so match the prefix.
-    expect(parsedResponse.error).toMatch(/^Invalid signature/)
+    // Two layers refuse this and the earlier one wins. `rejectIfSigner` refuses a signer that is
+    // not already canonical, and `metadataValidator` runs before signature verification, so the
+    // gate answers first with a 400. Re-casing after signing also breaks the signature, which
+    // would produce a 401 a step later, but it never gets that far. Were neither in place, the
+    // mixed-case spelling would fail a strict `!== 'decentraland-kernel-scene'` comparison and the
+    // scene request would be read as a directly user-signed one.
+    expect(response.status).toBe(400)
+    expect(parsedResponse.error).toMatch(/^Invalid metadata content: /)
   })
 
   it('should reject a request that delivers the canonical signer exactly as signed', async function () {
