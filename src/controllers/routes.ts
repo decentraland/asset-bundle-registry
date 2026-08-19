@@ -2,7 +2,7 @@ import { Router } from '@dcl/http-server'
 import { GlobalContext } from '../types'
 import { getStatusHandler } from './handlers/get-service-status'
 import { getActiveEntityHandler } from './handlers/get-active-entities'
-import { wellKnownComponents } from '@dcl/crypto-middleware'
+import { rejectIfSigner, wellKnownComponents } from '@dcl/crypto-middleware'
 import { getEntityStatusHandler, getEntitiesStatusHandler, getQueuesStatuses } from './handlers/get-entity-status'
 import { bearerTokenMiddleware, errorHandler } from '@dcl/http-commons'
 import { createRegistryHandler } from './handlers/post-registry'
@@ -26,7 +26,9 @@ export async function setupRouter(globalContext: GlobalContext): Promise<Router<
       error: err.message,
       message: 'This endpoint requires a signed fetch request. See ADR-44.'
     }),
-    metadataValidator: (metadata) => metadata?.signer !== 'decentraland-kernel-scene' // prevent requests from scenes
+    // Refuses scene-signed requests, and refuses a `signer` that is not already canonical rather
+    // than comparing it — a padded or re-cased value would otherwise read as "not a scene".
+    metadataValidator: rejectIfSigner('decentraland-kernel-scene')
   })
 
   router.get('/status', getStatusHandler)
