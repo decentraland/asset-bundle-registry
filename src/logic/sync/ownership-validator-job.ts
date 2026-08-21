@@ -232,6 +232,12 @@ export async function createOwnershipValidatorJob(
   }
 
   async function start(startOptions: IBaseComponent.ComponentStartOptions): Promise<void> {
+    // Curating profiles is profile-sync work: an instance with sync off must not run it.
+    if ((await config.getString('DISABLE_PROFILE_SYNC')) === 'true') {
+      logger.info('Profile sync is disabled, skipping ownership validation')
+      return
+    }
+
     logger.info('Starting ownership validator', {
       intervalMs: VALIDATION_INTERVAL_MS,
       batchSize: BATCH_SIZE

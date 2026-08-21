@@ -13,3 +13,14 @@ jobs:
       image-name: asset-bundle-registry
       deployment-environment: dev
     secrets: inherit
+
+  # Second instance of the same image: follows the abgen lambda's conversion-finished
+  # topic instead of the Unity converter's, with profile sync off. dev only — the abgen
+  # lambda is only created on the dev ops-lambdas stack.
+  asset-bundle-registry-abgen-deployment:
+    uses: decentraland/platform-actions/.github/workflows/apps-docker-next.yml@main
+    with:
+      service-name: asset-bundle-registry-abgen
+      image-name: asset-bundle-registry
+      deployment-environment: dev
+    secrets: inherit

@@ -2,7 +2,7 @@ import { AssetBundleConversionFinishedEvent, AuthLinkType, Entity, EntityType, E
 import { createInMemoryCacheComponent } from '../../../../src/adapters/memory-cache'
 import { createTexturesEventHandler } from '../../../../src/logic/handlers/textures-handler'
 import { createQueuesStatusManagerComponent } from '../../../../src/logic/queues-status-manager'
-import { Registry } from '../../../../src/types'
+import { ConvertedEventIdentifier, IEventHandlerComponent, Registry } from '../../../../src/types'
 import { createCatalystMockComponent } from '../../mocks/catalyst'
 import { createDbMockComponent } from '../../mocks/db'
 import { createLogMockComponent } from '../../mocks/logs'
@@ -77,7 +77,7 @@ describe('textures-handler', () => {
     }
   })
 
-  const handler = createTexturesEventHandler({
+  const handlerComponents = {
     logs,
     db,
     catalyst,
@@ -85,32 +85,113 @@ describe('textures-handler', () => {
     registry,
     queuesStatusManager,
     coordinates
-  })
+  }
+
+  const defaultConvertedEvent: ConvertedEventIdentifier = {
+    type: Events.Type.ASSET_BUNDLE,
+    subType: Events.SubType.AssetBundle.CONVERTED
+  }
+
+  const handler = createTexturesEventHandler(handlerComponents, defaultConvertedEvent)
 
   beforeEach(() => {
     jest.clearAllMocks()
   })
 
   describe('canHandle', () => {
-    it('should return true for valid AssetBundleConversionFinishedEvent', () => {
-      const event = createEvent()
-      expect(handler.canHandle(event)).toBe(true)
+    describe('when the event carries the configured type and subType', () => {
+      let event: AssetBundleConversionFinishedEvent
+
+      beforeEach(() => {
+        event = createEvent()
+      })
+
+      it('should return true', () => {
+        expect(handler.canHandle(event)).toBe(true)
+      })
     })
 
-    it('should return false for invalid event', () => {
-      const invalidEvent: DeploymentToSqs = {
-        entity: {
-          entityId: '123',
-          authChain: [
-            {
-              signature: 'signature',
-              type: AuthLinkType.SIGNER,
-              payload: 'payload'
-            }
-          ]
+    describe('when the event carries the configured pair but an invalid payload', () => {
+      let event: AssetBundleConversionFinishedEvent
+
+      beforeEach(() => {
+        event = createEvent()
+        delete (event as any).metadata
+      })
+
+      it('should return false', () => {
+        expect(handler.canHandle(event)).toBe(false)
+      })
+    })
+
+    describe('when the event subType is not the configured one', () => {
+      let event: AssetBundleConversionFinishedEvent
+
+      beforeEach(() => {
+        event = createEvent({ subType: Events.SubType.AssetBundle.MANUALLY_QUEUED as any })
+      })
+
+      it('should return false', () => {
+        expect(handler.canHandle(event)).toBe(false)
+      })
+    })
+
+    describe('when the event is a deployment instead of a conversion-finished event', () => {
+      let event: DeploymentToSqs
+
+      beforeEach(() => {
+        event = {
+          entity: {
+            entityId: '123',
+            authChain: [
+              {
+                signature: 'signature',
+                type: AuthLinkType.SIGNER,
+                payload: 'payload'
+              }
+            ]
+          }
         }
-      }
-      expect(handler.canHandle(invalidEvent as any)).toBe(false)
+      })
+
+      it('should return false', () => {
+        expect(handler.canHandle(event as any)).toBe(false)
+      })
+    })
+
+    describe('when the handler is configured for a producer-specific type and subType', () => {
+      let abgenHandler: IEventHandlerComponent<AssetBundleConversionFinishedEvent>
+
+      beforeEach(() => {
+        abgenHandler = createTexturesEventHandler(handlerComponents, {
+          type: 'abgen-asset-bundle',
+          subType: 'abgen-converted'
+        })
+      })
+
+      describe('and the event carries that pair', () => {
+        let event: AssetBundleConversionFinishedEvent
+
+        beforeEach(() => {
+          event = createEvent({ type: 'abgen-asset-bundle' as any, subType: 'abgen-converted' as any })
+        })
+
+        it('should return true', () => {
+          expect(abgenHandler.canHandle(event)).toBe(true)
+        })
+      })
+
+      describe('and the event carries the default pair', () => {
+        let event: AssetBundleConversionFinishedEvent
+
+        beforeEach(() => {
+          event = createEvent()
+        })
+
+        it('should return false', () => {
+          expect(abgenHandler.canHandle(event)).toBe(false)
+        })
+      })
     })
   })
 

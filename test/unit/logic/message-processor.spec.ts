@@ -11,7 +11,7 @@ import { createWorldsMockComponent } from '../mocks/worlds'
 import { createRegistryMockComponent } from '../mocks/registry'
 import { createCoordinatesMockComponent } from '../mocks/coordinates'
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
-import { AssetBundleConversionFinishedEvent, AssetBundleConversionManuallyQueuedEvent } from '@dcl/schemas'
+import { AssetBundleConversionFinishedEvent, AssetBundleConversionManuallyQueuedEvent, Events } from '@dcl/schemas'
 
 // Mock the handler modules
 jest.mock('../../../src/logic/handlers/deployment-handler')
@@ -245,6 +245,42 @@ describe('message processor', () => {
         expect(deploymentHandler.handle).not.toHaveBeenCalled()
         expect(texturesHandler.handle).not.toHaveBeenCalled()
         expect(statusHandler.handle).not.toHaveBeenCalled()
+      })
+    })
+  })
+
+  describe('when the conversion-finished event is not configured', () => {
+    beforeEach(async () => {
+      ;(config.getString as jest.Mock).mockResolvedValue(undefined)
+      await createMessageProcessorComponent(mockComponents)
+    })
+
+    it('should build the textures handler for the asset-bundle/converted pair', () => {
+      expect(createTexturesEventHandler).toHaveBeenCalledWith(expect.anything(), {
+        type: Events.Type.ASSET_BUNDLE,
+        subType: Events.SubType.AssetBundle.CONVERTED
+      })
+    })
+  })
+
+  describe('when the conversion-finished event is configured to a producer-specific pair', () => {
+    beforeEach(async () => {
+      ;(config.getString as jest.Mock).mockImplementation(async (key: string) => {
+        if (key === 'ASSET_BUNDLE_CONVERTED_EVENT_TYPE') return 'abgen-asset-bundle'
+        if (key === 'ASSET_BUNDLE_CONVERTED_EVENT_SUB_TYPE') return 'abgen-converted'
+        return undefined
+      })
+      await createMessageProcessorComponent(mockComponents)
+    })
+
+    afterEach(() => {
+      ;(config.getString as jest.Mock).mockReset()
+    })
+
+    it('should build the textures handler for the configured pair', () => {
+      expect(createTexturesEventHandler).toHaveBeenCalledWith(expect.anything(), {
+        type: 'abgen-asset-bundle',
+        subType: 'abgen-converted'
       })
     })
   })

@@ -1,12 +1,14 @@
 import {
   AssetBundleConversionFinishedEvent,
   AssetBundleConversionManuallyQueuedEvent,
+  Events,
   WorldScenesUndeploymentEvent,
   WorldUndeploymentEvent,
   WorldSpawnCoordinateSetEvent
 } from '@dcl/schemas'
 import {
   AppComponents,
+  ConvertedEventIdentifier,
   IEventHandlerComponent,
   EventHandlerName,
   IMessageProcessorComponent,
@@ -48,6 +50,15 @@ export async function createMessageProcessorComponent({
   if (allowedContentServerHosts.size === 0) {
     throw new Error('ALLOWED_CONTENT_SERVER_HOSTS is set but contains no valid catalyst hosts')
   }
+
+  // Which conversion-finished event this instance follows. Defaults to the Unity converter's
+  // pair; the abgen instance overrides it to match what the abgen lambda publishes.
+  const convertedEvent: ConvertedEventIdentifier = {
+    type: (await config.getString('ASSET_BUNDLE_CONVERTED_EVENT_TYPE')) || Events.Type.ASSET_BUNDLE,
+    subType: (await config.getString('ASSET_BUNDLE_CONVERTED_EVENT_SUB_TYPE')) || Events.SubType.AssetBundle.CONVERTED
+  }
+  log.info('Listening for conversion-finished events', convertedEvent)
+
   const processors: IEventHandlerComponent<
     | DeploymentToSqs
     | AssetBundleConversionManuallyQueuedEvent
@@ -57,15 +68,18 @@ export async function createMessageProcessorComponent({
     | WorldSpawnCoordinateSetEvent
   >[] = [
     createDeploymentEventHandler({ catalyst, worlds, registry, db, logs }, allowedContentServerHosts),
-    createTexturesEventHandler({
-      db,
-      logs,
-      catalyst,
-      worlds,
-      registry,
-      queuesStatusManager,
-      coordinates
-    }),
+    createTexturesEventHandler(
+      {
+        db,
+        logs,
+        catalyst,
+        worlds,
+        registry,
+        queuesStatusManager,
+        coordinates
+      },
+      convertedEvent
+    ),
     createStatusEventHandler({ logs, queuesStatusManager }),
     createUndeploymentEventHandler({ registry, logs }),
     createWorldUndeploymentEventHandler({ registry, logs }),

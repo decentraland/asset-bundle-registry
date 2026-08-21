@@ -22,6 +22,7 @@ Each entity has its specific way to determine its own latest version. Most of th
 - [Testing](#testing)
   - [Running Tests](#running-tests)
   - [Test Structure](#test-structure)
+- [Deployments](#deployments)
 - [AI Agent Context](#ai-agent-context)
 
 ## Features
@@ -39,13 +40,14 @@ This service interacts with the following services:
 - **[Deployments to SQS](https://github.com/decentraland/deployments-to-sqs)**: Listens for events triggered by this service to react over new Catalyst deployments
 - **[World Content Server](https://github.com/decentraland/worlds-content-server)**: Listens for events triggered by this server to react over new Worlds deployments
 - **[Asset Bundle Converter](https://github.com/decentraland/asset-bundle-converter)**: Listens for events triggered by these services to react over bundle optimizations
+- **[abgen](https://github.com/decentraland/abgen)**: The Rust asset-bundle generator, run as an SQS-driven lambda. Publishes conversion-finished events on its own SNS topic, which the `asset-bundle-registry-abgen` deployment consumes
 - **[Catalyst](https://github.com/decentraland/catalyst)**: Used to validate received entities deployments and sanitize profiles stored in the cache
 
 External dependencies:
 
 - SNS and SQS from AWS Cloud Provider
 - PostgreSQL
-- Redis
+- Redis (optional — falls back to an in-process cache when `REDIS_HOST` is unset)
 
 ## API Documentation
 
@@ -128,6 +130,18 @@ The service uses environment variables for configuration.
 Create a `.env` file in the root directory containing the environment variables for the service to run.
 Use the `.env.default` variables as an example.
 
+#### Instance-scoping variables
+
+A single image backs more than one deployment (see [Deployments](#deployments)), so a few
+variables decide what an instance actually does:
+
+| Variable | Default | Effect |
+| --- | --- | --- |
+| `ASSET_BUNDLE_CONVERTED_EVENT_TYPE` | `asset-bundle` | `type` of the conversion-finished event this instance acts on |
+| `ASSET_BUNDLE_CONVERTED_EVENT_SUB_TYPE` | `converted` | `subType` of that event |
+| `DISABLE_PROFILE_SYNC` | unset | `true` stops the profile synchronizer and the ownership curation job |
+| `DISABLE_PROFILES` | unset | `true` also unregisters `POST /profiles` and `POST /profiles/metadata` |
+
 ### Running the Service
 
 #### Setting up the environment
@@ -183,6 +197,25 @@ yarn test test/integration
 - **Integration Tests** (`test/integration/`): Test the complete request/response cycle
 
 For detailed testing guidelines and standards, refer to our [Testing Standards](https://github.com/decentraland/docs/tree/main/development-standards/testing-standards) documentation.
+
+## Deployments
+
+Two ECS services run this image, both deployed from this repository's workflows:
+
+| Service | Conversion events from | Profiles |
+| --- | --- | --- |
+| `asset-bundle-registry` | The Unity [asset-bundle-converter](https://github.com/decentraland/asset-bundle-converter), over the shared `event-driven-sns` bus | Yes — sync, curation and the `/profiles` endpoints |
+| `asset-bundle-registry-abgen` | The [abgen](https://github.com/decentraland/abgen) lambda, over its own `abgen-conversion-finished` topic | No — it only holds the bundles abgen generates |
+
+`asset-bundle-registry-abgen` has its own database and SQS queue; the queue is subscribed to
+both the shared bus (deployment and undeployment events, so entity lifecycle stays correct) and
+abgen's topic (conversion results). Both are wired in
+[decentraland/definitions](https://github.com/decentraland/definitions) —
+`src/services/asset-bundle-registry-abgen.ts`.
+
+`docker-next.yml` deploys both to dev on every push to `main`. Releases publish only
+`asset-bundle-registry`, because the abgen lambda is currently created on the dev
+`ops-lambdas` stack only; use `manual-deploy.yml` to place the abgen instance elsewhere.
 
 ## AI Agent Context
 
