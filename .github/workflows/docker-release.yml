@@ -5,6 +5,9 @@ on:
     types:
       - "created"
 
+# asset-bundle-registry-abgen is deliberately absent: the abgen lambda that feeds it only
+# exists on the dev ops-lambdas stack. Deploy it to stg/prd through manual-deploy.yml until
+# that changes.
 jobs:
   prd-deployment:
     uses: decentraland/platform-actions/.github/workflows/apps-docker-release.yml@main

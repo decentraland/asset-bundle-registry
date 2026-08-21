@@ -92,25 +92,64 @@ describe('textures-handler', () => {
   })
 
   describe('canHandle', () => {
-    it('should return true for valid AssetBundleConversionFinishedEvent', () => {
-      const event = createEvent()
-      expect(handler.canHandle(event)).toBe(true)
+    describe('when the event is a valid conversion-finished event', () => {
+      let event: AssetBundleConversionFinishedEvent
+
+      beforeEach(() => {
+        event = createEvent()
+      })
+
+      it('should return true', () => {
+        expect(handler.canHandle(event)).toBe(true)
+      })
     })
 
-    it('should return false for invalid event', () => {
-      const invalidEvent: DeploymentToSqs = {
-        entity: {
-          entityId: '123',
-          authChain: [
-            {
-              signature: 'signature',
-              type: AuthLinkType.SIGNER,
-              payload: 'payload'
-            }
-          ]
+    describe('when the event has the right type and subType but an invalid payload', () => {
+      let event: AssetBundleConversionFinishedEvent
+
+      beforeEach(() => {
+        event = createEvent()
+        delete (event as any).metadata
+      })
+
+      it('should return false', () => {
+        expect(handler.canHandle(event)).toBe(false)
+      })
+    })
+
+    describe('when the event subType is not a conversion result', () => {
+      let event: AssetBundleConversionFinishedEvent
+
+      beforeEach(() => {
+        event = createEvent({ subType: Events.SubType.AssetBundle.MANUALLY_QUEUED as any })
+      })
+
+      it('should return false', () => {
+        expect(handler.canHandle(event)).toBe(false)
+      })
+    })
+
+    describe('when the event is a deployment instead of a conversion-finished event', () => {
+      let event: DeploymentToSqs
+
+      beforeEach(() => {
+        event = {
+          entity: {
+            entityId: '123',
+            authChain: [
+              {
+                signature: 'signature',
+                type: AuthLinkType.SIGNER,
+                payload: 'payload'
+              }
+            ]
+          }
         }
-      }
-      expect(handler.canHandle(invalidEvent as any)).toBe(false)
+      })
+
+      it('should return false', () => {
+        expect(handler.canHandle(event as any)).toBe(false)
+      })
     })
   })
 

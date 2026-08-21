@@ -37,9 +37,15 @@ export async function setupRouter(globalContext: GlobalContext): Promise<Router<
   router.get('/entities/status/:id', getEntityStatusHandler)
   router.get('/entities/status', signedFetchMiddleware, getEntitiesStatusHandler)
   router.get('/queues/status', getQueuesStatuses)
-  router.post('/profiles', getProfilesHandler)
-  router.post('/profiles/metadata', getProfilesMetadataHandler)
   router.get('/worlds/:worldName/manifest', getWorldManifestHandler)
+
+  // A cache/DB miss on these hydrates from Catalyst and persists the result, so an instance
+  // that holds no profiles must not expose them.
+  const areProfilesDisabled = (await globalContext.components.config.getString('DISABLE_PROFILES')) === 'true'
+  if (!areProfilesDisabled) {
+    router.post('/profiles', getProfilesHandler)
+    router.post('/profiles/metadata', getProfilesMetadataHandler)
+  }
 
   router.get('/denylist', getDenylistHandler)
   router.post('/denylist/:entityId', signedFetchMiddleware, postDenylistEntryHandler)

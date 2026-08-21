@@ -267,9 +267,7 @@ export const createTexturesEventHandler = ({
       }
     },
     canHandle: (event: any): boolean => {
-      AssetBundleConversionFinishedEvent.validate(event)
-
-      return !AssetBundleConversionFinishedEvent.validate.errors?.length
+      return AssetBundleConversionFinishedEvent.validate(event)
     },
     name: HANDLER_NAME
   }

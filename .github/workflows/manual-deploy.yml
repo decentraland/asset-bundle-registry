@@ -3,6 +3,14 @@ name: Manual deployment
 on:
   workflow_dispatch:
     inputs:
+      service-name:
+        required: true
+        type: choice
+        options:
+          - asset-bundle-registry
+          - asset-bundle-registry-abgen
+        default: asset-bundle-registry
+        description: Service
       deployment-environment:
         required: true
         type: choice
@@ -21,7 +29,7 @@ on:
 jobs:
   deployment:
     if: ${{ inputs.deployment-environment }}
-    name: "Deploy asset-bundle-registry to: ${{ inputs.deployment-environment }}"
+    name: "Deploy ${{ inputs.service-name }} to: ${{ inputs.deployment-environment }}"
     runs-on: ubuntu-latest
     environment: ${{ inputs.deployment-environment }}
     steps:
@@ -29,7 +37,8 @@ jobs:
         id: deploy
         uses: decentraland/dcl-deploy-action@main
         with:
+          # Both services run the same image; only the ECS service differs.
           dockerImage: "quay.io/decentraland/asset-bundle-registry:${{ inputs.tag }}"
-          serviceName: asset-bundle-registry
+          serviceName: ${{ inputs.service-name }}
           env: ${{ inputs.deployment-environment }}
           token: ${{ secrets.GITHUB_TOKEN }}

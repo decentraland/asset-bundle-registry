@@ -443,6 +443,32 @@ describe('ownership validator job', () => {
     })
   })
 
+  describe('when profile sync is disabled', () => {
+    beforeEach(async () => {
+      ;(mockConfig.getString as jest.Mock).mockImplementation((key: string) =>
+        Promise.resolve(key === 'DISABLE_PROFILE_SYNC' ? 'true' : undefined)
+      )
+      ;(mockProfilesCache.getAllPointers as jest.Mock).mockReturnValue(['0x1'])
+
+      component = await createOwnershipValidatorJob({
+        logs: mockLogs,
+        config: mockConfig,
+        catalyst: mockCatalyst,
+        profilesCache: mockProfilesCache,
+        profileSanitizer,
+        db: mockDb,
+        metrics: mockMetrics
+      })
+
+      await component.start?.(createStartOptions())
+      await jest.advanceTimersByTimeAsync(FIVE_MINUTES_MS)
+    })
+
+    it('should not read the profiles cache', () => {
+      expect(mockProfilesCache.getAllPointers).not.toHaveBeenCalled()
+    })
+  })
+
   describe('stop', () => {
     describe('when the validator is stopped after running', () => {
       beforeEach(async () => {
