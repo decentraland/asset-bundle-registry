@@ -2,7 +2,7 @@ import { AssetBundleConversionFinishedEvent, AuthLinkType, Entity, EntityType, E
 import { createInMemoryCacheComponent } from '../../../../src/adapters/memory-cache'
 import { createTexturesEventHandler } from '../../../../src/logic/handlers/textures-handler'
 import { createQueuesStatusManagerComponent } from '../../../../src/logic/queues-status-manager'
-import { ConvertedEventIdentifier, IEventHandlerComponent, Registry } from '../../../../src/types'
+import { Registry } from '../../../../src/types'
 import { createCatalystMockComponent } from '../../mocks/catalyst'
 import { createDbMockComponent } from '../../mocks/db'
 import { createLogMockComponent } from '../../mocks/logs'
@@ -77,7 +77,7 @@ describe('textures-handler', () => {
     }
   })
 
-  const handlerComponents = {
+  const handler = createTexturesEventHandler({
     logs,
     db,
     catalyst,
@@ -85,21 +85,14 @@ describe('textures-handler', () => {
     registry,
     queuesStatusManager,
     coordinates
-  }
-
-  const defaultConvertedEvent: ConvertedEventIdentifier = {
-    type: Events.Type.ASSET_BUNDLE,
-    subType: Events.SubType.AssetBundle.CONVERTED
-  }
-
-  const handler = createTexturesEventHandler(handlerComponents, defaultConvertedEvent)
+  })
 
   beforeEach(() => {
     jest.clearAllMocks()
   })
 
   describe('canHandle', () => {
-    describe('when the event carries the configured type and subType', () => {
+    describe('when the event is a valid conversion-finished event', () => {
       let event: AssetBundleConversionFinishedEvent
 
       beforeEach(() => {
@@ -111,7 +104,7 @@ describe('textures-handler', () => {
       })
     })
 
-    describe('when the event carries the configured pair but an invalid payload', () => {
+    describe('when the event has the right type and subType but an invalid payload', () => {
       let event: AssetBundleConversionFinishedEvent
 
       beforeEach(() => {
@@ -124,7 +117,7 @@ describe('textures-handler', () => {
       })
     })
 
-    describe('when the event subType is not the configured one', () => {
+    describe('when the event subType is not a conversion result', () => {
       let event: AssetBundleConversionFinishedEvent
 
       beforeEach(() => {
@@ -156,41 +149,6 @@ describe('textures-handler', () => {
 
       it('should return false', () => {
         expect(handler.canHandle(event as any)).toBe(false)
-      })
-    })
-
-    describe('when the handler is configured for a producer-specific type and subType', () => {
-      let abgenHandler: IEventHandlerComponent<AssetBundleConversionFinishedEvent>
-
-      beforeEach(() => {
-        abgenHandler = createTexturesEventHandler(handlerComponents, {
-          type: 'abgen-asset-bundle',
-          subType: 'abgen-converted'
-        })
-      })
-
-      describe('and the event carries that pair', () => {
-        let event: AssetBundleConversionFinishedEvent
-
-        beforeEach(() => {
-          event = createEvent({ type: 'abgen-asset-bundle' as any, subType: 'abgen-converted' as any })
-        })
-
-        it('should return true', () => {
-          expect(abgenHandler.canHandle(event)).toBe(true)
-        })
-      })
-
-      describe('and the event carries the default pair', () => {
-        let event: AssetBundleConversionFinishedEvent
-
-        beforeEach(() => {
-          event = createEvent()
-        })
-
-        it('should return false', () => {
-          expect(abgenHandler.canHandle(event)).toBe(false)
-        })
       })
     })
   })

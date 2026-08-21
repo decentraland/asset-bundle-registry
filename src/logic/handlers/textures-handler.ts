@@ -1,7 +1,6 @@
-import { AssetBundleConversionFinishedEvent, Entity, Events } from '@dcl/schemas'
+import { AssetBundleConversionFinishedEvent, Entity } from '@dcl/schemas'
 import {
   AppComponents,
-  ConvertedEventIdentifier,
   IEventHandlerComponent,
   EventHandlerName,
   EventHandlerResult,
@@ -10,18 +9,18 @@ import {
 } from '../../types'
 import { ManifestStatusCode } from '../entity-status-fetcher'
 
-export const createTexturesEventHandler = (
-  {
-    logs,
-    db,
-    catalyst,
-    worlds,
-    registry,
-    queuesStatusManager,
-    coordinates
-  }: Pick<AppComponents, 'logs' | 'db' | 'catalyst' | 'worlds' | 'queuesStatusManager' | 'registry' | 'coordinates'>,
-  convertedEvent: ConvertedEventIdentifier
-): IEventHandlerComponent<AssetBundleConversionFinishedEvent> => {
+export const createTexturesEventHandler = ({
+  logs,
+  db,
+  catalyst,
+  worlds,
+  registry,
+  queuesStatusManager,
+  coordinates
+}: Pick<
+  AppComponents,
+  'logs' | 'db' | 'catalyst' | 'worlds' | 'queuesStatusManager' | 'registry' | 'coordinates'
+>): IEventHandlerComponent<AssetBundleConversionFinishedEvent> => {
   const HANDLER_NAME = EventHandlerName.TEXTURES
   const logger = logs.getLogger('textures-handler')
 
@@ -268,16 +267,7 @@ export const createTexturesEventHandler = (
       }
     },
     canHandle: (event: any): boolean => {
-      if (event?.type !== convertedEvent.type || event?.subType !== convertedEvent.subType) {
-        return false
-      }
-
-      // The schema pins type/subType, so a producer-specific pair is normalized before validating the payload.
-      return AssetBundleConversionFinishedEvent.validate({
-        ...event,
-        type: Events.Type.ASSET_BUNDLE,
-        subType: Events.SubType.AssetBundle.CONVERTED
-      })
+      return AssetBundleConversionFinishedEvent.validate(event)
     },
     name: HANDLER_NAME
   }

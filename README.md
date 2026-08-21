@@ -132,13 +132,12 @@ Use the `.env.default` variables as an example.
 
 #### Instance-scoping variables
 
-A single image backs more than one deployment (see [Deployments](#deployments)), so a few
-variables decide what an instance actually does:
+A single image backs more than one deployment (see [Deployments](#deployments)). Which
+conversion events an instance acts on is decided by the topics its queue is subscribed to, not
+by configuration; what the instance itself decides is whether it handles profiles at all:
 
 | Variable | `.env.default` | Effect |
 | --- | --- | --- |
-| `ASSET_BUNDLE_CONVERTED_EVENT_TYPE` | `asset-bundle` | `type` of the conversion-finished event this instance acts on |
-| `ASSET_BUNDLE_CONVERTED_EVENT_SUB_TYPE` | `converted` | `subType` of that event |
 | `DISABLE_PROFILE_SYNC` | `true` | `true` stops the profile synchronizer and the ownership curation job |
 | `DISABLE_PROFILES` | `false` | `true` also unregisters `POST /profiles` and `POST /profiles/metadata` |
 

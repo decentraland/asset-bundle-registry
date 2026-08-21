@@ -152,13 +152,6 @@ export type MessageProcessorResult = {
   failedHandlers: EventHandlerName[]
 }
 
-// The type/subType pair a conversion-finished event carries. Configurable so an instance
-// can follow a producer other than the Unity converter (see ASSET_BUNDLE_CONVERTED_EVENT_*).
-export type ConvertedEventIdentifier = {
-  type: string
-  subType: string
-}
-
 /**
  * Platforms supported for asset bundle conversion.
  * WebGL was decommissioned — stale events with platform 'webgl' must be
