@@ -273,13 +273,11 @@ export const createTexturesEventHandler = (
       }
 
       // The schema pins type/subType, so a producer-specific pair is normalized before validating the payload.
-      AssetBundleConversionFinishedEvent.validate({
+      return AssetBundleConversionFinishedEvent.validate({
         ...event,
         type: Events.Type.ASSET_BUNDLE,
         subType: Events.SubType.AssetBundle.CONVERTED
       })
-
-      return !AssetBundleConversionFinishedEvent.validate.errors?.length
     },
     name: HANDLER_NAME
   }

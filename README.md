@@ -135,12 +135,17 @@ Use the `.env.default` variables as an example.
 A single image backs more than one deployment (see [Deployments](#deployments)), so a few
 variables decide what an instance actually does:
 
-| Variable | Default | Effect |
+| Variable | `.env.default` | Effect |
 | --- | --- | --- |
 | `ASSET_BUNDLE_CONVERTED_EVENT_TYPE` | `asset-bundle` | `type` of the conversion-finished event this instance acts on |
 | `ASSET_BUNDLE_CONVERTED_EVENT_SUB_TYPE` | `converted` | `subType` of that event |
-| `DISABLE_PROFILE_SYNC` | unset | `true` stops the profile synchronizer and the ownership curation job |
-| `DISABLE_PROFILES` | unset | `true` also unregisters `POST /profiles` and `POST /profiles/metadata` |
+| `DISABLE_PROFILE_SYNC` | `true` | `true` stops the profile synchronizer and the ownership curation job |
+| `DISABLE_PROFILES` | `false` | `true` also unregisters `POST /profiles` and `POST /profiles/metadata` |
+
+`.env.default` ships inside the image, so those are the values an instance runs with when its
+deployment sets nothing. A real environment variable always wins — dotenv only fills gaps — and
+both deployed services set the two profile flags explicitly, so neither relies on the defaults
+above.
 
 ### Running the Service
 
