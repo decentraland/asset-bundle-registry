@@ -5,6 +5,7 @@ import { createRequestMaker, getAuthHeaders, getIdentity, Identity } from '../ut
 
 const SIGNED_METADATA = { signer: 'decentraland-kernel-scene' }
 const DELIVERED_METADATA = JSON.stringify({ signer: 'Decentraland-Kernel-Scene' })
+const RESPELLED_KEY_METADATA = { Signer: 'decentraland-kernel-scene' }
 
 test('GET /entities/status with a scene signer', function ({ components }) {
   let identity: Identity
@@ -51,6 +52,24 @@ test('GET /entities/status with a scene signer', function ({ components }) {
 
   it('should reject a request that delivers the canonical signer exactly as signed', async function () {
     const response = await fetchLocally('GET', '/entities/status', identity, undefined, SIGNED_METADATA)
+    const parsedResponse = await response.json()
+
+    expect(response.status).toBe(400)
+    expect(parsedResponse.error).toMatch(/^Invalid metadata content: /)
+  })
+
+  it('should reject a request that names the scene signer under a re-spelled `Signer` key', async function () {
+    // Distinct from the mixed-case *value* above: here the value is already canonical and the *key*
+    // is re-spelled. It is signed that way rather than rewritten afterwards, so the signature covers
+    // the delivered bytes verbatim and the request is valid on the current 6.x payload — this is the
+    // strict path, not the legacy one, and no part of the signature is weakened to reach it.
+    //
+    // A predicate that reads the exact key sees no `signer` at all and reads the field as absent, so
+    // `rejectIfSigner` answered "allowed" for metadata that visibly names the signer it exists to
+    // refuse, and the scene request reached the handler as an ordinary user-signed one. The guard
+    // treats a key that case-folds to `signer` without being spelled exactly that as a rejection
+    // rather than an absence, so the gate answers 400 before signature verification is reached.
+    const response = await fetchLocally('GET', '/entities/status', identity, undefined, RESPELLED_KEY_METADATA)
     const parsedResponse = await response.json()
 
     expect(response.status).toBe(400)
