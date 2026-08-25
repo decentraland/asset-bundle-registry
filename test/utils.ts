@@ -1,56 +1,9 @@
-import { AuthChain, Authenticator, AuthIdentity, IdentityType } from '@dcl/crypto'
-import { createUnsafeIdentity } from '@dcl/crypto/dist/crypto'
-import { AUTH_CHAIN_HEADER_PREFIX, AUTH_METADATA_HEADER, AUTH_TIMESTAMP_HEADER } from '@dcl/crypto-middleware'
+import { getSignedAuthHeaders, type Identity } from '@dcl/test-helpers'
 import { Registry, TestComponents } from '../src/types'
 import { EntityType } from '@dcl/schemas'
 
-export type Identity = {
-  authChain: AuthIdentity
-  realAccount: IdentityType
-  ephemeralIdentity: IdentityType
-}
-
-export async function getIdentity(): Promise<Identity> {
-  const ephemeralIdentity = createUnsafeIdentity()
-  const realAccount = createUnsafeIdentity()
-
-  const authChain = await Authenticator.initializeAuthChain(
-    realAccount.address,
-    ephemeralIdentity,
-    10,
-    async (message) => {
-      return Authenticator.createSignature(realAccount, message)
-    }
-  )
-
-  return { authChain, realAccount, ephemeralIdentity }
-}
-
-export function getAuthHeaders(
-  method: string,
-  path: string,
-  metadata: Record<string, any>,
-  chainProvider: (payload: string) => AuthChain
-) {
-  const headers: Record<string, string> = {}
-  const timestamp = Date.now()
-  const metadataJSON = JSON.stringify(metadata)
-  // Matches @dcl/crypto-middleware >= 6: the method, path and timestamp are lowercased,
-  // the metadata JSON is joined verbatim so its casing is bound by the signature.
-  const payloadParts = [method.toLowerCase(), path.toLowerCase(), timestamp.toString(), metadataJSON]
-  const payloadToSign = payloadParts.join(':')
-
-  const chain = chainProvider(payloadToSign)
-
-  chain.forEach((link, index) => {
-    headers[`${AUTH_CHAIN_HEADER_PREFIX}${index}`] = JSON.stringify(link)
-  })
-
-  headers[AUTH_TIMESTAMP_HEADER] = timestamp.toString()
-  headers[AUTH_METADATA_HEADER] = metadataJSON
-
-  return headers
-}
+export { getAuthHeaders, getIdentity } from '@dcl/test-helpers'
+export type { Identity } from '@dcl/test-helpers'
 
 export function createRequestMaker({ localFetch }: Pick<TestComponents, 'localFetch'>) {
   function makeLocalRequest(
@@ -74,16 +27,7 @@ export function createRequestMaker({ localFetch }: Pick<TestComponents, 'localFe
     }
 
     if (identity) {
-      headers = getAuthHeaders(method, path, metadata, (payload) =>
-        Authenticator.signPayload(
-          {
-            ephemeralIdentity: identity.ephemeralIdentity,
-            expiration: new Date(),
-            authChain: identity.authChain.authChain
-          },
-          payload
-        )
-      )
+      headers = getSignedAuthHeaders(method, path, metadata, identity)
     }
 
     return localFetch.fetch(url, {
