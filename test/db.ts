@@ -1,6 +1,6 @@
 import { SQL } from 'sql-template-strings'
 import { SQLStatement } from 'sql-template-strings'
-import { AppComponents, IDbComponent } from '../src/types'
+import { AppComponents, IDbComponent, ItemCoOccurrenceRow } from '../src/types'
 import { SpawnCoordinate } from '../src/logic/coordinates/types'
 
 export function extendDbComponent({ db, pg }: Pick<AppComponents, 'db' | 'pg'>): IDbComponent & {
@@ -16,6 +16,8 @@ export function extendDbComponent({ db, pg }: Pick<AppComponents, 'db' | 'pg'>):
   ) => Promise<void>
   getSpawnCoordinateByWorldName: (worldName: string) => Promise<SpawnCoordinate | null>
   deleteDenylistEntries: (entityIds: string[]) => Promise<void>
+  getItemCoOccurrencesInvolving: (items: string[]) => Promise<ItemCoOccurrenceRow[]>
+  getItemCoOccurrencesLike: (pattern: string) => Promise<ItemCoOccurrenceRow[]>
   close: () => Promise<void>
 } {
   return {
@@ -75,6 +77,25 @@ export function extendDbComponent({ db, pg }: Pick<AppComponents, 'db' | 'pg'>):
             WHERE LOWER(entity_id) = ANY(${entityIds.map((id) => id.toLowerCase())}::varchar(255)[])
           `
       await pg.query(query)
+    },
+    getItemCoOccurrencesInvolving: async (items: string[]) => {
+      const query: SQLStatement = SQL`
+            SELECT item_a, item_b, n_ab, n_a, n_b, cosine, lift
+            FROM item_co_occurrence
+            WHERE item_a = ANY(${items}::text[]) OR item_b = ANY(${items}::text[])
+            ORDER BY item_a, item_b
+          `
+      const result = await pg.query<ItemCoOccurrenceRow>(query)
+      return result.rows
+    },
+    getItemCoOccurrencesLike: async (pattern: string) => {
+      const query: SQLStatement = SQL`
+            SELECT item_a, item_b, n_ab, n_a, n_b, cosine, lift
+            FROM item_co_occurrence
+            WHERE item_a LIKE ${pattern} OR item_b LIKE ${pattern}
+          `
+      const result = await pg.query<ItemCoOccurrenceRow>(query)
+      return result.rows
     },
     close: async () => {
       await pg.getPool().end()

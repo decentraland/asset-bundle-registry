@@ -77,6 +77,16 @@ export type AppComponents = BaseComponents & {
 }
 
 // components used in tests
+export type ItemCoOccurrenceRow = {
+  item_a: string
+  item_b: string
+  n_ab: string
+  n_a: string
+  n_b: string
+  cosine: number
+  lift: number
+}
+
 export type TestComponents = BaseComponents & {
   // A fetch component that only hits the test server
   localFetch: IFetchComponent
@@ -96,6 +106,8 @@ export type TestComponents = BaseComponents & {
     ) => Promise<void>
     getSpawnCoordinateByWorldName: (worldName: string) => Promise<SpawnCoordinate | null>
     deleteDenylistEntries: (entityIds: string[]) => Promise<void>
+    getItemCoOccurrencesInvolving: (items: string[]) => Promise<ItemCoOccurrenceRow[]>
+    getItemCoOccurrencesLike: (pattern: string) => Promise<ItemCoOccurrenceRow[]>
     close: () => Promise<void>
   }
 }
