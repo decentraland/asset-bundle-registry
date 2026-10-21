@@ -16,6 +16,7 @@ export function extendDbComponent({ db, pg }: Pick<AppComponents, 'db' | 'pg'>):
   ) => Promise<void>
   getSpawnCoordinateByWorldName: (worldName: string) => Promise<SpawnCoordinate | null>
   deleteDenylistEntries: (entityIds: string[]) => Promise<void>
+  getProfilesWearingCollectionsV2: () => Promise<{ pointers: string[]; plan: string }>
   close: () => Promise<void>
 } {
   return {
@@ -75,6 +76,28 @@ export function extendDbComponent({ db, pg }: Pick<AppComponents, 'db' | 'pg'>):
             WHERE LOWER(entity_id) = ANY(${entityIds.map((id) => id.toLowerCase())}::varchar(255)[])
           `
       await pg.query(query)
+    },
+    // The predicate the marketplace server's co-wear rebuild uses. Sequential scans are disabled on this
+    // connection because a test-sized table would otherwise never pick an index, whatever its predicate.
+    getProfilesWearingCollectionsV2: async () => {
+      const predicate = `lower((metadata -> 'avatars' -> 0 -> 'avatar' -> 'wearables')::text) LIKE '%collections-v2%'`
+      const client = await pg.getPool().connect()
+      try {
+        await client.query('SET enable_seqscan = off')
+        const result = await client.query<{ pointer: string }>(
+          `SELECT pointer FROM profiles WHERE ${predicate} ORDER BY pointer`
+        )
+        const explained = await client.query<{ 'QUERY PLAN': string }>(
+          `EXPLAIN SELECT pointer FROM profiles WHERE ${predicate}`
+        )
+        return {
+          pointers: result.rows.map((row) => row.pointer),
+          plan: explained.rows.map((row) => row['QUERY PLAN']).join('\n')
+        }
+      } finally {
+        await client.query('RESET enable_seqscan')
+        client.release()
+      }
     },
     close: async () => {
       await pg.getPool().end()

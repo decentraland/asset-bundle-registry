@@ -96,6 +96,7 @@ export type TestComponents = BaseComponents & {
     ) => Promise<void>
     getSpawnCoordinateByWorldName: (worldName: string) => Promise<SpawnCoordinate | null>
     deleteDenylistEntries: (entityIds: string[]) => Promise<void>
+    getProfilesWearingCollectionsV2: () => Promise<{ pointers: string[]; plan: string }>
     close: () => Promise<void>
   }
 }
