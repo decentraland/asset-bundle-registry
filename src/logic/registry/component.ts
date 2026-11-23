@@ -29,16 +29,29 @@ export interface IRegistryComponent {
    * @param entityIds - Array of entity IDs to undeploy
    * @param worldName - The world name from the undeployment event
    * @param eventTimestamp - The timestamp of the event that triggered this undeployment
+   * @param sourceContentServerUrl - Origin of the server that sent the event (null = default worlds server);
+   *   only rows from that server are undeployed
    */
-  undeployWorldScenes(entityIds: string[], worldName: string, eventTimestamp: number): Promise<UndeploymentResult>
+  undeployWorldScenes(
+    entityIds: string[],
+    worldName: string,
+    eventTimestamp: number,
+    sourceContentServerUrl: string | null
+  ): Promise<UndeploymentResult>
 
   /**
    * Undeploys all registries belonging to a world and recalculates spawn coordinates.
    *
    * @param worldName - The world name to undeploy all registries for
    * @param eventTimestamp - The timestamp of the event that triggered this undeployment
+   * @param sourceContentServerUrl - Origin of the server that sent the event (null = default worlds server);
+   *   only rows from that server are undeployed
    */
-  undeployWorld(worldName: string, eventTimestamp: number): Promise<UndeploymentResult>
+  undeployWorld(
+    worldName: string,
+    eventTimestamp: number,
+    sourceContentServerUrl: string | null
+  ): Promise<UndeploymentResult>
 }
 
 export function createRegistryComponent({
@@ -152,17 +165,19 @@ export function createRegistryComponent({
   async function undeployWorldScenes(
     entityIds: string[],
     worldName: string,
-    eventTimestamp: number
+    eventTimestamp: number,
+    sourceContentServerUrl: string | null
   ): Promise<UndeploymentResult> {
     const normalizedWorldName = worldName.toLowerCase()
 
     logger.info('Undeploying world scenes', {
       entityIds: entityIds.join(', '),
       worldName: normalizedWorldName,
-      eventTimestamp
+      eventTimestamp,
+      sourceContentServerUrl: sourceContentServerUrl ?? 'default'
     })
 
-    const result = await db.undeployWorldScenes(entityIds, normalizedWorldName, eventTimestamp)
+    const result = await db.undeployWorldScenes(entityIds, normalizedWorldName, eventTimestamp, sourceContentServerUrl)
 
     logger.info('Registries marked as obsolete', {
       undeployedCount: result.undeployedCount,
@@ -177,11 +192,19 @@ export function createRegistryComponent({
     return result
   }
 
-  async function undeployWorld(worldName: string, eventTimestamp: number): Promise<UndeploymentResult> {
-    logger.info('Undeploying entire world', { worldName, eventTimestamp })
+  async function undeployWorld(
+    worldName: string,
+    eventTimestamp: number,
+    sourceContentServerUrl: string | null
+  ): Promise<UndeploymentResult> {
+    logger.info('Undeploying entire world', {
+      worldName,
+      eventTimestamp,
+      sourceContentServerUrl: sourceContentServerUrl ?? 'default'
+    })
 
-    // 1. Undeploy all registries belonging to the world (only those created before eventTimestamp)
-    const result = await db.undeployWorldByName(worldName, eventTimestamp)
+    // 1. Undeploy the world's registries from this source (only those created before eventTimestamp)
+    const result = await db.undeployWorldByName(worldName, eventTimestamp, sourceContentServerUrl)
 
     logger.info('World registries marked as obsolete', {
       undeployedCount: result.undeployedCount,

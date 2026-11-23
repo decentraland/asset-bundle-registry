@@ -6,6 +6,8 @@ import {
   EntityStatusInQueue,
   EventHandlerName,
   MessageProcessorResult,
+  MessageAttributes,
+  EventContext,
   EventHandlerResult,
   Registry,
   Sync,
@@ -161,8 +163,19 @@ export interface IDbComponent {
     eventTimestamp: number,
     calculateSpawn: (params: SpawnRecalculationParams) => SpawnRecalculationResult
   ): Promise<void>
-  undeployWorldScenes(entityIds: string[], worldName: string, eventTimestamp: number): Promise<UndeploymentResult>
-  undeployWorldByName(worldName: string, eventTimestamp: number): Promise<UndeploymentResult>
+  /** Marks the given world scenes OBSOLETE, scoped to rows from `sourceContentServerUrl` (null = default server). */
+  undeployWorldScenes(
+    entityIds: string[],
+    worldName: string,
+    eventTimestamp: number,
+    sourceContentServerUrl: string | null
+  ): Promise<UndeploymentResult>
+  /** Marks every row of the world OBSOLETE, scoped to rows from `sourceContentServerUrl` (null = default server). */
+  undeployWorldByName(
+    worldName: string,
+    eventTimestamp: number,
+    sourceContentServerUrl: string | null
+  ): Promise<UndeploymentResult>
   // Denylist methods
   getDenylist(): Promise<Denylist.DbEntity[]>
   addDenylistEntry(entityId: string, createdBy: string, reason?: string | null): Promise<Denylist.DbEntity>
@@ -193,7 +206,7 @@ export { IQueueComponent }
 export interface IMessageConsumerComponent extends IBaseComponent {}
 
 export interface IMessageProcessorComponent {
-  process(message: any): Promise<MessageProcessorResult>
+  process(message: any, attributes?: MessageAttributes): Promise<MessageProcessorResult>
 }
 
 export interface ICatalystComponent {
@@ -211,7 +224,8 @@ export interface IWorldsComponent {
 }
 
 export interface IEventHandlerComponent<T> {
-  handle(event: T): Promise<EventHandlerResult>
+  /** `context` defaults to {@link DEFAULT_EVENT_CONTEXT} (the default worlds server). */
+  handle(event: T, context?: EventContext): Promise<EventHandlerResult>
   canHandle(event: T): boolean
   name: EventHandlerName
 }

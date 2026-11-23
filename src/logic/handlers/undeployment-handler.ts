@@ -1,5 +1,12 @@
 import { Events, WorldScenesUndeploymentEvent } from '@dcl/schemas'
-import { AppComponents, IEventHandlerComponent, EventHandlerName, EventHandlerResult } from '../../types'
+import {
+  AppComponents,
+  DEFAULT_EVENT_CONTEXT,
+  EventContext,
+  IEventHandlerComponent,
+  EventHandlerName,
+  EventHandlerResult
+} from '../../types'
 
 /**
  * Type guard to validate if a message is a WorldScenesUndeploymentEvent.
@@ -43,17 +50,27 @@ export const createUndeploymentEventHandler = ({
      * Uses event timestamp for conflict resolution to prevent race conditions.
      *
      * @param event - The undeployment event containing entity IDs to undeploy
+     * @param context - Message context; only rows from its source content server are undeployed
      * @returns EventHandlerResult indicating success or failure
      */
-    handle: async (event: WorldScenesUndeploymentEvent): Promise<EventHandlerResult> => {
+    handle: async (
+      event: WorldScenesUndeploymentEvent,
+      context: EventContext = DEFAULT_EVENT_CONTEXT
+    ): Promise<EventHandlerResult> => {
       const entityIds = event.metadata.scenes.map((scene) => scene.entityId)
       const worldName = event.metadata.worldName.toLowerCase()
       const eventTimestamp = event.timestamp
+      const { sourceContentServerUrl } = context
 
       try {
-        logger.info('Processing undeployment', { entityIds: entityIds.join(', '), worldName, eventTimestamp })
+        logger.info('Processing undeployment', {
+          entityIds: entityIds.join(', '),
+          worldName,
+          eventTimestamp,
+          sourceContentServerUrl: sourceContentServerUrl ?? 'default'
+        })
 
-        const result = await registry.undeployWorldScenes(entityIds, worldName, eventTimestamp)
+        const result = await registry.undeployWorldScenes(entityIds, worldName, eventTimestamp, sourceContentServerUrl)
 
         logger.info('Undeployment complete', {
           requestedEntityIds: entityIds.join(', '),

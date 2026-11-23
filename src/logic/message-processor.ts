@@ -12,7 +12,9 @@ import {
   IMessageProcessorComponent,
   MessageProcessorResult,
   EventHandlerResult,
-  RetryMessageData
+  RetryMessageData,
+  MessageAttributes,
+  EventContext
 } from '../types'
 import { createDeploymentEventHandler } from './handlers/deployment-handler'
 import { createStatusEventHandler } from './handlers/status-handler'
@@ -21,7 +23,7 @@ import { createUndeploymentEventHandler } from './handlers/undeployment-handler'
 import { createWorldUndeploymentEventHandler } from './handlers/world-undeployment-handler'
 import { createSpawnCoordinateEventHandler } from './handlers/spawn-coordinate-handler'
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
-import { isAllowedContentServerUrl, parseAllowedContentServerHosts } from './validation'
+import { isAllowedContentServerUrl, parseAllowedContentServerHosts, resolveSourceContentServerUrl } from './validation'
 
 export async function createMessageProcessorComponent({
   catalyst,
@@ -72,7 +74,7 @@ export async function createMessageProcessorComponent({
     createSpawnCoordinateEventHandler({ coordinates, logs })
   ]
 
-  async function process(message: any): Promise<MessageProcessorResult> {
+  async function process(message: any, attributes: MessageAttributes = {}): Promise<MessageProcessorResult> {
     const retryData: RetryMessageData = message.retry || {
       attempt: 0,
       failedHandlers: []
@@ -105,6 +107,23 @@ export async function createMessageProcessorComponent({
       }
     }
 
+    // Worlds removals are scoped to the server that sent them. An absent attribute is the default
+    // (prd) worlds server; an off-allowlist one is dropped instead of being treated as the default,
+    // which would let it remove the default server's rows.
+    const source = resolveSourceContentServerUrl(attributes.sourceContentServerUrl, allowedContentServerHosts)
+    if (!source.ok) {
+      log.warn('Dropping message: sourceContentServerUrl is not an allowed content server', {
+        sourceContentServerUrl: String(attributes.sourceContentServerUrl).slice(0, 120),
+        type: String(message?.type),
+        subType: String(message?.subType)
+      })
+      return {
+        ok: true,
+        failedHandlers: []
+      }
+    }
+    const context: EventContext = { sourceContentServerUrl: source.sourceContentServerUrl }
+
     log.debug('Processing', { message })
 
     const handlers:
@@ -129,7 +148,7 @@ export async function createMessageProcessorComponent({
       }
     }
 
-    const results: EventHandlerResult[] = await Promise.all(handlers.map((handler) => handler.handle(message)))
+    const results: EventHandlerResult[] = await Promise.all(handlers.map((handler) => handler.handle(message, context)))
     const failedProcessors: EventHandlerName[] = results.filter((r) => !r.ok).map((r) => r.handlerName)
 
     return {

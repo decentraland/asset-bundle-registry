@@ -13,7 +13,7 @@ import { metricDeclarations } from './metrics'
 import { AppComponents, GlobalContext, Sync } from './types'
 import { createPgComponent } from '@dcl/pg-component'
 import { createDbAdapter } from './adapters/db'
-import { createSqsComponent } from '@dcl/sqs-component'
+import { createSqsQueueComponent } from './adapters/sqs-queue'
 import { createMemoryQueueComponent } from '@dcl/memory-queue-component'
 import { createMessageProcessorComponent } from './logic/message-processor'
 import { createCatalystAdapter } from './adapters/catalyst'
@@ -96,7 +96,7 @@ export async function initComponents(): Promise<AppComponents> {
   const db = createDbAdapter({ pg })
 
   const sqsEndpoint = await config.getString('AWS_SQS_ENDPOINT')
-  const queue = sqsEndpoint ? await createSqsComponent(config) : createMemoryQueueComponent()
+  const queue = sqsEndpoint ? await createSqsQueueComponent({ config }) : createMemoryQueueComponent()
 
   const redisHostUrl = await config.getString('REDIS_HOST')
   const memoryStorage = redisHostUrl

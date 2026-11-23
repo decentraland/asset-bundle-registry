@@ -853,8 +853,10 @@ describe('when using the registry component', () => {
     let entityIds: string[]
     let worldName: string
     let eventTimestamp: number
+    let sourceContentServerUrl: string
 
     beforeEach(() => {
+      sourceContentServerUrl = 'https://worlds-content-server.dcl.dev'
       entityIds = ['entity-1', 'entity-2']
       worldName = 'Test-World'
       eventTimestamp = Date.now()
@@ -868,20 +870,25 @@ describe('when using the registry component', () => {
         })
       })
 
-      it('should undeploy the world scenes for the given entity IDs with the lowercased world name and event timestamp', async () => {
-        await component.undeployWorldScenes(entityIds, worldName, eventTimestamp)
+      it('should undeploy the world scenes for the given entity IDs with the lowercased world name, event timestamp and source', async () => {
+        await component.undeployWorldScenes(entityIds, worldName, eventTimestamp, sourceContentServerUrl)
 
-        expect(db.undeployWorldScenes).toHaveBeenCalledWith(entityIds, 'test-world', eventTimestamp)
+        expect(db.undeployWorldScenes).toHaveBeenCalledWith(
+          entityIds,
+          'test-world',
+          eventTimestamp,
+          sourceContentServerUrl
+        )
       })
 
       it('should recalculate the spawn coordinates for the affected world', async () => {
-        await component.undeployWorldScenes(entityIds, worldName, eventTimestamp)
+        await component.undeployWorldScenes(entityIds, worldName, eventTimestamp, sourceContentServerUrl)
 
         expect(coordinates.recalculateSpawnIfNeeded).toHaveBeenCalledWith('test-world', eventTimestamp)
       })
 
       it('should return the undeployment result', async () => {
-        const result = await component.undeployWorldScenes(entityIds, worldName, eventTimestamp)
+        const result = await component.undeployWorldScenes(entityIds, worldName, eventTimestamp, sourceContentServerUrl)
 
         expect(result).toEqual({
           undeployedCount: 2,
@@ -899,13 +906,13 @@ describe('when using the registry component', () => {
       })
 
       it('should not recalculate spawn coordinates', async () => {
-        await component.undeployWorldScenes(entityIds, worldName, eventTimestamp)
+        await component.undeployWorldScenes(entityIds, worldName, eventTimestamp, sourceContentServerUrl)
 
         expect(coordinates.recalculateSpawnIfNeeded).not.toHaveBeenCalled()
       })
 
       it('should return the undeployment result', async () => {
-        const result = await component.undeployWorldScenes(entityIds, worldName, eventTimestamp)
+        const result = await component.undeployWorldScenes(entityIds, worldName, eventTimestamp, sourceContentServerUrl)
 
         expect(result).toEqual({
           undeployedCount: 0,
@@ -918,8 +925,10 @@ describe('when using the registry component', () => {
   describe('when undeploying a world', () => {
     let worldName: string
     let eventTimestamp: number
+    let sourceContentServerUrl: string
 
     beforeEach(() => {
+      sourceContentServerUrl = 'https://worlds-content-server.dcl.dev'
       worldName = 'test-world'
       eventTimestamp = Date.now()
     })
@@ -932,20 +941,20 @@ describe('when using the registry component', () => {
         })
       })
 
-      it('should undeploy all registries belonging to the world with the event timestamp', async () => {
-        await component.undeployWorld(worldName, eventTimestamp)
+      it('should undeploy the world registries from the event source with the event timestamp', async () => {
+        await component.undeployWorld(worldName, eventTimestamp, sourceContentServerUrl)
 
-        expect(db.undeployWorldByName).toHaveBeenCalledWith(worldName, eventTimestamp)
+        expect(db.undeployWorldByName).toHaveBeenCalledWith(worldName, eventTimestamp, sourceContentServerUrl)
       })
 
       it('should recalculate the spawn coordinates for the world', async () => {
-        await component.undeployWorld(worldName, eventTimestamp)
+        await component.undeployWorld(worldName, eventTimestamp, sourceContentServerUrl)
 
         expect(coordinates.recalculateSpawnIfNeeded).toHaveBeenCalledWith('test-world', eventTimestamp)
       })
 
       it('should return the undeployment result', async () => {
-        const result = await component.undeployWorld(worldName, eventTimestamp)
+        const result = await component.undeployWorld(worldName, eventTimestamp, sourceContentServerUrl)
 
         expect(result).toEqual({
           undeployedCount: 3,
@@ -963,13 +972,13 @@ describe('when using the registry component', () => {
       })
 
       it('should not recalculate spawn coordinates', async () => {
-        await component.undeployWorld(worldName, eventTimestamp)
+        await component.undeployWorld(worldName, eventTimestamp, sourceContentServerUrl)
 
         expect(coordinates.recalculateSpawnIfNeeded).not.toHaveBeenCalled()
       })
 
       it('should return the undeployment result', async () => {
-        const result = await component.undeployWorld(worldName, eventTimestamp)
+        const result = await component.undeployWorld(worldName, eventTimestamp, sourceContentServerUrl)
 
         expect(result).toEqual({
           undeployedCount: 0,

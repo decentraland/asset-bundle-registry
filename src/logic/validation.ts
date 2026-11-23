@@ -54,3 +54,36 @@ export function isAllowedContentServerUrl(raw: string, allowedHosts: Set<string>
   const host = u.hostname.replace(/^\[|\]$/g, '').toLowerCase()
   return allowedHosts.has(host)
 }
+
+/** Lowercase `scheme://host[:port]` of `raw`, or undefined when it is not a URL. */
+export function toContentServerOrigin(raw: string): string | undefined {
+  try {
+    return new URL(raw).origin.toLowerCase()
+  } catch {
+    return undefined
+  }
+}
+
+/** Outcome of resolving a message's `sourceContentServerUrl` attribute. */
+export type SourceContentServerResolution =
+  { ok: true; sourceContentServerUrl: string | null } | { ok: false; reason: 'not-allowlisted' }
+
+/**
+ * Resolve the server a worlds event came from. An absent attribute means the default (prd)
+ * worlds server (null); a present one must be an allowlisted HTTPS URL and resolves to its origin.
+ * A present but off-allowlist attribute is rejected rather than downgraded to the default, so a
+ * mislabelled event can never act on the default server's rows.
+ */
+export function resolveSourceContentServerUrl(
+  raw: string | undefined,
+  allowedHosts: Set<string>
+): SourceContentServerResolution {
+  if (raw === undefined) {
+    return { ok: true, sourceContentServerUrl: null }
+  }
+  const origin = toContentServerOrigin(raw)
+  if (!origin || !isAllowedContentServerUrl(raw, allowedHosts)) {
+    return { ok: false, reason: 'not-allowlisted' }
+  }
+  return { ok: true, sourceContentServerUrl: origin }
+}

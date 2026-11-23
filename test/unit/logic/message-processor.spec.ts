@@ -95,9 +95,9 @@ describe('message processor', () => {
 
       expect(result.ok).toBe(true)
       expect(result.failedHandlers).toHaveLength(0)
-      expect(deploymentHandler.handle).toHaveBeenCalledWith(message)
-      expect(texturesHandler.handle).toHaveBeenCalledWith(message)
-      expect(statusHandler.handle).toHaveBeenCalledWith(message)
+      expect(deploymentHandler.handle).toHaveBeenCalledWith(message, { sourceContentServerUrl: null })
+      expect(texturesHandler.handle).toHaveBeenCalledWith(message, { sourceContentServerUrl: null })
+      expect(statusHandler.handle).toHaveBeenCalledWith(message, { sourceContentServerUrl: null })
     })
 
     it('should track failed handlers correctly', async () => {
@@ -149,7 +149,7 @@ describe('message processor', () => {
         expect(result.ok).toBe(true)
         expect(result.failedHandlers).toHaveLength(0)
         expect(deploymentHandler.handle).not.toHaveBeenCalled()
-        expect(texturesHandler.handle).toHaveBeenCalledWith(message)
+        expect(texturesHandler.handle).toHaveBeenCalledWith(message, { sourceContentServerUrl: null })
         expect(statusHandler.handle).not.toHaveBeenCalled()
       })
 
@@ -178,7 +178,7 @@ describe('message processor', () => {
         expect(result.ok).toBe(false)
         expect(result.failedHandlers).toEqual([EventHandlerName.TEXTURES])
         expect(deploymentHandler.handle).not.toHaveBeenCalled()
-        expect(texturesHandler.handle).toHaveBeenCalledWith(message)
+        expect(texturesHandler.handle).toHaveBeenCalledWith(message, { sourceContentServerUrl: null })
         expect(statusHandler.handle).not.toHaveBeenCalled()
       })
 
@@ -264,6 +264,80 @@ describe('message processor', () => {
       expect(deploymentHandler.handle).not.toHaveBeenCalled()
       expect(texturesHandler.handle).not.toHaveBeenCalled()
       expect(statusHandler.handle).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('when the message carries a sourceContentServerUrl attribute', () => {
+    let message: { type: string; subType: string; metadata: { worldName: string } }
+    let processor: Awaited<ReturnType<typeof createMessageProcessorComponent>>
+    let result: Awaited<ReturnType<typeof processor.process>>
+
+    beforeEach(async () => {
+      message = { type: 'world', subType: 'world_undeployment', metadata: { worldName: 'test-world' } }
+      ;(config.requireString as jest.Mock).mockResolvedValueOnce('peer.decentraland.org,worlds-content-server.dcl.dev')
+      ;(deploymentHandler.canHandle as jest.Mock).mockReturnValue(false)
+      ;(statusHandler.canHandle as jest.Mock).mockReturnValue(false)
+      ;(texturesHandler.handle as jest.Mock).mockResolvedValue({ ok: true, handlerName: EventHandlerName.TEXTURES })
+      processor = await createMessageProcessorComponent(mockComponents)
+    })
+
+    describe('and the attribute host is allowlisted', () => {
+      beforeEach(async () => {
+        result = await processor.process(message, {
+          sourceContentServerUrl: 'https://Worlds-Content-Server.dcl.dev/some/path'
+        })
+      })
+
+      it('should hand the handlers the lowercased origin of the attribute as the event source', () => {
+        expect(texturesHandler.handle).toHaveBeenCalledWith(message, {
+          sourceContentServerUrl: 'https://worlds-content-server.dcl.dev'
+        })
+      })
+
+      it('should report the message as processed', () => {
+        expect(result).toEqual({ ok: true, failedHandlers: [] })
+      })
+    })
+
+    describe('and the attribute host is not allowlisted', () => {
+      beforeEach(async () => {
+        result = await processor.process(message, { sourceContentServerUrl: 'https://worlds.evil.example' })
+      })
+
+      it('should drop the message without running any handler', () => {
+        expect(texturesHandler.handle).not.toHaveBeenCalled()
+      })
+
+      it('should report the message as processed so it is not retried', () => {
+        expect(result).toEqual({ ok: true, failedHandlers: [] })
+      })
+    })
+
+    describe('and the attribute is not an https URL', () => {
+      beforeEach(async () => {
+        result = await processor.process(message, { sourceContentServerUrl: 'http://worlds-content-server.dcl.dev' })
+      })
+
+      it('should drop the message without running any handler', () => {
+        expect(texturesHandler.handle).not.toHaveBeenCalled()
+      })
+    })
+  })
+
+  describe('when the message has no sourceContentServerUrl attribute', () => {
+    let message: { type: string; subType: string; metadata: { worldName: string } }
+
+    beforeEach(async () => {
+      message = { type: 'world', subType: 'world_undeployment', metadata: { worldName: 'test-world' } }
+      ;(deploymentHandler.canHandle as jest.Mock).mockReturnValue(false)
+      ;(statusHandler.canHandle as jest.Mock).mockReturnValue(false)
+      ;(texturesHandler.handle as jest.Mock).mockResolvedValue({ ok: true, handlerName: EventHandlerName.TEXTURES })
+      const processor = await createMessageProcessorComponent(mockComponents)
+      await processor.process(message)
+    })
+
+    it('should hand the handlers the default worlds server as the event source', () => {
+      expect(texturesHandler.handle).toHaveBeenCalledWith(message, { sourceContentServerUrl: null })
     })
   })
 })

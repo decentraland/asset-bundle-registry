@@ -3,7 +3,7 @@ import { AuthLinkType } from '@dcl/crypto'
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
 import { createDeploymentEventHandler } from '../../../../src/logic/handlers/deployment-handler'
 import { parseAllowedContentServerHosts } from '../../../../src/logic/validation'
-import { EventHandlerName, Registry } from '../../../../src/types'
+import { EventContext, EventHandlerName, Registry } from '../../../../src/types'
 import { createDbMockComponent } from '../../mocks/db'
 import { createLogMockComponent } from '../../mocks/logs'
 import { createCatalystMockComponent } from '../../mocks/catalyst'
@@ -12,7 +12,7 @@ import { createRegistryMockComponent } from '../../mocks/registry'
 
 describe('when handling deployment events', () => {
   const allowedContentServerHosts = parseAllowedContentServerHosts(
-    'peer.decentraland.org, worlds-content-server.decentraland.org'
+    'peer.decentraland.org, worlds-content-server.decentraland.org, worlds-content-server.dcl.dev'
   )
 
   const createDeploymentEvent = (entityId: string, contentServerUrls?: string[]): DeploymentToSqs => ({
@@ -299,6 +299,53 @@ describe('when handling deployment events', () => {
 
         expect(result.ok).toBe(true)
         expect(result.handlerName).toBe(EventHandlerName.DEPLOYMENT)
+      })
+
+      it('should record the default worlds server as the registry source', async () => {
+        await handler.handle(event)
+
+        expect(registry.persistAndRotateStates).toHaveBeenCalledWith(
+          expect.objectContaining({ sourceContentServerUrl: null })
+        )
+      })
+
+      describe('and the event comes from another worlds server', () => {
+        let context: EventContext
+
+        beforeEach(() => {
+          event = createDeploymentEvent('world-entity-id', ['https://worlds-content-server.dcl.dev'])
+          context = { sourceContentServerUrl: 'https://worlds-content-server.dcl.dev' }
+        })
+
+        it('should record that server as the registry source', async () => {
+          await handler.handle(event, context)
+
+          expect(registry.persistAndRotateStates).toHaveBeenCalledWith(
+            expect.objectContaining({ sourceContentServerUrl: 'https://worlds-content-server.dcl.dev' })
+          )
+        })
+      })
+    })
+
+    describe('and the deployment is a Genesis City scene with a source attribute', () => {
+      let event: DeploymentToSqs
+      let context: EventContext
+
+      beforeEach(() => {
+        event = createDeploymentEvent('genesis-entity-id', ['https://peer.decentraland.org/content'])
+        context = { sourceContentServerUrl: 'https://peer.decentraland.org' }
+        db.getRegistryById.mockResolvedValue(null)
+        worlds.isWorldDeployment.mockReturnValue(false)
+        catalyst.getEntityById.mockResolvedValue(createEntity({ id: 'genesis-entity-id' }))
+        registry.persistAndRotateStates.mockResolvedValue(undefined as any)
+      })
+
+      it('should not record a source on the registry', async () => {
+        await handler.handle(event, context)
+
+        expect(registry.persistAndRotateStates).toHaveBeenCalledWith(
+          expect.objectContaining({ sourceContentServerUrl: null })
+        )
       })
     })
 

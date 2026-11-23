@@ -27,6 +27,11 @@ type QueryExecutor = {
   query: <T>(query: SQLStatement) => Promise<{ rows: T[]; rowCount: number | null }>
 }
 
+/** Restricts a removal to rows from one source content server (null = the default worlds server). */
+type SourceScope = {
+  sourceContentServerUrl: string | null
+}
+
 export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent {
   async function getSortedRegistriesByOwner(owner: EthAddress): Promise<Registry.DbEntity[]> {
     const query: SQLStatement = SQL`
@@ -135,7 +140,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
   async function insertRegistry(registry: Registry.DbEntity): Promise<Registry.DbEntity> {
     const query: SQLStatement = SQL`
         INSERT INTO registries (
-          id, type, timestamp, deployer, pointers, content, metadata, status, bundles, versions
+          id, type, timestamp, deployer, pointers, content, metadata, status, bundles, versions, source_content_server_url
         )
         VALUES (
           ${registry.id},
@@ -147,7 +152,8 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
           ${JSON.stringify(registry.metadata)}::jsonb,
           ${registry.status},
           ${JSON.stringify(registry.bundles)}::jsonb,
-          ${JSON.stringify(registry.versions)}::jsonb
+          ${JSON.stringify(registry.versions)}::jsonb,
+          ${registry.sourceContentServerUrl ?? null}
         )
         ON CONFLICT (id) DO UPDATE 
         SET
@@ -316,13 +322,15 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
    * @param eventTimestamp - The timestamp of the undeployment event
    * @param executor - Query executor (pg or PoolClient)
    * @param worldName - The world name to scope FALLBACK sweep (undefined for Genesis City)
+   * @param sourceScope - When set, only rows from that source content server are touched (worlds only)
    * @returns The total number of registries marked as OBSOLETE (including fallbacks)
    */
   async function _undeployRegistries(
     entityIds: string[],
     eventTimestamp: number,
     executor: QueryExecutor = pg,
-    worldName?: string | null
+    worldName?: string | null,
+    sourceScope?: SourceScope
   ): Promise<number> {
     if (entityIds.length === 0) {
       return 0
@@ -335,23 +343,34 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
     // 2. Updates target entities and any FALLBACK registries sharing pointers
     // 3. Only updates registries created before the event timestamp (to handle out-of-order events)
     // Uses array overlap (&&) operator for efficient index usage
+    // Worlds removals are scoped to the server that emitted them; NULL rows belong to the default server.
+    const sourceFilter = (): SQLStatement =>
+      sourceScope
+        ? SQL`
+          AND source_content_server_url IS NOT DISTINCT FROM ${sourceScope.sourceContentServerUrl}`
+        : SQL``
+
     const query: SQLStatement = SQL`
       WITH target_pointers AS (
         SELECT array_agg(DISTINCT p) AS pointers
         FROM registries, unnest(pointers) AS p
         WHERE LOWER(id) = ANY(${parsedIds}::varchar(255)[])
-          AND timestamp < ${eventTimestamp}
+          AND timestamp < ${eventTimestamp}`
+    query.append(sourceFilter())
+    query.append(SQL`
       )
       UPDATE registries
       SET status = ${Registry.Status.OBSOLETE}
       WHERE
-        timestamp < ${eventTimestamp}
+        timestamp < ${eventTimestamp}`)
+    query.append(sourceFilter())
+    query.append(SQL`
         AND (
           LOWER(id) = ANY(${parsedIds}::varchar(255)[])
           OR (
             status = ${Registry.Status.FALLBACK}
             AND pointers && (SELECT pointers FROM target_pointers)
-    `
+    `)
 
     if (worldName) {
       const normalizedWorldName = worldName.toLowerCase()
@@ -1095,7 +1114,8 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
   async function undeployWorldScenes(
     entityIds: string[],
     worldName: string,
-    eventTimestamp: number
+    eventTimestamp: number,
+    sourceContentServerUrl: string | null
   ): Promise<UndeploymentResult> {
     const normalizedWorldName = worldName.toLowerCase()
 
@@ -1106,7 +1126,9 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
       }
     }
 
-    const undeployedCount = await _undeployRegistries(entityIds, eventTimestamp, pg, normalizedWorldName)
+    const undeployedCount = await _undeployRegistries(entityIds, eventTimestamp, pg, normalizedWorldName, {
+      sourceContentServerUrl
+    })
 
     return {
       undeployedCount,
@@ -1123,7 +1145,11 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
    * @param eventTimestamp - The timestamp of the undeployment event
    * @returns Result containing count of undeployed registries and the world name
    */
-  async function undeployWorldByName(worldName: string, eventTimestamp: number): Promise<UndeploymentResult> {
+  async function undeployWorldByName(
+    worldName: string,
+    eventTimestamp: number,
+    sourceContentServerUrl: string | null
+  ): Promise<UndeploymentResult> {
     const normalizedWorldName = worldName.toLowerCase()
 
     return pg.withTransaction(async (client) => {
@@ -1134,6 +1160,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
         WHERE LOWER(metadata->'worldConfiguration'->>'name') = ${normalizedWorldName}
           AND status != ${Registry.Status.OBSOLETE}
           AND timestamp < ${eventTimestamp}
+          AND source_content_server_url IS NOT DISTINCT FROM ${sourceContentServerUrl}
       `
       const result = await client.query<{ id: string }>(query)
       const entityIds = result.rows.map((row) => row.id)
@@ -1146,7 +1173,9 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
       }
 
       // 2. Undeploy registries (mark as OBSOLETE) - only those created before eventTimestamp
-      const undeployedCount = await _undeployRegistries(entityIds, eventTimestamp, client, normalizedWorldName)
+      const undeployedCount = await _undeployRegistries(entityIds, eventTimestamp, client, normalizedWorldName, {
+        sourceContentServerUrl
+      })
 
       return {
         undeployedCount,
@@ -1283,7 +1312,7 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
   async function _insertRegistry(registry: Registry.DbEntity, executor: QueryExecutor): Promise<Registry.DbEntity> {
     const query: SQLStatement = SQL`
         INSERT INTO registries (
-          id, type, timestamp, deployer, pointers, content, metadata, status, bundles, versions
+          id, type, timestamp, deployer, pointers, content, metadata, status, bundles, versions, source_content_server_url
         )
         VALUES (
           ${registry.id},
@@ -1295,7 +1324,8 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
           ${JSON.stringify(registry.metadata)}::jsonb,
           ${registry.status},
           ${JSON.stringify(registry.bundles)}::jsonb,
-          ${JSON.stringify(registry.versions)}::jsonb
+          ${JSON.stringify(registry.versions)}::jsonb,
+          ${registry.sourceContentServerUrl ?? null}
         )
         ON CONFLICT (id) DO UPDATE
         SET

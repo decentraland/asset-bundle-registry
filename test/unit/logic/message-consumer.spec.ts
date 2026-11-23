@@ -49,7 +49,7 @@ describe('message consumer', () => {
       await sut.stop()
       await processPromise
 
-      expect(messageProcessor.process).toHaveBeenCalledWith(message)
+      expect(messageProcessor.process).toHaveBeenCalledWith(message, {})
       expect(queue.deleteMessage).toHaveBeenCalledWith('receipt-123')
       expect(queue.sendMessage).not.toHaveBeenCalled()
     })
@@ -74,15 +74,18 @@ describe('message consumer', () => {
       await sut.stop()
       await processPromise
 
-      expect(messageProcessor.process).toHaveBeenCalledWith(message)
+      expect(messageProcessor.process).toHaveBeenCalledWith(message, {})
       expect(queue.deleteMessage).toHaveBeenCalledWith('receipt-123')
-      expect(queue.sendMessage).toHaveBeenCalledWith({
-        ...message,
-        retry: {
-          attempt: 1,
-          failedHandlers: ['TexturesHandler']
-        }
-      })
+      expect(queue.sendMessage).toHaveBeenCalledWith(
+        {
+          ...message,
+          retry: {
+            attempt: 1,
+            failedHandlers: ['TexturesHandler']
+          }
+        },
+        { isRawMessage: true }
+      )
     })
 
     it('should handle invalid message format and remove from queue', async () => {
@@ -122,7 +125,7 @@ describe('message consumer', () => {
       await sut.stop()
       await processPromise
 
-      expect(messageProcessor.process).toHaveBeenCalledWith(message)
+      expect(messageProcessor.process).toHaveBeenCalledWith(message, {})
       expect(queue.deleteMessage).toHaveBeenCalledWith('receipt-123')
       expect(queue.sendMessage).not.toHaveBeenCalled()
       expect(logs.getLogger().error).toHaveBeenCalledWith(
@@ -173,12 +176,105 @@ describe('message consumer', () => {
       await sut.stop()
       await processPromise
 
-      expect(queue.sendMessage).toHaveBeenCalledWith({
-        ...message,
+      expect(queue.sendMessage).toHaveBeenCalledWith(
+        {
+          ...message,
+          retry: {
+            attempt: 2,
+            failedHandlers: ['TexturesHandler']
+          }
+        },
+        { isRawMessage: true }
+      )
+    })
+  })
+
+  describe('when a message carries the sourceContentServerUrl SQS attribute', () => {
+    let message: { type: string; subType: string }
+
+    beforeEach(() => {
+      message = { type: 'world', subType: 'world_undeployment' }
+      queue.receiveMessages = jest
+        .fn()
+        .mockResolvedValueOnce([
+          {
+            Body: JSON.stringify(message),
+            ReceiptHandle: 'receipt-456',
+            MessageAttributes: {
+              sourceContentServerUrl: { DataType: 'String', StringValue: 'https://worlds-content-server.dcl.dev' }
+            }
+          }
+        ])
+        .mockResolvedValue([])
+    })
+
+    describe('and the processing succeeds', () => {
+      beforeEach(async () => {
+        messageProcessor.process = jest.fn().mockResolvedValueOnce({ ok: true, failedHandlers: [] })
+        const processPromise = sut.start(mockStartOptions)
+        await sut.stop()
+        await processPromise
+      })
+
+      it('should hand the attribute to the processor', () => {
+        expect(messageProcessor.process).toHaveBeenCalledWith(message, {
+          sourceContentServerUrl: 'https://worlds-content-server.dcl.dev'
+        })
+      })
+    })
+
+    describe('and the processing fails', () => {
+      beforeEach(async () => {
+        messageProcessor.process = jest
+          .fn()
+          .mockResolvedValueOnce({ ok: false, failedHandlers: ['World Undeployment Handler'] })
+        const processPromise = sut.start(mockStartOptions)
+        await sut.stop()
+        await processPromise
+      })
+
+      it('should requeue a raw body whose retry data keeps the source', () => {
+        expect(queue.sendMessage).toHaveBeenCalledWith(
+          {
+            ...message,
+            retry: {
+              attempt: 1,
+              failedHandlers: ['World Undeployment Handler'],
+              sourceContentServerUrl: 'https://worlds-content-server.dcl.dev'
+            }
+          },
+          { isRawMessage: true }
+        )
+      })
+    })
+  })
+
+  describe('when a requeued message carries its source in the retry data', () => {
+    let message: { type: string; subType: string; retry: Record<string, unknown> }
+
+    beforeEach(async () => {
+      message = {
+        type: 'world',
+        subType: 'world_undeployment',
         retry: {
-          attempt: 2,
-          failedHandlers: ['TexturesHandler']
+          attempt: 1,
+          failedHandlers: ['World Undeployment Handler'],
+          sourceContentServerUrl: 'https://worlds-content-server.dcl.dev'
         }
+      }
+      queue.receiveMessages = jest
+        .fn()
+        .mockResolvedValueOnce([{ Body: JSON.stringify(message), ReceiptHandle: 'receipt-789' }])
+        .mockResolvedValue([])
+      messageProcessor.process = jest.fn().mockResolvedValueOnce({ ok: true, failedHandlers: [] })
+      const processPromise = sut.start(mockStartOptions)
+      await sut.stop()
+      await processPromise
+    })
+
+    it('should hand the carried source to the processor', () => {
+      expect(messageProcessor.process).toHaveBeenCalledWith(message, {
+        sourceContentServerUrl: 'https://worlds-content-server.dcl.dev'
       })
     })
   })

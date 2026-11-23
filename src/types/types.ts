@@ -71,6 +71,8 @@ export namespace Registry {
     status: Status
     type: EntityType | 'world'
     versions: Versions
+    /** Origin of the worlds content server the row came from; null/absent = the default (prd) worlds server. */
+    sourceContentServerUrl?: string | null
   }
 
   export type PartialDbEntity = Pick<DbEntity, 'id' | 'pointers' | 'timestamp' | 'status' | 'bundles'>
@@ -126,7 +128,27 @@ export type EventHandlerResult = {
 export type RetryMessageData = {
   attempt: number
   failedHandlers: EventHandlerName[]
+  /** The original `sourceContentServerUrl` message attribute, carried so retries keep their source. */
+  sourceContentServerUrl?: string
 }
+
+/** SNS/SQS message attribute naming the content server a worlds event came from. */
+export const SOURCE_CONTENT_SERVER_URL_ATTRIBUTE = 'sourceContentServerUrl'
+
+/** Transport-level data of a queue message that is not part of the event body. */
+export type MessageAttributes = {
+  /** Raw, unvalidated `sourceContentServerUrl` attribute. */
+  sourceContentServerUrl?: string
+}
+
+/** Per-message context handed to event handlers. */
+export type EventContext = {
+  /** Allowlisted origin of the server that emitted the event; null = the default (prd) worlds server. */
+  sourceContentServerUrl: string | null
+}
+
+/** Context of a message without a source attribute: it came from the default (prd) worlds server. */
+export const DEFAULT_EVENT_CONTEXT: EventContext = Object.freeze({ sourceContentServerUrl: null })
 
 export enum EventHandlerName {
   DEPLOYMENT = 'Deployment Handler',

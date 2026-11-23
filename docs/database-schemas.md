@@ -17,6 +17,7 @@ erDiagram
         JSONB bundles "Bundle conversion status"
         VARCHAR deployer "Deployer address"
         JSONB versions "Asset bundle versions"
+        VARCHAR source_content_server_url "World source server origin (NULL = default)"
     }
 
     historical_registries {
@@ -93,6 +94,7 @@ Stores active entity registrations including scenes, wearables, emotes, and worl
 | `bundles` | JSONB | NOT NULL | Asset bundle and LOD conversion status per platform (Windows, Mac). |
 | `deployer` | VARCHAR(255) | NOT NULL | Ethereum address of the entity deployer. |
 | `versions` | JSONB | NULL | Asset bundle version information per platform (version string, build date). |
+| `source_content_server_url` | VARCHAR(255) | NULL | Origin of the worlds server a world row came from (the allowlisted `sourceContentServerUrl` message attribute). NULL = the default (prd) worlds server, including every row older than this column. World undeployments only touch rows of their own source. |
 
 ### Indexes
 

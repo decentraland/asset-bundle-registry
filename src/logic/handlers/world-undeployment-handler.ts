@@ -1,5 +1,12 @@
 import { Events, WorldUndeploymentEvent } from '@dcl/schemas'
-import { AppComponents, IEventHandlerComponent, EventHandlerName, EventHandlerResult } from '../../types'
+import {
+  AppComponents,
+  DEFAULT_EVENT_CONTEXT,
+  EventContext,
+  IEventHandlerComponent,
+  EventHandlerName,
+  EventHandlerResult
+} from '../../types'
 
 /**
  * Type guard to validate if a message is a WorldUndeploymentEvent.
@@ -15,8 +22,8 @@ function isWorldUndeploymentEvent(event: any): event is WorldUndeploymentEvent {
  * Creates the World Undeployment Event Handler component.
  *
  * Handles full world undeployment events by delegating to the registry component
- * which marks all registries belonging to the world as OBSOLETE and recalculates
- * spawn coordinates.
+ * which marks the world's registries from the event's source server as OBSOLETE and
+ * recalculates spawn coordinates.
  *
  * @param components Required components: registry, logs
  * @returns IEventHandlerComponent implementation for WorldUndeploymentEvent
@@ -36,16 +43,25 @@ export const createWorldUndeploymentEventHandler = ({
      * marks them as OBSOLETE, and recalculates spawn coordinates.
      *
      * @param event - The undeployment event containing the world name
+     * @param context - Message context; only rows from its source content server are undeployed
      * @returns EventHandlerResult indicating success or failure
      */
-    handle: async (event: WorldUndeploymentEvent): Promise<EventHandlerResult> => {
+    handle: async (
+      event: WorldUndeploymentEvent,
+      context: EventContext = DEFAULT_EVENT_CONTEXT
+    ): Promise<EventHandlerResult> => {
       const worldName = event.metadata.worldName
       const eventTimestamp = event.timestamp
+      const { sourceContentServerUrl } = context
 
       try {
-        logger.info('Processing world undeployment', { worldName, eventTimestamp })
+        logger.info('Processing world undeployment', {
+          worldName,
+          eventTimestamp,
+          sourceContentServerUrl: sourceContentServerUrl ?? 'default'
+        })
 
-        const result = await registry.undeployWorld(worldName, eventTimestamp)
+        const result = await registry.undeployWorld(worldName, eventTimestamp, sourceContentServerUrl)
 
         logger.info('World undeployment complete', {
           worldName,
