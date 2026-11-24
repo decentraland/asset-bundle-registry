@@ -10,7 +10,7 @@ import {
 } from '../../types'
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
 import { Authenticator } from '@dcl/crypto'
-import { isAllowedContentServerUrl, toContentServerOrigin } from '../validation'
+import { isAllowedContentServerUrl } from '../validation'
 
 export const createDeploymentEventHandler = (
   { registry, catalyst, worlds, db, logs }: Pick<AppComponents, 'catalyst' | 'worlds' | 'db' | 'logs' | 'registry'>,
@@ -57,14 +57,8 @@ export const createDeploymentEventHandler = (
         let sourceContentServerUrl: string | null = null
         if (worlds.isWorldDeployment(event)) {
           const [worldContentServerUrl] = event.contentServerUrls!
+          // The processor already dropped events whose fetch origin differs from the source attribute.
           sourceContentServerUrl = context.sourceContentServerUrl
-          if (sourceContentServerUrl && toContentServerOrigin(worldContentServerUrl) !== sourceContentServerUrl) {
-            logger.warn('World deployment contentServerUrls[0] differs from its source attribute', {
-              entityId: event.entity.entityId,
-              contentServerUrl: String(worldContentServerUrl).slice(0, 120),
-              sourceContentServerUrl
-            })
-          }
           entity = await worlds.getWorld(event.entity.entityId, worldContentServerUrl)
         } else {
           entity = await catalyst.getEntityById(event.entity.entityId, {

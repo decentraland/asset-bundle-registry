@@ -1,5 +1,12 @@
 import { Events, WorldSpawnCoordinateSetEvent } from '@dcl/schemas'
-import { AppComponents, IEventHandlerComponent, EventHandlerName, EventHandlerResult } from '../../types'
+import {
+  AppComponents,
+  DEFAULT_EVENT_CONTEXT,
+  EventContext,
+  IEventHandlerComponent,
+  EventHandlerName,
+  EventHandlerResult
+} from '../../types'
 
 /**
  * Type guard to validate if a message is a WorldSpawnCoordinateSetEvent.
@@ -38,9 +45,13 @@ export const createSpawnCoordinateEventHandler = ({
      * Uses event timestamp for conflict resolution to prevent race conditions.
      *
      * @param event - The spawn coordinate set event
+     * @param context - Message context; ignored when the world is served by another source server
      * @returns EventHandlerResult indicating success or failure
      */
-    handle: async (event: WorldSpawnCoordinateSetEvent): Promise<EventHandlerResult> => {
+    handle: async (
+      event: WorldSpawnCoordinateSetEvent,
+      context: EventContext = DEFAULT_EVENT_CONTEXT
+    ): Promise<EventHandlerResult> => {
       const { name: worldName, newCoordinate, oldCoordinate } = event.metadata
       const eventTimestamp = event.timestamp
 
@@ -58,7 +69,8 @@ export const createSpawnCoordinateEventHandler = ({
             x: newCoordinate.x,
             y: newCoordinate.y
           },
-          eventTimestamp
+          eventTimestamp,
+          context.sourceContentServerUrl
         )
 
         logger.info('Spawn coordinate set complete', {

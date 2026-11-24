@@ -168,7 +168,9 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
             WHEN EXCLUDED.deployer != '' THEN EXCLUDED.deployer
             ELSE registries.deployer
           END,
-          versions = EXCLUDED.versions
+          versions = EXCLUDED.versions,
+          -- A row read back without its source (NULL) keeps the stored one.
+          source_content_server_url = COALESCE(EXCLUDED.source_content_server_url, registries.source_content_server_url)
         RETURNING 
           id,
           type,
@@ -179,7 +181,8 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
           metadata,
           status,
           bundles,
-          versions
+          versions,
+          source_content_server_url AS "sourceContentServerUrl"
       `
 
     const result = await pg.query<Registry.DbEntity>(query)
@@ -227,7 +230,9 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
           to_jsonb(${status}::text)
         )
       WHERE LOWER(registries.id) = ${id.toLocaleLowerCase()}
-      RETURNING *
+      RETURNING
+        id, type, timestamp, deployer, pointers, content, metadata, status, bundles, versions,
+        source_content_server_url AS "sourceContentServerUrl"
     `
 
     const result = await pg.query<Registry.DbEntity>(query)
@@ -251,7 +256,9 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
           to_jsonb(${versionData}::jsonb)
         )
       WHERE LOWER(registries.id) = ${id.toLocaleLowerCase()}
-      RETURNING *
+      RETURNING
+        id, type, timestamp, deployer, pointers, content, metadata, status, bundles, versions,
+        source_content_server_url AS "sourceContentServerUrl"
     `
 
     const result = await pg.query<Registry.DbEntity>(query)
@@ -1002,6 +1009,8 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
    * @param y - The y coordinate
    * @param isUserSet - Whether this was explicitly set by the user
    * @param eventTimestamp - The timestamp of the event that triggered this update
+   * @param sourceContentServerUrl - Server that sent the event (null = default worlds server). Skipped when the
+   *   world has live rows and none come from it, so a server that is not serving the world cannot move its spawn.
    * @returns The world's bounding rectangle and whether the update was applied
    */
   async function setSpawnCoordinate(
@@ -1009,9 +1018,25 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
     x: number,
     y: number,
     isUserSet: boolean,
-    eventTimestamp: number
+    eventTimestamp: number,
+    sourceContentServerUrl: string | null
   ): Promise<SetSpawnCoordinateResult> {
     return pg.withTransaction(async (client) => {
+      const sourceCheck = await client.query<{ hasLiveRows: boolean; hasLiveRowsFromSource: boolean }>(SQL`
+        SELECT
+          COUNT(*) > 0 AS "hasLiveRows",
+          COUNT(*) FILTER (
+            WHERE source_content_server_url IS NOT DISTINCT FROM ${sourceContentServerUrl}
+          ) > 0 AS "hasLiveRowsFromSource"
+        FROM registries
+        WHERE LOWER(metadata->'worldConfiguration'->>'name') = ${worldName.toLowerCase()}
+          AND status != ${Registry.Status.OBSOLETE}
+      `)
+      const { hasLiveRows, hasLiveRowsFromSource } = sourceCheck.rows[0]
+      if (hasLiveRows && !hasLiveRowsFromSource) {
+        return { boundingRectangle: null, updated: false, otherSource: true }
+      }
+
       const [updated, boundingRectangle] = await Promise.all([
         _upsertSpawnCoordinate(worldName, x, y, isUserSet, eventTimestamp, client),
         _getWorldBoundingRectangle(worldName, client)
@@ -1213,7 +1238,9 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
           to_jsonb(${status}::text)
         )
       WHERE LOWER(registries.id) = ${id.toLocaleLowerCase()}
-      RETURNING *
+      RETURNING
+        id, type, timestamp, deployer, pointers, content, metadata, status, bundles, versions,
+        source_content_server_url AS "sourceContentServerUrl"
     `
 
     const result = await executor.query<Registry.DbEntity>(query)
@@ -1248,7 +1275,9 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
           to_jsonb(${versionData}::jsonb)
         )
       WHERE LOWER(registries.id) = ${id.toLocaleLowerCase()}
-      RETURNING *
+      RETURNING
+        id, type, timestamp, deployer, pointers, content, metadata, status, bundles, versions,
+        source_content_server_url AS "sourceContentServerUrl"
     `
 
     const result = await executor.query<Registry.DbEntity>(query)
@@ -1340,7 +1369,9 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
             WHEN EXCLUDED.deployer != '' THEN EXCLUDED.deployer
             ELSE registries.deployer
           END,
-          versions = EXCLUDED.versions
+          versions = EXCLUDED.versions,
+          -- A row read back without its source (NULL) keeps the stored one.
+          source_content_server_url = COALESCE(EXCLUDED.source_content_server_url, registries.source_content_server_url)
         RETURNING
           id,
           type,
@@ -1351,7 +1382,8 @@ export function createDbAdapter({ pg }: Pick<AppComponents, 'pg'>): IDbComponent
           metadata,
           status,
           bundles,
-          versions
+          versions,
+          source_content_server_url AS "sourceContentServerUrl"
       `
 
     const result = await executor.query<Registry.DbEntity>(query)

@@ -239,33 +239,33 @@ describe('when using the coordinates component', () => {
 
     describe('and the x coordinate is below the minimum parcel bound', () => {
       it('should throw an error', async () => {
-        await expect(component.setUserSpawnCoordinate('test-world', { x: -151, y: 0 }, eventTimestamp)).rejects.toThrow(
-          'Coordinate -151,0 is out of bounds'
-        )
+        await expect(
+          component.setUserSpawnCoordinate('test-world', { x: -151, y: 0 }, eventTimestamp, null)
+        ).rejects.toThrow('Coordinate -151,0 is out of bounds')
       })
     })
 
     describe('and the x coordinate is above the maximum parcel bound', () => {
       it('should throw an error', async () => {
-        await expect(component.setUserSpawnCoordinate('test-world', { x: 151, y: 0 }, eventTimestamp)).rejects.toThrow(
-          'Coordinate 151,0 is out of bounds'
-        )
+        await expect(
+          component.setUserSpawnCoordinate('test-world', { x: 151, y: 0 }, eventTimestamp, null)
+        ).rejects.toThrow('Coordinate 151,0 is out of bounds')
       })
     })
 
     describe('and the y coordinate is below the minimum parcel bound', () => {
       it('should throw an error', async () => {
-        await expect(component.setUserSpawnCoordinate('test-world', { x: 0, y: -151 }, eventTimestamp)).rejects.toThrow(
-          'Coordinate 0,-151 is out of bounds'
-        )
+        await expect(
+          component.setUserSpawnCoordinate('test-world', { x: 0, y: -151 }, eventTimestamp, null)
+        ).rejects.toThrow('Coordinate 0,-151 is out of bounds')
       })
     })
 
     describe('and the y coordinate is above the maximum parcel bound', () => {
       it('should throw an error', async () => {
-        await expect(component.setUserSpawnCoordinate('test-world', { x: 0, y: 151 }, eventTimestamp)).rejects.toThrow(
-          'Coordinate 0,151 is out of bounds'
-        )
+        await expect(
+          component.setUserSpawnCoordinate('test-world', { x: 0, y: 151 }, eventTimestamp, null)
+        ).rejects.toThrow('Coordinate 0,151 is out of bounds')
       })
     })
 
@@ -278,9 +278,9 @@ describe('when using the coordinates component', () => {
       })
 
       it('should store the spawn coordinate as user-set', async () => {
-        await component.setUserSpawnCoordinate('test-world', { x: 1, y: 0 }, eventTimestamp)
+        await component.setUserSpawnCoordinate('test-world', { x: 1, y: 0 }, eventTimestamp, null)
 
-        expect(db.setSpawnCoordinate).toHaveBeenCalledWith('test-world', 1, 0, true, eventTimestamp)
+        expect(db.setSpawnCoordinate).toHaveBeenCalledWith('test-world', 1, 0, true, eventTimestamp, null)
       })
     })
 
@@ -293,9 +293,9 @@ describe('when using the coordinates component', () => {
       })
 
       it('should still store the spawn coordinate as user-set', async () => {
-        await component.setUserSpawnCoordinate('test-world', { x: 99, y: 99 }, eventTimestamp)
+        await component.setUserSpawnCoordinate('test-world', { x: 99, y: 99 }, eventTimestamp, null)
 
-        expect(db.setSpawnCoordinate).toHaveBeenCalledWith('test-world', 99, 99, true, eventTimestamp)
+        expect(db.setSpawnCoordinate).toHaveBeenCalledWith('test-world', 99, 99, true, eventTimestamp, null)
       })
     })
 
@@ -308,9 +308,47 @@ describe('when using the coordinates component', () => {
       })
 
       it('should still store the spawn coordinate as user-set', async () => {
-        await component.setUserSpawnCoordinate('test-world', { x: 5, y: 10 }, eventTimestamp)
+        await component.setUserSpawnCoordinate('test-world', { x: 5, y: 10 }, eventTimestamp, null)
 
-        expect(db.setSpawnCoordinate).toHaveBeenCalledWith('test-world', 5, 10, true, eventTimestamp)
+        expect(db.setSpawnCoordinate).toHaveBeenCalledWith('test-world', 5, 10, true, eventTimestamp, null)
+      })
+    })
+
+    describe('and the world is served by another worlds server', () => {
+      beforeEach(() => {
+        db.setSpawnCoordinate.mockResolvedValue({ boundingRectangle: null, updated: false, otherSource: true })
+      })
+
+      it('should pass the event source to the database', async () => {
+        await component.setUserSpawnCoordinate(
+          'test-world',
+          { x: 1, y: 0 },
+          eventTimestamp,
+          'https://worlds.example.org'
+        )
+
+        expect(db.setSpawnCoordinate).toHaveBeenCalledWith(
+          'test-world',
+          1,
+          0,
+          true,
+          eventTimestamp,
+          'https://worlds.example.org'
+        )
+      })
+
+      it('should log that the update was skipped for the other server', async () => {
+        await component.setUserSpawnCoordinate(
+          'test-world',
+          { x: 1, y: 0 },
+          eventTimestamp,
+          'https://worlds.example.org'
+        )
+
+        expect(logs.getLogger('coordinates').info).toHaveBeenCalledWith(
+          'User spawn coordinate update skipped - the world is served by another worlds server',
+          expect.objectContaining({ sourceContentServerUrl: 'https://worlds.example.org' })
+        )
       })
     })
 
@@ -324,7 +362,7 @@ describe('when using the coordinates component', () => {
 
       it('should not throw an error', async () => {
         await expect(
-          component.setUserSpawnCoordinate('test-world', { x: 1, y: 0 }, eventTimestamp)
+          component.setUserSpawnCoordinate('test-world', { x: 1, y: 0 }, eventTimestamp, null)
         ).resolves.not.toThrow()
       })
     })

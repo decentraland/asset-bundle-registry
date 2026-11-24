@@ -17,6 +17,11 @@ export const metricDeclarations = {
     type: IMetricsComponent.HistogramType,
     buckets: [10, 30, 60, 120, 300, 600]
   },
+  world_events_dropped_total: {
+    help: 'World events dropped because their source content server is not accepted',
+    type: IMetricsComponent.CounterType,
+    labelNames: ['reason']
+  },
   registries_ready_count: {
     help: 'Count of registries marked as ready to be returned',
     type: IMetricsComponent.CounterType

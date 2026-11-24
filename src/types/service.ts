@@ -74,8 +74,10 @@ export type WorldBoundingRectangle = {
  */
 export type SetSpawnCoordinateResult = {
   boundingRectangle: WorldBoundingRectangle
-  /** Whether the update was applied (false if skipped due to older timestamp) */
+  /** Whether the update was applied (false if skipped due to older timestamp or another source) */
   updated: boolean
+  /** True when skipped because the world's live rows all come from another source server */
+  otherSource?: boolean
 }
 
 export enum SortOrder {
@@ -156,7 +158,8 @@ export interface IDbComponent {
     x: number,
     y: number,
     isUserSet: boolean,
-    eventTimestamp: number
+    eventTimestamp: number,
+    sourceContentServerUrl: string | null
   ): Promise<SetSpawnCoordinateResult>
   recalculateSpawnCoordinate(
     worldName: string,

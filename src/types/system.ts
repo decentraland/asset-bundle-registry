@@ -96,6 +96,7 @@ export type TestComponents = BaseComponents & {
     ) => Promise<void>
     getSpawnCoordinateByWorldName: (worldName: string) => Promise<SpawnCoordinate | null>
     deleteDenylistEntries: (entityIds: string[]) => Promise<void>
+    getRegistrySourceContentServerUrl: (id: string) => Promise<string | null | undefined>
     close: () => Promise<void>
   }
 }

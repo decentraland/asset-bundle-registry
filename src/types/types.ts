@@ -137,13 +137,13 @@ export const SOURCE_CONTENT_SERVER_URL_ATTRIBUTE = 'sourceContentServerUrl'
 
 /** Transport-level data of a queue message that is not part of the event body. */
 export type MessageAttributes = {
-  /** Raw, unvalidated `sourceContentServerUrl` attribute. */
-  sourceContentServerUrl?: string
+  /** Raw, unvalidated `sourceContentServerUrl` attribute; null = key present without a string value. */
+  sourceContentServerUrl?: string | null
 }
 
 /** Per-message context handed to event handlers. */
 export type EventContext = {
-  /** Allowlisted origin of the server that emitted the event; null = the default (prd) worlds server. */
+  /** Bare origin of the server that emitted the event; null = the default (prd) worlds server. */
   sourceContentServerUrl: string | null
 }
 

@@ -209,7 +209,8 @@ export async function initComponents(): Promise<AppComponents> {
     coordinates,
     db,
     logs,
-    config
+    config,
+    metrics
   })
   const messageConsumer = createMessagesConsumerComponent({
     logs,
