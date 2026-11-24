@@ -1,6 +1,6 @@
 import { Events, WorldScenesUndeploymentEvent } from '@dcl/schemas'
 import { createUndeploymentEventHandler } from '../../../../src/logic/handlers/undeployment-handler'
-import { EventHandlerName } from '../../../../src/types'
+import { EventHandlerName, EventContext } from '../../../../src/types'
 import { createLogMockComponent } from '../../mocks/logs'
 import { createRegistryMockComponent } from '../../mocks/registry'
 
@@ -126,14 +126,34 @@ describe('when handling undeployment events', () => {
         })
       })
 
-      it('should undeploy the world scenes for the given entity IDs and lowercased world name', async () => {
+      it('should undeploy the default server scenes for the given entity IDs and lowercased world name', async () => {
         await handler.handle(event)
 
         expect(registry.undeployWorldScenes).toHaveBeenCalledWith(
           ['entity-1', 'entity-2'],
           'test-world',
-          event.timestamp
+          event.timestamp,
+          null
         )
+      })
+
+      describe('and the event comes from another worlds server', () => {
+        let context: EventContext
+
+        beforeEach(() => {
+          context = { sourceContentServerUrl: 'https://worlds-content-server.dcl.dev' }
+        })
+
+        it('should undeploy only the scenes from that server', async () => {
+          await handler.handle(event, context)
+
+          expect(registry.undeployWorldScenes).toHaveBeenCalledWith(
+            ['entity-1', 'entity-2'],
+            'test-world',
+            event.timestamp,
+            'https://worlds-content-server.dcl.dev'
+          )
+        })
       })
 
       it('should return ok', async () => {

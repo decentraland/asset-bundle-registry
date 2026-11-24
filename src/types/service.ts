@@ -6,6 +6,8 @@ import {
   EntityStatusInQueue,
   EventHandlerName,
   MessageProcessorResult,
+  MessageAttributes,
+  EventContext,
   EventHandlerResult,
   Registry,
   Sync,
@@ -72,8 +74,10 @@ export type WorldBoundingRectangle = {
  */
 export type SetSpawnCoordinateResult = {
   boundingRectangle: WorldBoundingRectangle
-  /** Whether the update was applied (false if skipped due to older timestamp) */
+  /** Whether the update was applied (false if skipped due to older timestamp or another source) */
   updated: boolean
+  /** True when skipped because the world's live rows all come from another source server */
+  otherSource?: boolean
 }
 
 export enum SortOrder {
@@ -154,15 +158,27 @@ export interface IDbComponent {
     x: number,
     y: number,
     isUserSet: boolean,
-    eventTimestamp: number
+    eventTimestamp: number,
+    sourceContentServerUrl: string | null
   ): Promise<SetSpawnCoordinateResult>
   recalculateSpawnCoordinate(
     worldName: string,
     eventTimestamp: number,
     calculateSpawn: (params: SpawnRecalculationParams) => SpawnRecalculationResult
   ): Promise<void>
-  undeployWorldScenes(entityIds: string[], worldName: string, eventTimestamp: number): Promise<UndeploymentResult>
-  undeployWorldByName(worldName: string, eventTimestamp: number): Promise<UndeploymentResult>
+  /** Marks the given world scenes OBSOLETE, scoped to rows from `sourceContentServerUrl` (null = default server). */
+  undeployWorldScenes(
+    entityIds: string[],
+    worldName: string,
+    eventTimestamp: number,
+    sourceContentServerUrl: string | null
+  ): Promise<UndeploymentResult>
+  /** Marks every row of the world OBSOLETE, scoped to rows from `sourceContentServerUrl` (null = default server). */
+  undeployWorldByName(
+    worldName: string,
+    eventTimestamp: number,
+    sourceContentServerUrl: string | null
+  ): Promise<UndeploymentResult>
   // Denylist methods
   getDenylist(): Promise<Denylist.DbEntity[]>
   addDenylistEntry(entityId: string, createdBy: string, reason?: string | null): Promise<Denylist.DbEntity>
@@ -193,7 +209,7 @@ export { IQueueComponent }
 export interface IMessageConsumerComponent extends IBaseComponent {}
 
 export interface IMessageProcessorComponent {
-  process(message: any): Promise<MessageProcessorResult>
+  process(message: any, attributes?: MessageAttributes): Promise<MessageProcessorResult>
 }
 
 export interface ICatalystComponent {
@@ -211,7 +227,8 @@ export interface IWorldsComponent {
 }
 
 export interface IEventHandlerComponent<T> {
-  handle(event: T): Promise<EventHandlerResult>
+  /** `context` defaults to {@link DEFAULT_EVENT_CONTEXT} (the default worlds server). */
+  handle(event: T, context?: EventContext): Promise<EventHandlerResult>
   canHandle(event: T): boolean
   name: EventHandlerName
 }

@@ -12,7 +12,9 @@ import {
   IMessageProcessorComponent,
   MessageProcessorResult,
   EventHandlerResult,
-  RetryMessageData
+  RetryMessageData,
+  MessageAttributes,
+  EventContext
 } from '../types'
 import { createDeploymentEventHandler } from './handlers/deployment-handler'
 import { createStatusEventHandler } from './handlers/status-handler'
@@ -21,7 +23,14 @@ import { createUndeploymentEventHandler } from './handlers/undeployment-handler'
 import { createWorldUndeploymentEventHandler } from './handlers/world-undeployment-handler'
 import { createSpawnCoordinateEventHandler } from './handlers/spawn-coordinate-handler'
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
-import { isAllowedContentServerUrl, parseAllowedContentServerHosts } from './validation'
+import {
+  isAllowedContentServerUrl,
+  parseAllowedContentServerHosts,
+  resolveSourceContentServerUrl,
+  SourceRejectionReason,
+  toBareOrigin,
+  toContentServerOrigin
+} from './validation'
 
 export async function createMessageProcessorComponent({
   catalyst,
@@ -31,10 +40,11 @@ export async function createMessageProcessorComponent({
   coordinates,
   db,
   logs,
-  config
+  config,
+  metrics
 }: Pick<
   AppComponents,
-  'catalyst' | 'worlds' | 'registry' | 'queuesStatusManager' | 'db' | 'logs' | 'config' | 'coordinates'
+  'catalyst' | 'worlds' | 'registry' | 'queuesStatusManager' | 'db' | 'logs' | 'config' | 'coordinates' | 'metrics'
 >): Promise<IMessageProcessorComponent> {
   const MAX_RETRIES: number = (await config.getNumber('MAX_RETRIES')) || 3
   const log = logs.getLogger('message-processor')
@@ -48,6 +58,52 @@ export async function createMessageProcessorComponent({
   if (allowedContentServerHosts.size === 0) {
     throw new Error('ALLOWED_CONTENT_SERVER_HOSTS is set but contains no valid catalyst hosts')
   }
+
+  // World event sources (sourceContentServerUrl). Every listed host must verify NAME ownership against
+  // the same mainnet registry as the default server: world rows are keyed by world name and the last
+  // deploy from any listed server wins (it rotates the other server's rows), while an undeploy only
+  // removes the sending server's rows, so an undeploy from B leaves A's rows OBSOLETE until A redeploys.
+  // Empty = only the default worlds server is accepted.
+  const allowedWorldsContentServerHosts = parseAllowedContentServerHosts(
+    await config.getString('ALLOWED_WORLDS_CONTENT_SERVER_HOSTS')
+  )
+  // Origins that mean the default worlds server (stored as NULL). WORLDS_CONTENT_SERVER_URL may be an
+  // internal address, so the public base WCS emits is configured separately.
+  const worldsContentServerUrl = await config.getString('WORLDS_CONTENT_SERVER_URL')
+  const worldsContentServerPublicUrl = await config.getString('WORLDS_CONTENT_SERVER_PUBLIC_URL')
+  const worldsContentServerPublicOrigin = worldsContentServerPublicUrl
+    ? toBareOrigin(worldsContentServerPublicUrl)
+    : undefined
+  if (worldsContentServerPublicUrl && !worldsContentServerPublicOrigin) {
+    throw new Error('WORLDS_CONTENT_SERVER_PUBLIC_URL must be a bare https origin')
+  }
+  const defaultWorldsContentServerOrigins = new Set(
+    [worldsContentServerUrl && toContentServerOrigin(worldsContentServerUrl), worldsContentServerPublicOrigin].filter(
+      (origin): origin is string => !!origin
+    )
+  )
+  // Hosts a deployment may be fetched from: catalysts plus the public worlds servers.
+  const allowedFetchHosts = new Set([
+    ...allowedContentServerHosts,
+    ...allowedWorldsContentServerHosts,
+    ...(worldsContentServerPublicOrigin ? [new URL(worldsContentServerPublicOrigin).hostname] : [])
+  ])
+
+  function dropForSource(
+    reason: SourceRejectionReason | 'source_mismatch',
+    message: any,
+    details: Record<string, string>
+  ): MessageProcessorResult {
+    log.error('Dropping world event: its source content server is not accepted', {
+      reason,
+      type: String(message?.type).slice(0, 60),
+      subType: String(message?.subType).slice(0, 60),
+      ...details
+    })
+    metrics.increment('world_events_dropped_total', { reason })
+    return { ok: true, failedHandlers: [] }
+  }
+
   const processors: IEventHandlerComponent<
     | DeploymentToSqs
     | AssetBundleConversionManuallyQueuedEvent
@@ -56,7 +112,7 @@ export async function createMessageProcessorComponent({
     | WorldUndeploymentEvent
     | WorldSpawnCoordinateSetEvent
   >[] = [
-    createDeploymentEventHandler({ catalyst, worlds, registry, db, logs }, allowedContentServerHosts),
+    createDeploymentEventHandler({ catalyst, worlds, registry, db, logs }, allowedFetchHosts),
     createTexturesEventHandler({
       db,
       logs,
@@ -72,7 +128,7 @@ export async function createMessageProcessorComponent({
     createSpawnCoordinateEventHandler({ coordinates, logs })
   ]
 
-  async function process(message: any): Promise<MessageProcessorResult> {
+  async function process(message: any, attributes: MessageAttributes = {}): Promise<MessageProcessorResult> {
     const retryData: RetryMessageData = message.retry || {
       attempt: 0,
       failedHandlers: []
@@ -92,7 +148,7 @@ export async function createMessageProcessorComponent({
     // handlers (e.g. status) would otherwise still act on it and leave an
     // orphaned queue-status entry. Drop it (ok, no retry) — it's deterministic.
     const disallowedContentServerUrl = Array.isArray(message?.contentServerUrls)
-      ? message.contentServerUrls.find((url: string) => !isAllowedContentServerUrl(url, allowedContentServerHosts))
+      ? message.contentServerUrls.find((url: string) => !isAllowedContentServerUrl(url, allowedFetchHosts))
       : undefined
     if (disallowedContentServerUrl) {
       log.warn('Dropping message: a contentServerUrl is not an allowed content server (SSRF/allowlist guard)', {
@@ -104,6 +160,30 @@ export async function createMessageProcessorComponent({
         failedHandlers: []
       }
     }
+
+    // World rows and removals are scoped to the server that sent them (see ALLOWED_WORLDS_CONTENT_SERVER_HOSTS).
+    const source = resolveSourceContentServerUrl(
+      attributes.sourceContentServerUrl,
+      allowedWorldsContentServerHosts,
+      defaultWorldsContentServerOrigins
+    )
+    if (source.ok === false) {
+      return dropForSource(source.reason, message, {
+        sourceContentServerUrl: String(attributes.sourceContentServerUrl).slice(0, 120)
+      })
+    }
+    // The attribute is authoritative: a deployment fetched from another origin is mislabelled.
+    if (source.origin !== undefined && Array.isArray(message?.contentServerUrls)) {
+      const [fetchUrl] = message.contentServerUrls
+      if (typeof fetchUrl !== 'string' || toContentServerOrigin(fetchUrl) !== source.origin) {
+        return dropForSource('source_mismatch', message, {
+          sourceContentServerUrl: source.origin,
+          contentServerUrl: String(fetchUrl).slice(0, 120),
+          entityId: String(message?.entity?.entityId).slice(0, 120)
+        })
+      }
+    }
+    const context: EventContext = { sourceContentServerUrl: source.sourceContentServerUrl }
 
     log.debug('Processing', { message })
 
@@ -129,7 +209,7 @@ export async function createMessageProcessorComponent({
       }
     }
 
-    const results: EventHandlerResult[] = await Promise.all(handlers.map((handler) => handler.handle(message)))
+    const results: EventHandlerResult[] = await Promise.all(handlers.map((handler) => handler.handle(message, context)))
     const failedProcessors: EventHandlerName[] = results.filter((r) => !r.ok).map((r) => r.handlerName)
 
     return {

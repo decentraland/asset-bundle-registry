@@ -16,6 +16,7 @@ export function extendDbComponent({ db, pg }: Pick<AppComponents, 'db' | 'pg'>):
   ) => Promise<void>
   getSpawnCoordinateByWorldName: (worldName: string) => Promise<SpawnCoordinate | null>
   deleteDenylistEntries: (entityIds: string[]) => Promise<void>
+  getRegistrySourceContentServerUrl: (id: string) => Promise<string | null | undefined>
   close: () => Promise<void>
 } {
   return {
@@ -75,6 +76,13 @@ export function extendDbComponent({ db, pg }: Pick<AppComponents, 'db' | 'pg'>):
             WHERE LOWER(entity_id) = ANY(${entityIds.map((id) => id.toLowerCase())}::varchar(255)[])
           `
       await pg.query(query)
+    },
+    getRegistrySourceContentServerUrl: async (id: string) => {
+      const query: SQLStatement = SQL`
+            SELECT source_content_server_url FROM registries WHERE LOWER(id) = ${id.toLowerCase()}
+          `
+      const result = await pg.query<{ source_content_server_url: string | null }>(query)
+      return result.rows[0]?.source_content_server_url
     },
     close: async () => {
       await pg.getPool().end()

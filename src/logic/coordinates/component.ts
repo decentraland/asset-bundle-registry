@@ -228,7 +228,8 @@ export function createCoordinatesComponent({ db, logs }: Pick<AppComponents, 'db
   async function setUserSpawnCoordinate(
     worldName: string,
     coordinate: Coordinate,
-    eventTimestamp: number
+    eventTimestamp: number,
+    sourceContentServerUrl: string | null
   ): Promise<void> {
     const normalizedWorldName = worldName.toLowerCase()
 
@@ -237,13 +238,24 @@ export function createCoordinatesComponent({ db, logs }: Pick<AppComponents, 'db
     }
 
     // Set the spawn coordinate atomically with timestamp-based conflict resolution
-    const { boundingRectangle, updated } = await db.setSpawnCoordinate(
+    const { boundingRectangle, updated, otherSource } = await db.setSpawnCoordinate(
       normalizedWorldName,
       coordinate.x,
       coordinate.y,
       true,
-      eventTimestamp
+      eventTimestamp,
+      sourceContentServerUrl
     )
+
+    if (otherSource) {
+      logger.info('User spawn coordinate update skipped - the world is served by another worlds server', {
+        worldName: normalizedWorldName,
+        coordinate: formatCoordinate(coordinate),
+        sourceContentServerUrl: sourceContentServerUrl ?? 'default',
+        eventTimestamp
+      })
+      return
+    }
 
     if (!updated) {
       logger.info('User spawn coordinate update skipped - newer timestamp exists', {

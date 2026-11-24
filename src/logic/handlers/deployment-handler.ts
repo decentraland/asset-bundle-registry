@@ -1,5 +1,13 @@
 import { Entity } from '@dcl/schemas'
-import { AppComponents, IEventHandlerComponent, EventHandlerName, EventHandlerResult, Registry } from '../../types'
+import {
+  AppComponents,
+  DEFAULT_EVENT_CONTEXT,
+  EventContext,
+  IEventHandlerComponent,
+  EventHandlerName,
+  EventHandlerResult,
+  Registry
+} from '../../types'
 import { DeploymentToSqs } from '@dcl/schemas/dist/misc/deployments-to-sqs'
 import { Authenticator } from '@dcl/crypto'
 import { isAllowedContentServerUrl } from '../validation'
@@ -12,7 +20,10 @@ export const createDeploymentEventHandler = (
   const logger = logs.getLogger('deployment-handler')
 
   return {
-    handle: async (event: DeploymentToSqs): Promise<EventHandlerResult> => {
+    handle: async (
+      event: DeploymentToSqs,
+      context: EventContext = DEFAULT_EVENT_CONTEXT
+    ): Promise<EventHandlerResult> => {
       let entity: Entity | null
       try {
         // SSRF guard (issue #306): contentServerUrls rides in the SQS payload and
@@ -42,8 +53,12 @@ export const createDeploymentEventHandler = (
           }
         }
 
+        // World rows remember the server that sent them so removals only touch that server's rows.
+        let sourceContentServerUrl: string | null = null
         if (worlds.isWorldDeployment(event)) {
           const [worldContentServerUrl] = event.contentServerUrls!
+          // The processor already dropped events whose fetch origin differs from the source attribute.
+          sourceContentServerUrl = context.sourceContentServerUrl
           entity = await worlds.getWorld(event.entity.entityId, worldContentServerUrl)
         } else {
           entity = await catalyst.getEntityById(event.entity.entityId, {
@@ -83,7 +98,8 @@ export const createDeploymentEventHandler = (
           ...entity,
           deployer,
           bundles: defaultBundles,
-          versions: defaultVersions
+          versions: defaultVersions,
+          sourceContentServerUrl
         })
 
         return { ok: true, handlerName: HANDLER_NAME }

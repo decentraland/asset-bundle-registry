@@ -1,6 +1,6 @@
 import { Events, WorldUndeploymentEvent } from '@dcl/schemas'
 import { createWorldUndeploymentEventHandler } from '../../../../src/logic/handlers/world-undeployment-handler'
-import { EventHandlerName } from '../../../../src/types'
+import { EventContext, EventHandlerName } from '../../../../src/types'
 import { createLogMockComponent } from '../../mocks/logs'
 import { createRegistryMockComponent } from '../../mocks/registry'
 
@@ -117,12 +117,30 @@ describe('when handling world undeployment events', () => {
         })
       })
 
-      it('should undeploy the world by name and respond with a 200 status code', async () => {
+      it('should undeploy the default server rows of the world and respond with a 200 status code', async () => {
         const result = await handler.handle(event)
 
-        expect(registry.undeployWorld).toHaveBeenCalledWith('test-world', event.timestamp)
+        expect(registry.undeployWorld).toHaveBeenCalledWith('test-world', event.timestamp, null)
         expect(result.ok).toBe(true)
         expect(result.handlerName).toBe(EventHandlerName.WORLD_UNDEPLOYMENT)
+      })
+
+      describe('and the event comes from another worlds server', () => {
+        let context: EventContext
+
+        beforeEach(() => {
+          context = { sourceContentServerUrl: 'https://worlds-content-server.dcl.dev' }
+        })
+
+        it('should undeploy only the world rows from that server', async () => {
+          await handler.handle(event, context)
+
+          expect(registry.undeployWorld).toHaveBeenCalledWith(
+            'test-world',
+            event.timestamp,
+            'https://worlds-content-server.dcl.dev'
+          )
+        })
       })
     })
 

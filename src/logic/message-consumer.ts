@@ -1,5 +1,14 @@
-import { AppComponents, IMessageConsumerComponent, MessageProcessorResult } from '../types'
+import {
+  AppComponents,
+  IMessageConsumerComponent,
+  MessageAttributes,
+  MessageProcessorResult,
+  SOURCE_CONTENT_SERVER_URL_ATTRIBUTE
+} from '../types'
 import { sleep } from '../utils/timer'
+
+const RETRY_BASE_DELAY_SECONDS = 30
+const MAX_SQS_DELAY_SECONDS = 900
 
 export function createMessagesConsumerComponent({
   logs,
@@ -10,6 +19,30 @@ export function createMessagesConsumerComponent({
   const intervalToWaitInSeconds = 5 // wait time when no messages are found in the queue
   let isRunning = false
   let loopPromise: Promise<void> | null = null
+
+  /**
+   * Reads the transport attributes of a message: the SQS message attribute, or on a requeued message
+   * (retry.attempt >= 1) the copy carried in the body's retry data. A key present without a string
+   * value yields null so the processor drops the message instead of treating it as the default server.
+   */
+  function getMessageAttributes(message: any, parsedMessage: any): MessageAttributes {
+    const attributes = message.MessageAttributes
+    if (attributes && Object.prototype.hasOwnProperty.call(attributes, SOURCE_CONTENT_SERVER_URL_ATTRIBUTE)) {
+      const value = attributes[SOURCE_CONTENT_SERVER_URL_ATTRIBUTE]?.StringValue
+      return { sourceContentServerUrl: typeof value === 'string' ? value : null }
+    }
+    const retry = parsedMessage?.retry
+    if (typeof retry?.attempt === 'number' && retry.attempt >= 1 && retry.sourceContentServerUrl !== undefined) {
+      const value = retry.sourceContentServerUrl
+      return { sourceContentServerUrl: typeof value === 'string' ? value : null }
+    }
+    return {}
+  }
+
+  /** Requeue delay: exponential from RETRY_BASE_DELAY_SECONDS, capped at the SQS maximum. */
+  function getRetryDelaySeconds(attempt: number): number {
+    return Math.min(RETRY_BASE_DELAY_SECONDS * 2 ** (attempt - 1), MAX_SQS_DELAY_SECONDS)
+  }
 
   async function removeMessageFromQueue(messageHandle: string) {
     logger.info('Removing message from queue', { messageHandle })
@@ -48,19 +81,28 @@ export function createMessagesConsumerComponent({
         }
 
         try {
-          const result: MessageProcessorResult = await messageProcessor.process(parsedMessage)
+          const attributes = getMessageAttributes(message, parsedMessage)
+          const result: MessageProcessorResult = await messageProcessor.process(parsedMessage, attributes)
           await removeMessageFromQueue(ReceiptHandle!)
 
           if (!result.ok) {
+            const attempt = (parsedMessage.retry?.attempt || 0) + 1
             const messageToRequeue = {
               ...parsedMessage,
               retry: {
-                attempt: (parsedMessage.retry?.attempt || 0) + 1,
-                failedHandlers: result.failedHandlers
+                attempt,
+                failedHandlers: result.failedHandlers,
+                ...(typeof attributes.sourceContentServerUrl === 'string'
+                  ? { sourceContentServerUrl: attributes.sourceContentServerUrl }
+                  : {})
               }
             }
 
-            await queue.sendMessage(messageToRequeue)
+            // Raw body: the subscription uses raw delivery and this loop parses Body as the event.
+            await queue.sendMessage(messageToRequeue, {
+              isRawMessage: true,
+              delaySeconds: getRetryDelaySeconds(attempt)
+            })
           }
         } catch (error: any) {
           logger.error('Failed while processing message from queue', {

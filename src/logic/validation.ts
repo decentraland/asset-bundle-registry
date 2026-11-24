@@ -54,3 +54,78 @@ export function isAllowedContentServerUrl(raw: string, allowedHosts: Set<string>
   const host = u.hostname.replace(/^\[|\]$/g, '').toLowerCase()
   return allowedHosts.has(host)
 }
+
+/** Lowercase `scheme://host[:port]` of `raw`, or undefined when it is not a URL. */
+export function toContentServerOrigin(raw: string): string | undefined {
+  try {
+    return new URL(raw).origin.toLowerCase()
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * `https://<host>` (lowercased) when `raw` is a bare HTTPS origin: no userinfo, port, path, query
+ * or hash; a single trailing slash is accepted. Undefined otherwise.
+ */
+export function toBareOrigin(raw: string): string | undefined {
+  let u: URL
+  try {
+    u = new URL(raw)
+  } catch {
+    return undefined
+  }
+  if (u.protocol !== 'https:' || u.port) {
+    return undefined
+  }
+  const origin = u.origin.toLowerCase()
+  // Compare the raw text so parser normalisation (`:443`, `/.`, `?`) cannot sneak a non-bare value in.
+  const lowered = raw.toLowerCase()
+  return lowered === origin || lowered === `${origin}/` ? origin : undefined
+}
+
+/** Why a world event source was rejected. */
+export type SourceRejectionReason = 'malformed' | 'not_bare_origin' | 'not_allowlisted'
+
+/** Outcome of resolving a message's `sourceContentServerUrl` attribute. */
+export type SourceContentServerResolution =
+  | {
+      ok: true
+      /** Normalised attribute origin; undefined when the attribute is absent. */
+      origin: string | undefined
+      /** Value stored and scoped on: null = the default worlds server. */
+      sourceContentServerUrl: string | null
+    }
+  | { ok: false; reason: SourceRejectionReason }
+
+/**
+ * Resolve the server a worlds event came from.
+ * - absent (undefined): the default worlds server (null)
+ * - present without a string value (null) or not a bare HTTPS origin: rejected
+ * - equal to a default worlds server origin: null, checked before the allowlist
+ * - host on `allowedWorldsHosts`: that origin; anything else is rejected, never downgraded to the
+ *   default, so a mislabelled event can never act on the default server's rows
+ */
+export function resolveSourceContentServerUrl(
+  raw: string | null | undefined,
+  allowedWorldsHosts: Set<string>,
+  defaultWorldsOrigins: Set<string>
+): SourceContentServerResolution {
+  if (raw === undefined) {
+    return { ok: true, origin: undefined, sourceContentServerUrl: null }
+  }
+  if (typeof raw !== 'string') {
+    return { ok: false, reason: 'malformed' }
+  }
+  const origin = toBareOrigin(raw)
+  if (!origin) {
+    return { ok: false, reason: 'not_bare_origin' }
+  }
+  if (defaultWorldsOrigins.has(origin)) {
+    return { ok: true, origin, sourceContentServerUrl: null }
+  }
+  if (!allowedWorldsHosts.has(new URL(origin).hostname)) {
+    return { ok: false, reason: 'not_allowlisted' }
+  }
+  return { ok: true, origin, sourceContentServerUrl: origin }
+}

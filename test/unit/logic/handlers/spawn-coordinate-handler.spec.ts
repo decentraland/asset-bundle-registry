@@ -1,6 +1,6 @@
 import { Events, WorldSpawnCoordinateSetEvent } from '@dcl/schemas'
 import { createSpawnCoordinateEventHandler } from '../../../../src/logic/handlers/spawn-coordinate-handler'
-import { EventHandlerName } from '../../../../src/types'
+import { EventContext, EventHandlerName } from '../../../../src/types'
 import { createCoordinatesMockComponent } from '../../mocks/coordinates'
 import { createLogMockComponent } from '../../mocks/logs'
 
@@ -123,7 +123,12 @@ describe('when handling spawn coordinate set events', () => {
       it('should store the user spawn coordinate for the world', async () => {
         await handler.handle(event)
 
-        expect(coordinates.setUserSpawnCoordinate).toHaveBeenCalledWith('test-world', { x: 5, y: 10 }, event.timestamp)
+        expect(coordinates.setUserSpawnCoordinate).toHaveBeenCalledWith(
+          'test-world',
+          { x: 5, y: 10 },
+          event.timestamp,
+          null
+        )
       })
 
       it('should return ok', async () => {
@@ -131,6 +136,28 @@ describe('when handling spawn coordinate set events', () => {
 
         expect(result.ok).toBe(true)
         expect(result.handlerName).toBe(EventHandlerName.SPAWN_COORDINATE)
+      })
+    })
+
+    describe('and the event comes from another worlds server', () => {
+      let event: WorldSpawnCoordinateSetEvent
+      let context: EventContext
+
+      beforeEach(() => {
+        event = createSpawnCoordinateSetEvent('test-world', { x: 5, y: 10 }, null)
+        context = { sourceContentServerUrl: 'https://worlds-content-server.dcl.dev' }
+        coordinates.setUserSpawnCoordinate.mockResolvedValue(undefined)
+      })
+
+      it('should scope the spawn coordinate update to that server', async () => {
+        await handler.handle(event, context)
+
+        expect(coordinates.setUserSpawnCoordinate).toHaveBeenCalledWith(
+          'test-world',
+          { x: 5, y: 10 },
+          event.timestamp,
+          'https://worlds-content-server.dcl.dev'
+        )
       })
     })
 
@@ -145,7 +172,12 @@ describe('when handling spawn coordinate set events', () => {
       it('should store the user spawn coordinate for the world', async () => {
         await handler.handle(event)
 
-        expect(coordinates.setUserSpawnCoordinate).toHaveBeenCalledWith('new-world', { x: 3, y: 7 }, event.timestamp)
+        expect(coordinates.setUserSpawnCoordinate).toHaveBeenCalledWith(
+          'new-world',
+          { x: 3, y: 7 },
+          event.timestamp,
+          null
+        )
       })
 
       it('should return ok', async () => {

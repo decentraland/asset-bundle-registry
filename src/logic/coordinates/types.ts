@@ -54,8 +54,15 @@ export interface ICoordinatesComponent {
    * @param worldName - The world name
    * @param coordinate - The spawn coordinate
    * @param eventTimestamp - The timestamp of the event that triggered this update
+   * @param sourceContentServerUrl - Server that sent the event (null = default); ignored when the world's
+   *   live rows all come from another server
    */
-  setUserSpawnCoordinate(worldName: string, coordinate: Coordinate, eventTimestamp: number): Promise<void>
+  setUserSpawnCoordinate(
+    worldName: string,
+    coordinate: Coordinate,
+    eventTimestamp: number,
+    sourceContentServerUrl: string | null
+  ): Promise<void>
 
   /**
    * Gets the world manifest including occupied parcels and spawn coordinate.
